@@ -5,29 +5,20 @@ import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 
 class UserController {
   async register(request: Request, response: Response): Promise<Response> {
-    console.log(request.body)
-    /*const result = await UserService.register(request.body)
+    const result = await UserService.register(request.body)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error!.code,
-        userErrorHttpStatusMap
-      )
-
-      return response.status(httpStatus).json({
+      return response.status(400).json({
         success: false,
         message: result.error?.message,
       })
     }
 
-    request.session.user = result.data
-
     return response.status(201).json({
       success: true,
       message: "Usuário cadastrado com sucesso",
       data: result.data,
-    })*/
-   return response.status(201).json({success: true, message: "Usuário cadastrado com sucesso", data: null})
+    })
   }
 
   async login(request: Request, response: Response): Promise<Response> {

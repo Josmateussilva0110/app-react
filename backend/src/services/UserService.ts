@@ -2,58 +2,43 @@ import bcrypt from "bcrypt"
 import User, { UserData } from "../model/User"
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
+import {supabase } from "../database/supabase/supabase"
+
+interface RegisterDTO {
+  username: string
+  email: string
+  password: string
+}
 
 class UserService {
-    async register(data: {
-        username: string
-        email: string
-        password: string
-    }): Promise<ServiceResult<{ id: number; username: string }, UserErrorCode>> {
-        try {
-            const emailExists = await User.emailExists(data.email)
-            if (emailExists) {
-                return {
-                    status: false,
-                    error: {
-                        code: UserErrorCode.EMAIL_ALREADY_EXISTS,
-                        message: "Email já existe",
-                    },
-                }
-            }
+    async register(data: RegisterDTO): Promise<ServiceResult<{ id: number; username: string }, UserErrorCode | "SUPABASE_ERROR">> {
+        const { username, email, password } = data
 
-            const hashedPassword = await bcrypt.hash(data.password, 10)
+        const passwordHash = await bcrypt.hash(password, 10)
 
-            const newUser: UserData = {
-                username: data.username,
-                email: data.email.trim().toLowerCase(),
-                password: hashedPassword,
-            }
+        const { data: user, error } = await supabase
+        .from("users")
+        .insert({
+            username,
+            email,
+            password: passwordHash,
+        })
+        .select()
+        .single()
 
-            const success = await User.save(newUser)
-            if (!success) {
-                return {
-                    status: false,
-                    error: {
-                    code: UserErrorCode.USER_CREATE_FAILED,
-                    message: "Erro ao cadastrar usuário",
-                    },
-                }
-            }
-
-            return { status: true, data: {
-                id: success,
-                username: newUser.username
-            }}
-        } catch (error) {
-            console.error("UserService.register error:", error)
-
+        if (error) {
             return {
                 status: false,
                 error: {
-                    code: UserErrorCode.USER_CREATE_FAILED,
-                    message: "Erro ao cadastrar usuário",
+                code: "SUPABASE_ERROR",
+                message: error.message,
                 },
             }
+        }
+
+        return {
+            status: true,
+            data: {username: user.username, id: user.id},
         }
     }
 
