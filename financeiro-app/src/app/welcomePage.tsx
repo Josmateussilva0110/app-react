@@ -32,8 +32,8 @@ export default function WelcomePage() {
     },
     {
       icon: Sparkles,
-      title: "Rápido e bonito",
-      desc: "Design moderno e responsivo.",
+      title: "Gestão inteligente",
+      desc: "Tenha controle total das suas finanças mensais.",
     },
   ];
 

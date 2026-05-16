@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, StyleSheet } from "react-native";
 import { Wallet, LogIn, Mail, Lock } from "lucide-react-native";
 import { loginSchema, type LoginFormData } from "@/schemas/auth.schema";
-import { PRIMARY_COLOR } from "@/constants/theme";
+import { PRIMARY_COLOR, ERROR_COLOR } from "@/constants/theme";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#111", paddingLeft: 38, paddingRight: 12,
     fontSize: 14, color: "#fff",
   },
-  inputError:     { borderColor: PRIMARY_COLOR },
-  errorText:      { color: PRIMARY_COLOR, fontSize: 12 },
+  inputError:     { borderColor: ERROR_COLOR },
+  errorText:      { color: ERROR_COLOR, fontSize: 12 },
 
   button: {
     height: 48, borderRadius: 10, backgroundColor: PRIMARY_COLOR,

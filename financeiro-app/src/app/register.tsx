@@ -5,7 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Toast from "react-native-toast-message";
 import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
-import { PRIMARY_COLOR } from "@/constants/theme";
+import { PRIMARY_COLOR, ERROR_COLOR } from "@/constants/theme";
 import { registerUser } from "@/services/auth.service";
 
 export default function RegisterPage() {
@@ -261,8 +261,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#111", paddingLeft: 38, paddingRight: 12,
     fontSize: 14, color: "#fff",
   },
-  inputError:  { borderColor: PRIMARY_COLOR },
-  errorText:   { fontSize: 12, color: PRIMARY_COLOR },
+  inputError:  { borderColor: ERROR_COLOR },
+  errorText:   { fontSize: 12, color: ERROR_COLOR },
 
   button: {
     height: 48, borderRadius: 10, backgroundColor: PRIMARY_COLOR,

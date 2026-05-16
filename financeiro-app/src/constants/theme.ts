@@ -6,6 +6,8 @@
 import '@/global.css';
 
 import { Platform } from 'react-native';
+const PRIMARY = "#22C55E"
+const ERROR = "#EF4444"
 
 export const Colors = {
   light: {
@@ -15,7 +17,8 @@ export const Colors = {
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
 
-    primary: '#22C55E',
+    primary: PRIMARY,
+    error: ERROR,
   },
 
   dark: {
@@ -25,7 +28,8 @@ export const Colors = {
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
 
-    primary: '#22C55E',
+    primary: PRIMARY,
+    error: ERROR,
   },
 } as const;
 
@@ -69,3 +73,4 @@ export const Spacing = {
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
 export const PRIMARY_COLOR = Colors.dark.primary;
+export const ERROR_COLOR = Colors.dark.error;
