@@ -11,34 +11,35 @@ interface RegisterDTO {
 }
 
 class UserService {
-    async register(data: RegisterDTO): Promise<ServiceResult<{ id: number; username: string }, UserErrorCode | "SUPABASE_ERROR">> {
+    async register(data: RegisterDTO): Promise<ServiceResult<{ username: string }, UserErrorCode>> {
         const { username, email, password } = data
-
         const passwordHash = await bcrypt.hash(password, 10)
 
         const { data: user, error } = await supabase
-        .from("users")
-        .insert({
-            username,
-            email,
-            password: passwordHash,
-        })
-        .select()
-        .single()
+            .from("users")
+            .insert({ username, email, password: passwordHash })
+            .select()
+            .single()
 
         if (error) {
+            console.error("[UserService.register] Supabase error:", error)
+
+            if (error.code === "23505") {
+                return {
+                    status: false,
+                    error: { code: UserErrorCode.EMAIL_ALREADY_EXISTS, message: "E-mail já cadastrado" },
+                }
+            }
+
             return {
                 status: false,
-                error: {
-                code: "SUPABASE_ERROR",
-                message: error.message,
-                },
+                error: { code: UserErrorCode.USER_CREATE_FAILED, message: "Não foi possível criar o usuário. Tente novamente." },
             }
         }
 
         return {
             status: true,
-            data: {username: user.username, id: user.id},
+            data: { username: user.username },
         }
     }
 
