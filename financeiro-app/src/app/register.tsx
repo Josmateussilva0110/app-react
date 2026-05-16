@@ -3,13 +3,14 @@ import { Link, useRouter } from "expo-router";
 import { Wallet, UserPlus, Mail, Lock, User } from "lucide-react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Toast from "react-native-toast-message";
 import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
 import { PRIMARY_COLOR, ERROR_COLOR } from "@/constants/theme";
 import { registerUser } from "@/services/auth.service";
+import { useToast } from "@/context/toast.context";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { show } = useToast();
 
   const {
     control,
@@ -27,19 +28,13 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     const result = await registerUser(data);
+
     if (!result.success) {
-      Toast.show({
-        type: "error",
-        text1: "Erro ao criar conta",
-        text2: result.message,
-      });
+      show("error", result.message);
       return;
     }
-    Toast.show({
-      type: "success",
-      text1: result.message,
-    });
 
+    show("success", result.message);
     router.replace("/");
   };
 

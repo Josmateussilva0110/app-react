@@ -1,16 +1,15 @@
 import { Stack } from "expo-router";
-import Toast from "react-native-toast-message";
+import { ToastProvider } from "@/context/toast.context";
 
 export default function RootLayout() {
   return (
-    <>
+    <ToastProvider>
       <Stack
         screenOptions={{
           headerShown: false,
         }}
       />
-
-      <Toast />
-    </>
+    </ToastProvider>
   );
 }
+
