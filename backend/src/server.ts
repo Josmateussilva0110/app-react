@@ -27,7 +27,7 @@ const pgPool = new Pool({
 const PostgresSession = PgSession(session)
 
 app.use(cors({
-  origin: "http://localhost:4000",
+  origin: true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -56,20 +56,22 @@ app.use(
     cookie: {
       secure: false,
       httpOnly: true,
+      sameSite: "lax",
       maxAge: TIME_IN_MS,
     },
   })
 )
 
-app.get("/", (request: Request, response: Response) => {
+app.get("/api", (request: Request, response: Response) => {
   response.json({ status: "API rodando com TypeScript 🚀" })
 })
 
-app.use("/", router)
+app.use("/api", router)
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 const PORT = 3001
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🔥 Servidor rodando na porta ${PORT}`)
 })
+

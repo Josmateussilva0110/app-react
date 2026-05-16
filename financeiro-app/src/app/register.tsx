@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Toast from "react-native-toast-message";
 import { registerSchema, type RegisterFormData } from "@/schemas/auth.schema";
 import { PRIMARY_COLOR } from "@/constants/theme";
-//import { requestData } from "@/lib/services/request";
+import { registerUser } from "@/services/auth.service";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function RegisterPage() {
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -26,10 +26,18 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-
+    const result = await registerUser(data);
+    if (!result.success) {
+      Toast.show({
+        type: "error",
+        text1: "Erro ao criar conta",
+        text2: result.message,
+      });
+      return;
+    }
     Toast.show({
       type: "success",
-      text1: "Conta criada com sucesso!",
+      text1: result.message,
     });
 
     router.replace("/");
@@ -65,7 +73,7 @@ export default function RegisterPage() {
 
             <Controller
               control={control}
-              name="name"
+              name="username"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputWrap}>
                   <User size={16} color="#6b7280" style={styles.icon} />
@@ -73,7 +81,7 @@ export default function RegisterPage() {
                   <TextInput
                     style={[
                       styles.input,
-                      errors.name && styles.inputError,
+                      errors.username && styles.inputError,
                     ]}
                     placeholder="Seu nome"
                     placeholderTextColor="#4b5563"
@@ -86,9 +94,9 @@ export default function RegisterPage() {
               )}
             />
 
-            {errors.name && (
+            {errors.username && (
               <Text style={styles.errorText}>
-                {errors.name.message}
+                {errors.username.message}
               </Text>
             )}
           </View>

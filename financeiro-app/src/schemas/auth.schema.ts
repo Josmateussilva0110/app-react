@@ -13,7 +13,7 @@ export const loginSchema = z.object({
 
 export const registerSchema = z
   .object({
-    name: z
+    username: z
       .string()
       .min(1, "O nome é obrigatório")
       .min(3, "O nome deve ter no mínimo 3 caracteres"),

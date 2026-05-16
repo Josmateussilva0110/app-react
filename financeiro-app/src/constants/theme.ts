@@ -14,13 +14,18 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+
+    primary: '#22C55E',
   },
+
   dark: {
     text: '#ffffff',
     background: '#000000',
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+
+    primary: '#22C55E',
   },
 } as const;
 
@@ -63,4 +68,4 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
-export const PRIMARY_COLOR = "#DC2626";
+export const PRIMARY_COLOR = Colors.dark.primary;
