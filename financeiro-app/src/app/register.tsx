@@ -1,4 +1,5 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Link, useRouter } from "expo-router";
 import { Wallet, UserPlus, Mail, Lock, User } from "lucide-react-native";
 import { useForm, Controller } from "react-hook-form";
@@ -39,196 +40,170 @@ export default function RegisterPage() {
   };
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardAwareScrollView
       style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      contentContainerStyle={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      enableOnAndroid={true}
+      extraScrollHeight={20}
+      enableAutomaticScroll={true}
     >
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.iconWrap}>
-            <Wallet size={30} color="#fff" />
-          </View>
-
-          <Text style={styles.title}>Finanças</Text>
-
-          <Text style={styles.subtitle}>
-            Crie sua conta para começar
-          </Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.iconWrap}>
+          <Wallet size={30} color="#fff" />
         </View>
 
-        {/* Card */}
-        <View style={styles.card}>
-          {/* Nome */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Nome*</Text>
+        <Text style={styles.title}>Finanças</Text>
 
-            <Controller
-              control={control}
-              name="username"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.inputWrap}>
-                  <User size={16} color="#6b7280" style={styles.icon} />
+        <Text style={styles.subtitle}>
+          Crie sua conta para começar
+        </Text>
+      </View>
 
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.username && styles.inputError,
-                    ]}
-                    placeholder="Seu nome"
-                    placeholderTextColor="#4b5563"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    autoCapitalize="words"
-                  />
-                </View>
-              )}
-            />
+      {/* Card */}
+      <View style={styles.card}>
 
-            {errors.username && (
-              <Text style={styles.errorText}>
-                {errors.username.message}
-              </Text>
+        {/* Nome */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Nome*</Text>
+
+          <Controller
+            control={control}
+            name="username"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.inputWrap}>
+                <User size={16} color="#6b7280" style={styles.icon} />
+
+                <TextInput
+                  style={[styles.input, errors.username && styles.inputError]}
+                  placeholder="Seu nome"
+                  placeholderTextColor="#4b5563"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  autoCapitalize="words"
+                />
+              </View>
             )}
-          </View>
+          />
 
-          {/* E-mail */}
-          <View style={styles.field}>
-            <Text style={styles.label}>E-mail*</Text>
-
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.inputWrap}>
-                  <Mail size={16} color="#6b7280" style={styles.icon} />
-
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.email && styles.inputError,
-                    ]}
-                    placeholder="SeuEmail@email.com"
-                    placeholderTextColor="#4b5563"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-              )}
-            />
-
-            {errors.email && (
-              <Text style={styles.errorText}>
-                {errors.email.message}
-              </Text>
-            )}
-          </View>
-
-          {/* Senha */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Senha*</Text>
-
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.inputWrap}>
-                  <Lock size={16} color="#6b7280" style={styles.icon} />
-
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.password && styles.inputError,
-                    ]}
-                    placeholder="••••••••"
-                    placeholderTextColor="#4b5563"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    secureTextEntry
-                  />
-                </View>
-              )}
-            />
-
-            {errors.password && (
-              <Text style={styles.errorText}>
-                {errors.password.message}
-              </Text>
-            )}
-          </View>
-
-          {/* Confirmar senha */}
-          <View style={styles.field}>
-            <Text style={styles.label}>Confirmar senha*</Text>
-
-            <Controller
-              control={control}
-              name="confirmPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <View style={styles.inputWrap}>
-                  <Lock size={16} color="#6b7280" style={styles.icon} />
-
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.confirmPassword && styles.inputError,
-                    ]}
-                    placeholder="••••••••"
-                    placeholderTextColor="#4b5563"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    secureTextEntry
-                  />
-                </View>
-              )}
-            />
-
-            {errors.confirmPassword && (
-              <Text style={styles.errorText}>
-                {errors.confirmPassword.message}
-              </Text>
-            )}
-          </View>
-
-          {/* Botão */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              isSubmitting && styles.buttonDisabled,
-            ]}
-            onPress={handleSubmit(onSubmit)}
-            activeOpacity={0.8}
-            disabled={isSubmitting}
-          >
-            <UserPlus size={18} color="#fff" />
-
-            <Text style={styles.buttonText}>
-              {isSubmitting ? "Criando conta..." : "Criar conta"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Link login */}
-          <Text style={styles.footer}>
-            Já tem conta?{" "}
-            <Link href="/login" style={styles.link}>
-              Entrar
-            </Link>
-          </Text>
+          {errors.username && (
+            <Text style={styles.errorText}>{errors.username.message}</Text>
+          )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        {/* E-mail */}
+        <View style={styles.field}>
+          <Text style={styles.label}>E-mail*</Text>
+
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.inputWrap}>
+                <Mail size={16} color="#6b7280" style={styles.icon} />
+
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  placeholder="SeuEmail@email.com"
+                  placeholderTextColor="#4b5563"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            )}
+          />
+
+          {errors.email && (
+            <Text style={styles.errorText}>{errors.email.message}</Text>
+          )}
+        </View>
+
+        {/* Senha */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Senha*</Text>
+
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.inputWrap}>
+                <Lock size={16} color="#6b7280" style={styles.icon} />
+
+                <TextInput
+                  style={[styles.input, errors.password && styles.inputError]}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry
+                />
+              </View>
+            )}
+          />
+
+          {errors.password && (
+            <Text style={styles.errorText}>{errors.password.message}</Text>
+          )}
+        </View>
+
+        {/* Confirmar senha */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Confirmar senha*</Text>
+
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={styles.inputWrap}>
+                <Lock size={16} color="#6b7280" style={styles.icon} />
+
+                <TextInput
+                  style={[styles.input, errors.confirmPassword && styles.inputError]}
+                  placeholder="••••••••"
+                  placeholderTextColor="#4b5563"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  secureTextEntry
+                />
+              </View>
+            )}
+          />
+
+          {errors.confirmPassword && (
+            <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
+          )}
+        </View>
+
+        {/* Botão */}
+        <TouchableOpacity
+          style={[styles.button, isSubmitting && styles.buttonDisabled]}
+          onPress={handleSubmit(onSubmit)}
+          activeOpacity={0.8}
+          disabled={isSubmitting}
+        >
+          <UserPlus size={18} color="#fff" />
+          <Text style={styles.buttonText}>
+            {isSubmitting ? "Criando conta..." : "Criar conta"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Link login */}
+        <Text style={styles.footer}>
+          Já tem conta?{" "}
+          <Link href="/login" style={styles.link}>Entrar</Link>
+        </Text>
+
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   root:     { flex: 1, backgroundColor: "#0f0f0f" },
@@ -256,8 +231,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#111", paddingLeft: 38, paddingRight: 12,
     fontSize: 14, color: "#fff",
   },
-  inputError:  { borderColor: ERROR_COLOR },
-  errorText:   { fontSize: 12, color: ERROR_COLOR },
+  inputError:     { borderColor: ERROR_COLOR },
+  errorText:      { fontSize: 12, color: ERROR_COLOR },
 
   button: {
     height: 48, borderRadius: 10, backgroundColor: PRIMARY_COLOR,
