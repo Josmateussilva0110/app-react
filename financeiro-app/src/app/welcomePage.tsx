@@ -5,7 +5,11 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
+
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { Link } from "expo-router";
+
 import {
   Wallet,
   LogIn,
@@ -14,11 +18,10 @@ import {
   ListChecks,
   CalendarDays,
 } from "lucide-react-native";
+
 import { PRIMARY_COLOR } from "@/constants/theme";
 
 export default function WelcomePage() {
-  const router = useRouter();
-
   const features = [
     {
       icon: ListChecks,
@@ -38,79 +41,114 @@ export default function WelcomePage() {
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.content}>
-        {/* Logo */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Wallet size={40} color="#fff" />
+    <SafeAreaView
+      style={styles.safe}
+      edges={["top", "bottom"]}
+    >
+      <ScrollView
+        style={styles.root}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Wallet size={40} color="#fff" />
+            </View>
+
+            <Text style={styles.title}>
+              Bem-vindo ao{" "}
+              <Text style={styles.titleHighlight}>
+                Finanças
+              </Text>
+            </Text>
+
+            <Text style={styles.subtitle}>
+              Controle seus gastos do mês de forma simples:
+              organize por prioridade, categoria e forma
+              de pagamento.
+            </Text>
           </View>
 
-          <Text style={styles.title}>
-            Bem-vindo ao{" "}
-            <Text style={styles.titleHighlight}>Finanças</Text>
-          </Text>
+          {/* Features */}
+          <View style={styles.featuresContainer}>
+            {features.map(({ icon: Icon, title, desc }) => (
+              <View key={title} style={styles.featureCard}>
+                <View style={styles.featureIcon}>
+                  <Icon size={20} color="#fff" />
+                </View>
 
-          <Text style={styles.subtitle}>
-            Controle seus gastos do mês de forma simples:
-            organize por prioridade, categoria e forma de pagamento.
-          </Text>
-        </View>
+                <View style={styles.featureContent}>
+                  <Text style={styles.featureTitle}>
+                    {title}
+                  </Text>
 
-        {/* Features */}
-        <View style={styles.featuresContainer}>
-          {features.map(({ icon: Icon, title, desc }) => (
-            <View key={title} style={styles.featureCard}>
-              <View style={styles.featureIcon}>
-                <Icon size={20} color="#fff" />
+                  <Text style={styles.featureDescription}>
+                    {desc}
+                  </Text>
+                </View>
               </View>
+            ))}
+          </View>
 
-              <View style={styles.featureContent}>
-                <Text style={styles.featureTitle}>{title}</Text>
-                <Text style={styles.featureDescription}>{desc}</Text>
-              </View>
-            </View>
-          ))}
+          {/* Buttons */}
+          <View style={styles.buttonsContainer}>
+            <Link href="/login" asChild>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.8}
+              >
+                <>
+                  <LogIn size={20} color="#fff" />
+
+                  <Text style={styles.primaryButtonText}>
+                    Entrar
+                  </Text>
+                </>
+              </TouchableOpacity>
+            </Link>
+
+            <Link href="/register" asChild>
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                activeOpacity={0.8}
+              >
+                <>
+                  <UserPlus size={20} color="#fff" />
+
+                  <Text style={styles.secondaryButtonText}>
+                    Criar conta
+                  </Text>
+                </>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-
-        {/* Buttons */}
-        <View style={styles.buttonsContainer}>
-          <Link href="/login" asChild>
-            <TouchableOpacity style={styles.primaryButton}>
-              <>
-                <LogIn size={20} color="#fff" />
-
-                <Text style={styles.primaryButtonText}>
-                  Entrar
-                </Text>
-              </>
-            </TouchableOpacity>
-          </Link>
-
-          <Link href="/register" asChild>
-            <TouchableOpacity style={styles.secondaryButton}>
-              <>
-                <UserPlus size={20} color="#fff" />
-
-                <Text style={styles.secondaryButtonText}>
-                  Criar conta
-                </Text>
-              </>
-            </TouchableOpacity>
-          </Link>
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#09090B",
+  },
+
+  root: {
+    flex: 1,
+    backgroundColor: "#09090B",
+  },
+
   container: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: 20,
-    backgroundColor: "#09090B",
+
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 48,
   },
 
   content: {
