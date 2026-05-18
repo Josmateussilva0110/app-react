@@ -23,6 +23,8 @@ import {
 import { Controller, useForm } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { loginUser } from "@/services/auth.service";
+import { useToast } from "@/context/toast.context";
 
 import {
   loginSchema,
@@ -36,6 +38,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { show } = useToast();
 
   const { width } = useWindowDimensions();
 
@@ -54,18 +57,16 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    try {
-      console.log(data);
+    const result = await loginUser(data);
 
-      Alert.alert("Bem-vindo de volta!");
-
-      router.replace("/");
-    } catch {
-      Alert.alert(
-        "Erro",
-        "Não foi possível entrar."
-      );
+    if (!result.success) {
+      show("error", result.message);
+      return;
     }
+
+    show("success", result.message);
+
+    router.replace("/profile");
   };
 
   return (
