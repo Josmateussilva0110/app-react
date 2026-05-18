@@ -13,33 +13,40 @@ interface RegisterDTO {
 class UserService {
     async register(data: RegisterDTO): Promise<ServiceResult<{ username: string }, UserErrorCode>> {
         const { username, email, password } = data
-        const passwordHash = await bcrypt.hash(password, 10)
 
-        const { data: user, error } = await supabase
-            .from("users")
-            .insert({ username, email, password: passwordHash })
-            .select()
-            .single()
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { username } 
+            }
+        })
 
         if (error) {
-            console.error("[UserService.register] Supabase error:", error)
+            console.error("[UserService.register] Supabase Auth error:", error)
 
-            if (error.code === "23505") {
+            if (error.message.includes("already registered")) {
                 return {
                     status: false,
-                    error: { code: UserErrorCode.EMAIL_ALREADY_EXISTS, message: "E-mail já cadastrado" },
+                    error: {
+                        code: UserErrorCode.EMAIL_ALREADY_EXISTS,
+                        message: "E-mail já cadastrado",
+                    },
                 }
             }
 
             return {
                 status: false,
-                error: { code: UserErrorCode.USER_CREATE_FAILED, message: "Não foi possível criar o usuário. Tente novamente." },
+                error: {
+                    code: UserErrorCode.USER_CREATE_FAILED,
+                    message: "Não foi possível criar o usuário. Tente novamente.",
+                },
             }
         }
 
         return {
             status: true,
-            data: { username: user.username },
+            data: { username },
         }
     }
 
@@ -78,6 +85,34 @@ class UserService {
                 error: {
                     code: UserErrorCode.LOGIN_FAILED,
                     message: "Erro ao fazer login",
+                },
+            }
+        }
+    }
+
+    async logout(accessToken: string): Promise<ServiceResult<null, UserErrorCode>> {
+        try {
+            // Invalida a sessão no Supabase usando o token do usuário
+            const { error } = await supabase.auth.admin.signOut(accessToken)
+
+            if (error) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.LOGOUT_FAILED,
+                        message: "Erro ao fazer logout",
+                    },
+                }
+            }
+
+            return { status: true, data: null }
+        } catch (error) {
+            console.error("[UserService.logout] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.LOGOUT_FAILED,
+                    message: "Erro ao fazer logout",
                 },
             }
         }
