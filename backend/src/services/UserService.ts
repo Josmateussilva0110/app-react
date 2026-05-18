@@ -1,13 +1,13 @@
 import bcrypt from "bcrypt"
-import User, { UserData } from "../model/User"
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
-import {supabase } from "../database/supabase/supabase"
+import { supabase } from "../database/supabase/supabase"
+import { AuthTokens } from "../types/auth/auth.types"
 
 interface RegisterDTO {
-  username: string
-  email: string
-  password: string
+    username: string
+    email: string
+    password: string
 }
 
 class UserService {
@@ -43,25 +43,18 @@ class UserService {
         }
     }
 
-    async login(email: string, password: string): Promise<ServiceResult<{ id: number; username: string }, UserErrorCode>> {
+    async login(email: string, password: string): Promise<ServiceResult<AuthTokens, UserErrorCode>> {
         try {
-            const user = await User.findByEmail(email)
-            if (!user) {
-                return {
-                    status: false,
-                    error: {
-                        code: UserErrorCode.USER_NOT_FOUND,
-                        message: "Email ou senha incorreto",
-                    },
-                }
-            }
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
 
-            const validPassword = await bcrypt.compare(password, user.password)
-            if (!validPassword) {
+            if (error || !data.session) {
                 return {
                     status: false,
                     error: {
-                        code: UserErrorCode.INVALID_PASSWORD,
+                        code: UserErrorCode.INVALID_CREDENTIALS,
                         message: "Email ou senha incorreto",
                     },
                 }
@@ -70,48 +63,21 @@ class UserService {
             return {
                 status: true,
                 data: {
-                    id: user.id!,
-                    username: user.username,
+                    accessToken: data.session.access_token,
+                    refreshToken: data.session.refresh_token,
+                    user: {
+                        id: data.user.id,
+                        email: data.user.email,
+                    },
                 },
             }
         } catch (error) {
-            console.error("UserService.login error:", error)
-
+            console.error("[UserService.login] error:", error)
             return {
                 status: false,
                 error: {
                     code: UserErrorCode.LOGIN_FAILED,
                     message: "Erro ao fazer login",
-                },
-            }
-        }
-    }
-
-    async findById(id: string): Promise<ServiceResult<UserData, UserErrorCode>> {
-        try {
-            const user = await User.findById(id)
-            if (!user) {
-                return {
-                    status: false,
-                    error: {
-                        code: UserErrorCode.USER_NOT_FOUND,
-                        message: "Usuário não encontrado",
-                    },
-                }
-            }
-
-            return {
-                status: true,
-                data: user
-            }
-        } catch (error) {
-            console.error("UserService.findById error:", error)
-
-            return {
-                status: false,
-                error: {
-                    code: UserErrorCode.USER_FETCH_FAILED,
-                    message: "Erro interno ao buscar usuário",
                 },
             }
         }

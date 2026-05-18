@@ -8,7 +8,11 @@ class UserController {
     const result = await UserService.register(request.body)
 
     if (!result.status) {
-      return response.status(400).json({
+      const httpStatus = getHttpStatusFromError(
+        result.error!.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
         success: false,
         message: result.error?.message,
       })
@@ -35,7 +39,7 @@ class UserController {
       })
     }
 
-    request.session.user = result.data
+    //request.session.user = result.data
 
     return response.status(200).json({
       success: true,
@@ -44,28 +48,6 @@ class UserController {
     })
   }
 
-
-  async getById(request: Request, response: Response): Promise<Response> {
-    const { id } = request.params
-    const result = await UserService.findById(id)
-    if(!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error!.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({success: false, message: result.error?.message})
-    }
-
-    return response.status(200).json({success: true, data: result.data})
-  }
-
-  async session(request: Request, response: Response): Promise<Response> {
-    if (request.session && request.session.user) {
-        return response.status(200).json({ success: true, data: request.session.user })
-    } else {
-        return response.status(401).json({ success: false, message: "Usuário não autenticado" })
-    }
-  }
 
   async logout(request: Request, response: Response): Promise<Response> {
     if (!request.session) {

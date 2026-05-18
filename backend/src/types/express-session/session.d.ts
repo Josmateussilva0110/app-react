@@ -1,9 +1,9 @@
-import "express-session"
-import { UserSessionData } from "../session/UserSessionData"
+import { User } from "@supabase/supabase-js"
 
-declare module "express-session" {
-  interface SessionData {
-    user?: UserSessionData
-    visits?: number
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User
+    }
   }
 }
