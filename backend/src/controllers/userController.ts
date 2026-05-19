@@ -48,17 +48,8 @@ class UserController {
   }
 
   async logout(request: Request, response: Response): Promise<Response> {
-    const authHeader = request.headers.authorization
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      return response.status(401).json({
-        success: false,
-        message: "Token não fornecido",
-      })
-    }
-
-    const accessToken = authHeader.split(" ")[1]
-    const result = await UserService.logout(accessToken)
+    
+    const result = await UserService.logout(request.accessToken!)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(

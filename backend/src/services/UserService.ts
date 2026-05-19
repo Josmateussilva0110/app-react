@@ -1,8 +1,8 @@
-import bcrypt from "bcrypt"
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
 import { supabase } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
+import { createClient } from "@supabase/supabase-js"
 
 interface RegisterDTO {
     username: string
@@ -12,29 +12,42 @@ interface RegisterDTO {
 
 class UserService {
     async register(data: RegisterDTO): Promise<ServiceResult<{ username: string }, UserErrorCode>> {
-        const { username, email, password } = data
+        try {
+            const { username, email, password } = data
 
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { username } 
-            }
-        })
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { username },
+                },
+            })
 
-        if (error) {
-            console.error("[UserService.register] Supabase Auth error:", error)
+            if (error) {
+                console.error("[UserService.register] Supabase Auth error:", error)
 
-            if (error.message.includes("already registered")) {
+                if (error.code === "user_already_exists" || error.status === 422) {
+                    return {
+                        status: false,
+                        error: { code: UserErrorCode.EMAIL_ALREADY_EXISTS, message: "E-mail já cadastrado" },
+                    }
+                }
+
                 return {
                     status: false,
                     error: {
-                        code: UserErrorCode.EMAIL_ALREADY_EXISTS,
-                        message: "E-mail já cadastrado",
+                        code: UserErrorCode.USER_CREATE_FAILED,
+                        message: "Não foi possível criar o usuário. Tente novamente.",
                     },
                 }
             }
 
+            return {
+                status: true,
+                data: { username },
+            }
+        } catch (error) {
+            console.error("[UserService.register] error:", error)
             return {
                 status: false,
                 error: {
@@ -42,11 +55,6 @@ class UserService {
                     message: "Não foi possível criar o usuário. Tente novamente.",
                 },
             }
-        }
-
-        return {
-            status: true,
-            data: { username },
         }
     }
 
@@ -90,18 +98,21 @@ class UserService {
         }
     }
 
+
     async logout(accessToken: string): Promise<ServiceResult<null, UserErrorCode>> {
         try {
-            // Invalida a sessão no Supabase usando o token do usuário
-            const { error } = await supabase.auth.admin.signOut(accessToken)
+            const userClient = createClient(
+                process.env.SUPABASE_URL!,
+                process.env.SUPABASE_ANON_KEY!,
+                { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
+            )
+
+            const { error } = await userClient.auth.signOut()
 
             if (error) {
                 return {
                     status: false,
-                    error: {
-                        code: UserErrorCode.LOGOUT_FAILED,
-                        message: "Erro ao fazer logout",
-                    },
+                    error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
                 }
             }
 
@@ -110,10 +121,7 @@ class UserService {
             console.error("[UserService.logout] error:", error)
             return {
                 status: false,
-                error: {
-                    code: UserErrorCode.LOGOUT_FAILED,
-                    message: "Erro ao fazer logout",
-                },
+                error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
             }
         }
     }

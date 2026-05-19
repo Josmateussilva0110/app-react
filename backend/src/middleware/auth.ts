@@ -19,5 +19,6 @@ export async function authMiddleware(request: Request, response: Response, next:
   }
 
   request.user = data.user 
+  request.accessToken = token
   next()
 }

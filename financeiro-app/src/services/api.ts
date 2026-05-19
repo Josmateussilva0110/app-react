@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const IP = "192.168.1.15";
+const IP = "10.180.42.89";
 const getBaseURL = () => {
   if (__DEV__) {
     // Android Emulator → 10.0.2.2
