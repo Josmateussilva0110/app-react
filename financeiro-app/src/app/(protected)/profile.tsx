@@ -23,10 +23,13 @@ import {
 } from "lucide-react-native";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   PRIMARY_COLOR,
 } from "@/constants/theme";
+import { logoutUser } from "@/services/auth.service";
+import { useToast } from "@/context/toast.context";
 
 /**
  * EXEMPLO
@@ -39,6 +42,8 @@ const mockUser = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { show } = useToast();
+  const { user } = useAuth();
 
   const { width } = useWindowDimensions();
 
@@ -66,9 +71,18 @@ export default function ProfilePage() {
     );
   };
 
-  const handleLogout = () => {
-    router.replace("/login");
-  };
+    const onSubmit = async () => {
+      const result = await logoutUser();
+  
+      if (!result.success) {
+        show("error", result.message);
+        return;
+      }
+  
+      show("success", result.message);
+  
+      router.replace("/");
+    };
 
   return (
     <SafeAreaView
@@ -250,7 +264,7 @@ export default function ProfilePage() {
           <TouchableOpacity
             style={styles.logoutButton}
             activeOpacity={0.8}
-            onPress={handleLogout}
+            onPress={onSubmit}
           >
             <LogOut
               size={18}

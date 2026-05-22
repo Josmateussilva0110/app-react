@@ -23,7 +23,7 @@ import {
 import { Controller, useForm } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginUser } from "@/services/auth.service";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/context/toast.context";
 
 import {
@@ -39,6 +39,7 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const { show } = useToast();
+  const { login } = useAuth();
 
   const { width } = useWindowDimensions();
 
@@ -57,7 +58,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    const result = await loginUser(data);
+    const result = await login(data);
 
     if (!result.success) {
       show("error", result.message);
