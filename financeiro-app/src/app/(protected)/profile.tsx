@@ -27,7 +27,6 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   PRIMARY_COLOR,
 } from "@/constants/theme";
-import { logoutUser } from "@/services/auth.service";
 import { useToast } from "@/context/toast.context";
 import { ScreenWrapper } from "@/components/layout/screen-wrapper";
 
@@ -43,7 +42,7 @@ const mockUser = {
 export default function ProfilePage() {
   const router = useRouter();
   const { show } = useToast();
-  const { user } = useAuth();
+  const { user, logout, } = useAuth();
 
   const { width } = useWindowDimensions();
 
@@ -71,18 +70,14 @@ export default function ProfilePage() {
     );
   };
 
-    const onSubmit = async () => {
-      const result = await logoutUser();
-  
-      if (!result.success) {
-        show("error", result.message);
-        return;
-      }
-  
-      show("success", result.message);
-  
-      router.replace("/");
-    };
+  const onSubmit = async () => {
+    await logout();
+
+    show(
+      "success",
+      "Logout realizado com sucesso"
+    );
+  };
 
   return (
     <SafeAreaView
