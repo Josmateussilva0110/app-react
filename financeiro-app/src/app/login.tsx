@@ -67,7 +67,7 @@ export default function LoginPage() {
 
     show("success", result.message);
 
-    router.replace("/profile");
+    router.replace("/home");
   };
 
   return (
