@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   useWindowDimensions,
   Alert,
 } from "react-native";
@@ -23,10 +22,14 @@ import {
 } from "lucide-react-native";
 
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   PRIMARY_COLOR,
 } from "@/constants/theme";
+import { logoutUser } from "@/services/auth.service";
+import { useToast } from "@/context/toast.context";
+import { ScreenWrapper } from "@/components/layout/screen-wrapper";
 
 /**
  * EXEMPLO
@@ -39,6 +42,8 @@ const mockUser = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { show } = useToast();
+  const { user } = useAuth();
 
   const { width } = useWindowDimensions();
 
@@ -66,26 +71,32 @@ export default function ProfilePage() {
     );
   };
 
-  const handleLogout = () => {
-    router.replace("/login");
-  };
+    const onSubmit = async () => {
+      const result = await logoutUser();
+  
+      if (!result.success) {
+        show("error", result.message);
+        return;
+      }
+  
+      show("success", result.message);
+  
+      router.replace("/");
+    };
 
   return (
     <SafeAreaView
       style={styles.safe}
       edges={["top", "bottom"]}
     >
-      <ScrollView
-        style={styles.root}
-        contentContainerStyle={[
-          styles.container,
-          {
-            paddingHorizontal:
-              width < 380 ? 16 : 24,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScreenWrapper
+  style={{
+    paddingHorizontal:
+      width < 380 ? 16 : 24,
+
+    paddingTop: 32,
+  }}
+>
         <View
           style={[
             styles.content,
@@ -250,7 +261,7 @@ export default function ProfilePage() {
           <TouchableOpacity
             style={styles.logoutButton}
             activeOpacity={0.8}
-            onPress={handleLogout}
+            onPress={onSubmit}
           >
             <LogOut
               size={18}
@@ -262,7 +273,7 @@ export default function ProfilePage() {
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </ScreenWrapper>
     </SafeAreaView>
   );
 }
@@ -279,7 +290,7 @@ const styles = StyleSheet.create({
   },
 
   container: {
-    flexGrow: 1,
+    minHeight: "100%",
     paddingTop: 32,
     paddingBottom: 48,
   },
