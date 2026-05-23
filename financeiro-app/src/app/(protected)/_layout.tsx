@@ -1,13 +1,12 @@
 import { Redirect, Tabs } from "expo-router";
 
 import {
-  House,
+  ListChecks,
+  ShoppingBasket,
   User,
 } from "lucide-react-native";
 
-import {
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/hooks/useAuth";
 
@@ -95,13 +94,30 @@ export default function ProtectedLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: "Lista do Mês",
 
           tabBarIcon: ({
             color,
             size,
           }) => (
-            <House
+            <ListChecks
+              color={color}
+              size={size}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="itens"
+        options={{
+          title: "Cadastrados",
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <ShoppingBasket
               color={color}
               size={size}
             />

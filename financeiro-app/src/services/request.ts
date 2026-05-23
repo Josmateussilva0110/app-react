@@ -1,9 +1,4 @@
-import axios, {
-  AxiosError,
-  type AxiosRequestConfig,
-  type Method,
-} from "axios";
-
+import { AxiosError, type AxiosRequestConfig, type Method } from "axios";
 import { api } from "@/services/api";
 
 export interface ApiResponse<T = unknown> {
@@ -21,10 +16,7 @@ interface RequestProps<TRequest = unknown> {
   withAuth?: boolean;
 }
 
-export async function requestData<
-  TResponse,
-  TRequest = unknown
->({
+export async function requestData<TResponse, TRequest = unknown>({
   endpoint,
   method = "GET",
   data,
@@ -36,17 +28,13 @@ export async function requestData<
     const config: AxiosRequestConfig = {
       url: endpoint,
       method,
-
-      headers: {
-        ...headers,
-      },
-
       params,
-    };
-
+      headers: { ...headers },
+      _skipAuth: !withAuth, // lido pelo interceptor de request
+    } as AxiosRequestConfig;
 
     if (method.toUpperCase() === "GET") {
-      config.params = data;
+      config.params = { ...params, ...(data as Record<string, unknown>) };
     } else {
       config.data = data;
     }
@@ -58,38 +46,15 @@ export async function requestData<
       };
     }
 
-
-    if (withAuth) {
-      // exemplo futuro
-      // const token = await getToken();
-
-      // if (token) {
-      //   config.headers = {
-      //     ...config.headers,
-      //     Authorization: `Bearer ${token}`,
-      //   };
-      // }
-    }
-
     const response = await api<ApiResponse<TResponse>>(config);
-
     return response.data;
-
   } catch (error) {
     const err = error as AxiosError<ApiResponse>;
 
-    if (err.response?.status === 401) {
-      // React Native não possui window
-      // futuramente pode usar logout global
-      console.log("Sessão expirada");
-    }
-
     return {
       success: false,
-
       message:
-        err.response?.data?.message ??
-        "Erro inesperado. Tente novamente.",
+        err.response?.data?.message ?? "Erro inesperado. Tente novamente.",
     };
   }
 }

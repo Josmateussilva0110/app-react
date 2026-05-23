@@ -80,6 +80,7 @@ class UserService {
                 data: {
                     accessToken: data.session.access_token,
                     refreshToken: data.session.refresh_token,
+                    expiresAt: data.session.expires_at! * 1000, // Supabase retorna em segundos → ms
                     user: {
                         id: data.user.id,
                         email: data.user.email,
@@ -122,6 +123,46 @@ class UserService {
             return {
                 status: false,
                 error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
+            }
+        }
+    }
+
+    async refresh(refreshToken: string): Promise<ServiceResult<AuthTokens, UserErrorCode>> {
+        try {
+            const { data, error } = await supabase.auth.refreshSession({
+                refresh_token: refreshToken,
+            })
+
+            if (error || !data.session) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.INVALID_CREDENTIALS,
+                        message: "Sessão expirada. Faça login novamente.",
+                    },
+                }
+            }
+
+            return {
+                status: true,
+                data: {
+                    accessToken: data.session.access_token,
+                    refreshToken: data.session.refresh_token,
+                    expiresAt: data.session.expires_at! * 1000, // Supabase retorna em segundos → ms
+                    user: {
+                        id: data.user!.id,
+                        email: data.user!.email,
+                    },
+                },
+            }
+        } catch (error) {
+            console.error("[UserService.refresh] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.LOGIN_FAILED,
+                    message: "Erro ao renovar sessão.",
+                },
             }
         }
     }

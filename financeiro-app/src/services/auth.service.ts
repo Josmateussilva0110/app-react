@@ -35,3 +35,12 @@ export function logoutUser() {
     method: "POST",
   });
 }
+
+export function refreshAccessToken(refreshToken: string) {
+  return requestData<AuthData>({
+    endpoint: "/auth/refresh",
+    method: "POST",
+    data: { refreshToken },
+    withAuth: false,
+  });
+}

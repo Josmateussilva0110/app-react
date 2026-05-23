@@ -22,6 +22,7 @@ import {
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   registerSchema,
@@ -39,6 +40,7 @@ import { useToast } from "@/context/toast.context";
 export default function RegisterPage() {
   const router = useRouter();
   const { show } = useToast();
+  const { register } = useAuth();
 
   const { width } = useWindowDimensions();
 
@@ -59,7 +61,7 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    const result = await registerUser(data);
+    const result = await register(data);
 
     if (!result.success) {
       show("error", result.message);
@@ -68,7 +70,7 @@ export default function RegisterPage() {
 
     show("success", result.message);
 
-    router.replace("/");
+    router.replace("/(protected)/home");
   };
 
   return (
