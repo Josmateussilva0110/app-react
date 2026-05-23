@@ -48,7 +48,7 @@ class UserController {
   }
 
   async logout(request: Request, response: Response): Promise<Response> {
-    
+
     const result = await UserService.logout(request.accessToken!)
 
     if (!result.status) {
@@ -65,6 +65,36 @@ class UserController {
     return response.status(200).json({
       success: true,
       message: "Logout realizado com sucesso",
+    })
+  }
+
+  async refresh(request: Request, response: Response): Promise<Response> {
+    const { refreshToken } = request.body
+
+    if (!refreshToken) {
+      return response.status(400).json({
+        success: false,
+        message: "refreshToken é obrigatório.",
+      })
+    }
+
+    const result = await UserService.refresh(refreshToken)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error!.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error?.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Sessão renovada com sucesso.",
+      data: result.data,
     })
   }
 }

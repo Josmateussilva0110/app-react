@@ -4,7 +4,9 @@ export interface AuthUser {
 }
 
 export interface AuthData {
+  user: AuthUser;
   accessToken: string;
   refreshToken: string;
-  user: AuthUser;
+  expiresAt: number; // Unix timestamp em ms
 }
+

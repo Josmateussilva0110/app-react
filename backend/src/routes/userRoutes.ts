@@ -13,6 +13,7 @@ const router = Router()
 router.post("/register", validate(RegisterSchema), UserController.register)
 router.post("/login", loginRateLimiter, validate(LoginSchema), UserController.login)
 router.post("/logout", authMiddleware, UserController.logout)
+router.post("/auth/refresh", UserController.refresh.bind(UserController))
 
 
 export default router
