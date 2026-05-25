@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   useWindowDimensions,
-  Alert,
 } from "react-native";
 
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -23,23 +22,22 @@ import {
 import { Controller, useForm } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/context/toast.context";
+import { useTheme } from "@/context/theme.context";
 
 import {
   loginSchema,
   type LoginFormData,
 } from "@/schemas/auth.schema";
 
-import {
-  PRIMARY_COLOR,
-  ERROR_COLOR,
-} from "@/constants/theme";
-
 export default function LoginPage() {
   const router = useRouter();
+
   const { show } = useToast();
   const { login } = useAuth();
+  const { colors } = useTheme();
 
   const { width } = useWindowDimensions();
 
@@ -51,13 +49,16 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (
+    data: LoginFormData
+  ) => {
     const result = await login(data);
 
     if (!result.success) {
@@ -72,54 +73,109 @@ export default function LoginPage() {
 
   return (
     <SafeAreaView
-      style={styles.safe}
+      style={[
+        styles.safe,
+        {
+          backgroundColor: colors.background,
+        },
+      ]}
       edges={["top", "bottom"]}
     >
       <KeyboardAwareScrollView
-        style={styles.root}
+        style={[
+          styles.root,
+          {
+            backgroundColor: colors.background,
+          },
+        ]}
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingHorizontal: width < 380 ? 16 : 24,
+            paddingHorizontal:
+              width < 380 ? 16 : 24,
+
             paddingBottom: 80,
           },
         ]}
         keyboardShouldPersistTaps="handled"
-        enableOnAndroid={true}
+        enableOnAndroid
         extraScrollHeight={120}
         extraHeight={120}
-        enableAutomaticScroll={true}
+        enableAutomaticScroll
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* HEADER */}
         <View style={styles.header}>
-          <View style={styles.iconWrap}>
-            <Wallet size={30} color="#fff" />
+          <View
+            style={[
+              styles.iconWrap,
+              {
+                backgroundColor:
+                  colors.primary,
+              },
+            ]}
+          >
+            <Wallet
+              size={30}
+              color="#fff"
+            />
           </View>
 
-          <Text style={styles.title}>
+          <Text
+            style={[
+              styles.title,
+              {
+                color: colors.text,
+              },
+            ]}
+          >
             Finanças
           </Text>
 
-          <Text style={styles.subtitle}>
-            Entre para gerenciar seus gastos
+          <Text
+            style={[
+              styles.subtitle,
+              {
+                color:
+                  colors.textSecondary,
+              },
+            ]}
+          >
+            Entre para gerenciar seus
+            gastos
           </Text>
         </View>
 
-        {/* Card */}
+        {/* CARD */}
         <View
           style={[
             styles.card,
             {
               width: "100%",
-              maxWidth: isTablet ? 500 : 420,
+              maxWidth: isTablet
+                ? 500
+                : 420,
+
               alignSelf: "center",
+
+              backgroundColor:
+                colors.backgroundElement,
+
+              borderColor:
+                colors.backgroundSelected,
             },
           ]}
         >
-          {/* Email */}
+          {/* EMAIL */}
           <View style={styles.field}>
-            <Text style={styles.label}>
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: colors.text,
+                },
+              ]}
+            >
               E-mail*
             </Text>
 
@@ -136,13 +192,26 @@ export default function LoginPage() {
                 <View style={styles.inputWrap}>
                   <Mail
                     size={16}
-                    color="#6b7280"
+                    color={
+                      colors.textSecondary
+                    }
                     style={styles.icon}
                   />
 
                   <TextInput
                     style={[
                       styles.input,
+
+                      {
+                        backgroundColor:
+                          colors.background,
+
+                        borderColor:
+                          colors.backgroundSelected,
+
+                        color: colors.text,
+                      },
+
                       errors.email &&
                         styles.inputError,
                     ]}
@@ -152,7 +221,9 @@ export default function LoginPage() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     placeholder="SeuEmail@email.com"
-                    placeholderTextColor="#4b5563"
+                    placeholderTextColor={
+                      colors.textSecondary
+                    }
                     returnKeyType="next"
                   />
                 </View>
@@ -160,15 +231,29 @@ export default function LoginPage() {
             />
 
             {errors.email && (
-              <Text style={styles.errorText}>
+              <Text
+                style={[
+                  styles.errorText,
+                  {
+                    color: colors.error,
+                  },
+                ]}
+              >
                 {errors.email.message}
               </Text>
             )}
           </View>
 
-          {/* Senha */}
+          {/* SENHA */}
           <View style={styles.field}>
-            <Text style={styles.label}>
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: colors.text,
+                },
+              ]}
+            >
               Senha*
             </Text>
 
@@ -185,13 +270,26 @@ export default function LoginPage() {
                 <View style={styles.inputWrap}>
                   <Lock
                     size={16}
-                    color="#6b7280"
+                    color={
+                      colors.textSecondary
+                    }
                     style={styles.icon}
                   />
 
                   <TextInput
                     style={[
                       styles.input,
+
+                      {
+                        backgroundColor:
+                          colors.background,
+
+                        borderColor:
+                          colors.backgroundSelected,
+
+                        color: colors.text,
+                      },
+
                       errors.password &&
                         styles.inputError,
                     ]}
@@ -200,7 +298,9 @@ export default function LoginPage() {
                     onBlur={onBlur}
                     secureTextEntry
                     placeholder="••••••••"
-                    placeholderTextColor="#4b5563"
+                    placeholderTextColor={
+                      colors.textSecondary
+                    }
                     returnKeyType="done"
                   />
                 </View>
@@ -208,24 +308,42 @@ export default function LoginPage() {
             />
 
             {errors.password && (
-              <Text style={styles.errorText}>
+              <Text
+                style={[
+                  styles.errorText,
+                  {
+                    color: colors.error,
+                  },
+                ]}
+              >
                 {errors.password.message}
               </Text>
             )}
           </View>
 
-          {/* Botão */}
+          {/* BOTÃO */}
           <TouchableOpacity
             style={[
               styles.button,
+
+              {
+                backgroundColor:
+                  colors.primary,
+              },
+
               isSubmitting &&
                 styles.buttonDisabled,
             ]}
-            onPress={handleSubmit(onSubmit)}
+            onPress={handleSubmit(
+              onSubmit
+            )}
             disabled={isSubmitting}
             activeOpacity={0.8}
           >
-            <LogIn size={18} color="#fff" />
+            <LogIn
+              size={18}
+              color="#fff"
+            />
 
             <Text style={styles.buttonText}>
               {isSubmitting
@@ -234,12 +352,25 @@ export default function LoginPage() {
             </Text>
           </TouchableOpacity>
 
-          {/* Footer */}
-          <Text style={styles.footer}>
+          {/* FOOTER */}
+          <Text
+            style={[
+              styles.footer,
+              {
+                color:
+                  colors.textSecondary,
+              },
+            ]}
+          >
             Não tem conta?{" "}
             <Link
               href="/register"
-              style={styles.link}
+              style={[
+                styles.link,
+                {
+                  color: colors.primary,
+                },
+              ]}
             >
               Cadastre-se
             </Link>
@@ -253,12 +384,10 @@ export default function LoginPage() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#0f0f0f",
   },
 
   root: {
     flex: 1,
-    backgroundColor: "#0f0f0f",
   },
 
   scroll: {
@@ -274,9 +403,8 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 64,
     height: 64,
-    borderRadius: 20,
 
-    backgroundColor: PRIMARY_COLOR,
+    borderRadius: 20,
 
     alignItems: "center",
     justifyContent: "center",
@@ -286,23 +414,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 28,
     fontWeight: "bold",
-    color: "#fff",
   },
 
   subtitle: {
     marginTop: 6,
     fontSize: 14,
-    color: "#6b7280",
     textAlign: "center",
   },
 
   card: {
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2a2a2a",
-
-    backgroundColor: "#1a1a1a",
-
     padding: 24,
     gap: 20,
   },
@@ -314,7 +436,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#e5e5e5",
   },
 
   inputWrap: {
@@ -330,35 +451,31 @@ const styles = StyleSheet.create({
 
   input: {
     height: 52,
+
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2a2a2a",
-
-    backgroundColor: "#111",
 
     paddingLeft: 40,
     paddingRight: 12,
 
     fontSize: 15,
-    color: "#fff",
   },
 
   inputError: {
-    borderColor: ERROR_COLOR,
+    borderWidth: 1.5,
   },
 
   errorText: {
-    color: ERROR_COLOR,
     fontSize: 12,
   },
 
   button: {
     height: 52,
+
     borderRadius: 12,
 
-    backgroundColor: PRIMARY_COLOR,
-
     flexDirection: "row",
+
     alignItems: "center",
     justifyContent: "center",
 
@@ -379,11 +496,9 @@ const styles = StyleSheet.create({
   footer: {
     textAlign: "center",
     fontSize: 14,
-    color: "#6b7280",
   },
 
   link: {
-    color: PRIMARY_COLOR,
     fontWeight: "600",
   },
 });

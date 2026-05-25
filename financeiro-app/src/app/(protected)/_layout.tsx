@@ -10,19 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/hooks/useAuth";
 
-import {
-  Colors,
-  PRIMARY_COLOR,
-} from "@/constants/theme";
+import { useTheme } from "@/context/theme.context";
 
 export default function ProtectedLayout() {
-  const {
-    signed,
-    loading,
-  } = useAuth();
+  const { signed, loading } = useAuth();
 
-  const insets =
-    useSafeAreaInsets();
+  const { colors } = useTheme();
+
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return null;
@@ -39,14 +34,14 @@ export default function ProtectedLayout() {
 
         sceneStyle: {
           backgroundColor:
-            Colors.dark.background,
+            colors.background,
         },
 
         tabBarActiveTintColor:
-          PRIMARY_COLOR,
+          colors.primary,
 
         tabBarInactiveTintColor:
-          Colors.dark.textSecondary,
+          colors.textSecondary,
 
         tabBarStyle: {
           position: "absolute",
@@ -64,7 +59,7 @@ export default function ProtectedLayout() {
           borderRadius: 24,
 
           backgroundColor:
-            "#18181B",
+            colors.backgroundElement,
 
           borderTopWidth: 0,
 
@@ -75,7 +70,7 @@ export default function ProtectedLayout() {
 
           shadowColor: "#000",
 
-          shadowOpacity: 0.25,
+          shadowOpacity: 0.15,
 
           shadowRadius: 16,
 

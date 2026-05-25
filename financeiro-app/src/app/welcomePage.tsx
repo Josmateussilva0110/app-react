@@ -19,9 +19,16 @@ import {
   CalendarDays,
 } from "lucide-react-native";
 
-import { PRIMARY_COLOR } from "@/constants/theme";
+import {
+  PRIMARY_COLOR,
+  Spacing,
+} from "@/constants/theme";
+
+import { useTheme } from "@/context/theme.context";
 
 export default function WelcomePage() {
+  const { colors, isDark } = useTheme();
+
   const features = [
     {
       icon: ListChecks,
@@ -42,11 +49,21 @@ export default function WelcomePage() {
 
   return (
     <SafeAreaView
-      style={styles.safe}
+      style={[
+        styles.safe,
+        {
+          backgroundColor: colors.background,
+        },
+      ]}
       edges={["top", "bottom"]}
     >
       <ScrollView
-        style={styles.root}
+        style={[
+          styles.root,
+          {
+            backgroundColor: colors.background,
+          },
+        ]}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -58,14 +75,28 @@ export default function WelcomePage() {
               <Wallet size={40} color="#fff" />
             </View>
 
-            <Text style={styles.title}>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: colors.text,
+                },
+              ]}
+            >
               Bem-vindo ao{" "}
               <Text style={styles.titleHighlight}>
                 Finanças
               </Text>
             </Text>
 
-            <Text style={styles.subtitle}>
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  color: colors.textSecondary,
+                },
+              ]}
+            >
               Controle seus gastos do mês de forma simples:
               organize por prioridade, categoria e forma
               de pagamento.
@@ -75,17 +106,55 @@ export default function WelcomePage() {
           {/* Features */}
           <View style={styles.featuresContainer}>
             {features.map(({ icon: Icon, title, desc }) => (
-              <View key={title} style={styles.featureCard}>
-                <View style={styles.featureIcon}>
-                  <Icon size={20} color="#fff" />
+              <View
+                key={title}
+                style={[
+                  styles.featureCard,
+                  {
+                    backgroundColor:
+                      colors.backgroundElement,
+
+                    borderColor:
+                      colors.backgroundSelected,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.featureIcon,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(34,197,94,0.15)"
+                        : "rgba(34,197,94,0.08)",
+                    },
+                  ]}
+                >
+                  <Icon
+                    size={20}
+                    color={colors.primary}
+                  />
                 </View>
 
                 <View style={styles.featureContent}>
-                  <Text style={styles.featureTitle}>
+                  <Text
+                    style={[
+                      styles.featureTitle,
+                      {
+                        color: colors.text,
+                      },
+                    ]}
+                  >
                     {title}
                   </Text>
 
-                  <Text style={styles.featureDescription}>
+                  <Text
+                    style={[
+                      styles.featureDescription,
+                      {
+                        color: colors.textSecondary,
+                      },
+                    ]}
+                  >
                     {desc}
                   </Text>
                 </View>
@@ -112,13 +181,13 @@ export default function WelcomePage() {
 
             <Link href="/register" asChild>
               <TouchableOpacity
-                style={styles.secondaryButton}
+                style={styles.primaryButton}
                 activeOpacity={0.8}
               >
                 <>
                   <UserPlus size={20} color="#fff" />
 
-                  <Text style={styles.secondaryButtonText}>
+                  <Text style={styles.primaryButtonText}>
                     Criar conta
                   </Text>
                 </>
@@ -134,12 +203,10 @@ export default function WelcomePage() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#09090B",
   },
 
   root: {
     flex: 1,
-    backgroundColor: "#09090B",
   },
 
   container: {
@@ -147,7 +214,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
 
     paddingHorizontal: 20,
-    paddingTop: 32,
+    paddingTop: Spacing.four,
     paddingBottom: 48,
   },
 
@@ -182,7 +249,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontSize: 32,
     fontWeight: "bold",
-    color: "#FFFFFF",
     textAlign: "center",
   },
 
@@ -193,7 +259,6 @@ const styles = StyleSheet.create({
   subtitle: {
     marginTop: 12,
     fontSize: 15,
-    color: "#A1A1AA",
     textAlign: "center",
     lineHeight: 22,
   },
@@ -209,9 +274,6 @@ const styles = StyleSheet.create({
     gap: 12,
 
     borderWidth: 1,
-    borderColor: "#27272A",
-
-    backgroundColor: "#18181B",
 
     padding: 16,
     borderRadius: 20,
@@ -222,8 +284,6 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 14,
 
-    backgroundColor: "rgba(38, 220, 62, 0.15)",
-
     justifyContent: "center",
     alignItems: "center",
   },
@@ -233,13 +293,11 @@ const styles = StyleSheet.create({
   },
 
   featureTitle: {
-    color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 15,
   },
 
   featureDescription: {
-    color: "#A1A1AA",
     fontSize: 13,
     marginTop: 2,
   },
@@ -269,7 +327,6 @@ const styles = StyleSheet.create({
 
   secondaryButton: {
     borderWidth: 1,
-    borderColor: "#3F3F46",
 
     paddingVertical: 16,
     borderRadius: 16,
@@ -281,7 +338,6 @@ const styles = StyleSheet.create({
   },
 
   secondaryButtonText: {
-    color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
   },
