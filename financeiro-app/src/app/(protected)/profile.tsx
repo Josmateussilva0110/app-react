@@ -240,8 +240,18 @@ export default function ProfilePage() {
             activeOpacity={0.8}
             onPress={handleLogout}
           >
-            <LogOut size={18} color={colors.text} />
-            <Text style={[styles.logoutText, { color: colors.text }]}>
+            <LogOut
+              size={18}
+              color={colors.error}
+            />
+            <Text
+              style={[
+                styles.logoutText,
+                {
+                  color: colors.error,
+                },
+              ]}
+            >
               Sair da conta
             </Text>
           </TouchableOpacity>
