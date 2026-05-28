@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
@@ -31,7 +31,7 @@ export default function HomeScreen() {
   ).length;
 
   return (
-    <AppShell title="Meus Gastos" subtitle="Controle seus itens por prioridade">
+    <AppShell title="Meus Itens" subtitle="Controle seus itens por prioridade">
       <SafeAreaView style={styles.container} edges={["bottom"]}>
         <ScrollView
           contentContainerStyle={styles.content}
