@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { tokenManager } from "./token.manager";
 
-const IP = "10.180.41.53";
+const IP = "192.168.1.15";
 
 // Extende o tipo do axios para suportar campos customizados
 declare module "axios" {
