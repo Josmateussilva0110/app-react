@@ -1,28 +1,36 @@
 import { Stack } from "expo-router";
+
 import { ToastProvider } from "@/context/toast.context";
 import { AuthProvider } from "@/context/auth.context";
+import { ThemeProvider, useTheme } from "@/context/theme.context";
+
+function AppNavigator() {
+  const { colors } = useTheme();
+
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+
+        contentStyle: {
+          backgroundColor: colors.background,
+        },
+
+        animation: "ios_from_right",
+        animationDuration: 250,
+      }}
+    />
+  );
+}
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-
-            // evita o flash branco
-            contentStyle: {
-              backgroundColor: "#0f0f0f",
-            },
-
-            // animação suave
-            animation: "ios_from_right",
-
-            // duração/transição mais fluida
-            animationDuration: 250,
-          }}
-        />
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AppNavigator />
+        </ToastProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

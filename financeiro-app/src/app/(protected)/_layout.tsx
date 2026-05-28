@@ -10,19 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "@/hooks/useAuth";
 
-import {
-  Colors,
-  PRIMARY_COLOR,
-} from "@/constants/theme";
+import { useTheme } from "@/context/theme.context";
 
 export default function ProtectedLayout() {
-  const {
-    signed,
-    loading,
-  } = useAuth();
+  const { signed, loading } = useAuth();
 
-  const insets =
-    useSafeAreaInsets();
+  const { colors } = useTheme();
+
+  const insets = useSafeAreaInsets();
 
   if (loading) {
     return null;
@@ -39,70 +34,74 @@ export default function ProtectedLayout() {
 
         sceneStyle: {
           backgroundColor:
-            Colors.dark.background,
+            colors.background,
         },
 
         tabBarActiveTintColor:
-          PRIMARY_COLOR,
+          colors.primary,
 
         tabBarInactiveTintColor:
-          Colors.dark.textSecondary,
+          colors.textSecondary,
 
         tabBarStyle: {
           position: "absolute",
 
-          left: 16,
-          right: 16,
+          left: "5%",
+          right: "5%",
 
           bottom:
             insets.bottom > 0
               ? insets.bottom
               : 16,
 
-          height: 70,
+          height: 58,
 
-          borderRadius: 24,
+          borderRadius: 20,
 
           backgroundColor:
-            "#18181B",
+            colors.backgroundElement,
 
           borderTopWidth: 0,
 
-          paddingTop: 8,
-          paddingBottom: 8,
+          paddingTop: 4,
+          paddingBottom: 4,
 
           elevation: 0,
 
           shadowColor: "#000",
 
-          shadowOpacity: 0.25,
+          shadowOpacity: 0.12,
 
-          shadowRadius: 16,
+          shadowRadius: 12,
 
           shadowOffset: {
             width: 0,
-            height: 8,
+            height: 6,
           },
         },
 
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
+
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: "600",
+          marginTop: -2,
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "Lista do Mês",
+          title: "Lista",
 
           tabBarIcon: ({
             color,
-            size,
           }) => (
             <ListChecks
               color={color}
-              size={size}
+              size={18}
             />
           ),
         }}
@@ -111,15 +110,14 @@ export default function ProtectedLayout() {
       <Tabs.Screen
         name="itens"
         options={{
-          title: "Cadastrados",
+          title: "Itens",
 
           tabBarIcon: ({
             color,
-            size,
           }) => (
             <ShoppingBasket
               color={color}
-              size={size}
+              size={18}
             />
           ),
         }}
@@ -132,11 +130,10 @@ export default function ProtectedLayout() {
 
           tabBarIcon: ({
             color,
-            size,
           }) => (
             <User
               color={color}
-              size={size}
+              size={18}
             />
           ),
         }}

@@ -8,10 +8,12 @@ import {
 } from "react-native";
 
 import {
-  CheckCircle,
+  CheckCircle2,
   XCircle,
   Info,
 } from "lucide-react-native";
+
+import { BlurView } from "expo-blur";
 
 type ToastType =
   | "success"
@@ -31,12 +33,12 @@ const CONFIG: Record<
   ToastType,
   {
     color: string;
-    Icon: typeof CheckCircle;
+    Icon: typeof CheckCircle2;
   }
 > = {
   success: {
     color: "#22c55e",
-    Icon: CheckCircle,
+    Icon: CheckCircle2,
   },
 
   error: {
@@ -63,7 +65,11 @@ export function Toast({
   ).current;
 
   const translateY = useRef(
-    new Animated.Value(-20)
+    new Animated.Value(-30)
+  ).current;
+
+  const scale = useRef(
+    new Animated.Value(0.96)
   ).current;
 
   const { color, Icon } = CONFIG[type];
@@ -73,15 +79,23 @@ export function Toast({
 
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 220,
+        Animated.spring(translateY, {
+          toValue: 0,
           useNativeDriver: true,
+          damping: 18,
+          stiffness: 180,
         }),
 
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 220,
+        Animated.spring(scale, {
+          toValue: 1,
+          useNativeDriver: true,
+          damping: 18,
+          stiffness: 180,
+        }),
+
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 180,
           useNativeDriver: true,
         }),
       ]),
@@ -91,13 +105,19 @@ export function Toast({
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 220,
+          duration: 180,
           useNativeDriver: true,
         }),
 
         Animated.timing(translateY, {
           toValue: -20,
-          duration: 220,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(scale, {
+          toValue: 0.96,
+          duration: 180,
           useNativeDriver: true,
         }),
       ]),
@@ -109,113 +129,146 @@ export function Toast({
   return (
     <Animated.View
       style={[
-        styles.container,
+        styles.wrapper,
         {
           opacity,
           transform: [
-            {
-              translateY,
-            },
+            { translateY },
+            { scale },
           ],
         },
       ]}
     >
-      <Icon
-        size={18}
-        color={color}
-      />
-
-      <View style={styles.texts}>
-        <Text
-          numberOfLines={1}
-          style={styles.title}
+      <BlurView
+        intensity={35}
+        tint="dark"
+        style={styles.container}
+      >
+        <View
+          style={[
+            styles.iconContainer,
+            {
+              backgroundColor: `${color}20`,
+            },
+          ]}
         >
-          {title}
-        </Text>
+          <Icon
+            size={18}
+            color={color}
+          />
+        </View>
 
-        {!!message && (
+        <View style={styles.texts}>
           <Text
             numberOfLines={1}
-            style={styles.message}
+            style={styles.title}
           >
-            {message}
+            {title}
           </Text>
-        )}
-      </View>
 
-      <View
-        style={[
-          styles.bar,
-          {
-            backgroundColor: color,
-          },
-        ]}
-      />
+          {!!message && (
+            <Text
+              numberOfLines={2}
+              style={styles.message}
+            >
+              {message}
+            </Text>
+          )}
+        </View>
+
+        <View
+          style={[
+            styles.indicator,
+            {
+              backgroundColor: color,
+            },
+          ]}
+        />
+      </BlurView>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     position: "absolute",
 
-    top: 60,
+    top: 64,
+    left: 16,
     right: 16,
 
-    width: 260,
-
     zIndex: 999,
+  },
 
-    backgroundColor: "#18181B",
+  container: {
+    overflow: "hidden",
 
-    borderRadius: 14,
+    borderRadius: 22,
 
     borderWidth: 1,
-    borderColor: "#27272A",
+    borderColor: "rgba(255,255,255,0.08)",
 
+    backgroundColor: "rgba(24,24,27,0.85)",
+
+    paddingVertical: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
 
     flexDirection: "row",
     alignItems: "center",
 
-    gap: 10,
-
-    overflow: "hidden",
-
     shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+
+    shadowOpacity: 0.18,
+
+    shadowRadius: 20,
+
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
 
     elevation: 10,
   },
 
+  iconContainer: {
+    width: 38,
+    height: 38,
+
+    borderRadius: 14,
+
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   texts: {
     flex: 1,
+    marginLeft: 12,
+    marginRight: 10,
   },
 
   title: {
-    color: "#fff",
+    color: "#FFFFFF",
 
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
+
+    letterSpacing: 0.2,
   },
 
   message: {
-    marginTop: 2,
+    marginTop: 3,
 
     color: "#A1A1AA",
 
-    fontSize: 11,
+    fontSize: 12,
+
+    lineHeight: 18,
   },
 
-  bar: {
-    position: "absolute",
+  indicator: {
+    width: 4,
+    alignSelf: "stretch",
 
-    left: 0,
-    bottom: 0,
-
-    width: "100%",
-    height: 2,
+    borderRadius: 99,
   },
 });

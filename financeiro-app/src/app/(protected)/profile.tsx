@@ -9,9 +9,7 @@ import {
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { useRouter } from "expo-router";
-
 import {
   Moon,
   Sun,
@@ -20,20 +18,13 @@ import {
   Save,
   Palette,
 } from "lucide-react-native";
-
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 
-import {
-  PRIMARY_COLOR,
-} from "@/constants/theme";
+import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import { ScreenWrapper } from "@/components/layout/screen-wrapper";
 
-/**
- * EXEMPLO
- * Substitua pela sua store/context real
- */
 const mockUser = {
   name: "Mateus",
   email: "mateus@email.com",
@@ -42,97 +33,80 @@ const mockUser = {
 export default function ProfilePage() {
   const router = useRouter();
   const { show } = useToast();
-  const { user, logout, } = useAuth();
+  const { user, logout } = useAuth();
+  const { mode, colors, setTheme } = useTheme();
 
   const { width } = useWindowDimensions();
-
   const isTablet = width >= 768;
 
-  const [isDark, setIsDark] = useState(true);
-
-  const [name, setName] = useState(
-    mockUser.name
-  );
+  const [name, setName] = useState(mockUser.name);
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert(
-        "Erro",
-        "Informe um nome."
-      );
-
+      Alert.alert("Erro", "Informe um nome.");
       return;
     }
-
-    Alert.alert(
-      "Sucesso",
-      "Perfil atualizado."
-    );
+    Alert.alert("Sucesso", "Perfil atualizado.");
   };
 
-  const onSubmit = async () => {
+  const handleLogout = async () => {
     await logout();
-
-    show(
-      "success",
-      "Logout realizado com sucesso"
-    );
+    show("success", "Logout realizado com sucesso");
   };
 
   return (
     <SafeAreaView
-      style={styles.safe}
+      style={[styles.safe, { backgroundColor: colors.background }]}
       edges={["top", "bottom"]}
     >
       <ScreenWrapper
-  style={{
-    paddingHorizontal:
-      width < 380 ? 16 : 24,
-
-    paddingTop: 32,
-  }}
->
+        style={{
+          paddingHorizontal: width < 380 ? 16 : 24,
+          paddingTop: 32,
+        }}
+      >
         <View
           style={[
             styles.content,
-            {
-              maxWidth: isTablet
-                ? 500
-                : 420,
-            },
+            { maxWidth: isTablet ? 500 : 420 },
           ]}
         >
           {/* HEADER */}
           <View style={styles.header}>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: colors.text }]}>
               Perfil
             </Text>
-
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Gerencie suas preferências
             </Text>
           </View>
 
           {/* USER CARD */}
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.backgroundSelected,
+              },
+            ]}
+          >
             <View style={styles.userRow}>
-              <View style={styles.avatar}>
-                <UserIcon
-                  size={28}
-                  color="#fff"
-                />
+              <View
+                style={[styles.avatar, { backgroundColor: colors.primary }]}
+              >
+                <UserIcon size={28} color="#fff" />
               </View>
 
               <View style={styles.userInfo}>
                 <Text
-                  style={styles.userName}
+                  style={[styles.userName, { color: colors.text }]}
                   numberOfLines={1}
                 >
                   {mockUser.name}
                 </Text>
-
                 <Text
-                  style={styles.userEmail}
+                  style={[styles.userEmail, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
                   {mockUser.email}
@@ -141,7 +115,7 @@ export default function ProfilePage() {
             </View>
 
             <View style={styles.form}>
-              <Text style={styles.label}>
+              <Text style={[styles.label, { color: colors.text }]}>
                 Nome de exibição
               </Text>
 
@@ -149,102 +123,104 @@ export default function ProfilePage() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Seu nome"
-                placeholderTextColor="#71717A"
-                style={styles.input}
+                placeholderTextColor={colors.textSecondary}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.backgroundSelected,
+                    color: colors.text,
+                  },
+                ]}
               />
 
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.primary },
+                ]}
                 activeOpacity={0.8}
                 onPress={handleSave}
               >
-                <Save
-                  size={18}
-                  color="#fff"
-                />
-
-                <Text
-                  style={
-                    styles.primaryButtonText
-                  }
-                >
-                  Salvar alterações
-                </Text>
+                <Save size={18} color="#fff" />
+                <Text style={styles.primaryButtonText}>Salvar alterações</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* PREFERÊNCIAS */}
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.backgroundSelected,
+              },
+            ]}
+          >
             <View style={styles.sectionHeader}>
-              <Palette
-                size={16}
-                color={PRIMARY_COLOR}
-              />
-
-              <Text style={styles.sectionTitle}>
+              <Palette size={16} color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 Preferências
               </Text>
             </View>
 
             <View style={styles.themeContainer}>
+              {/* Botão Claro */}
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() =>
-                  setIsDark(false)
-                }
+                onPress={() => setTheme("light")}
                 style={[
                   styles.themeButton,
-                  !isDark &&
-                    styles.themeButtonActive,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.backgroundSelected,
+                  },
+                  mode === "light" && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.backgroundSelected,
+                  },
                 ]}
               >
-                <Sun
-                  size={18}
-                  color="#fff"
-                />
-
-                <Text
-                  style={styles.themeTitle}
-                >
+                <Sun size={18} color={colors.text} />
+                <Text style={[styles.themeTitle, { color: colors.text }]}>
                   Claro
                 </Text>
-
                 <Text
-                  style={
-                    styles.themeDescription
-                  }
+                  style={[
+                    styles.themeDescription,
+                    { color: colors.textSecondary },
+                  ]}
                 >
                   Mais luz
                 </Text>
               </TouchableOpacity>
 
+              {/* Botão Escuro */}
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() =>
-                  setIsDark(true)
-                }
+                onPress={() => setTheme("dark")}
                 style={[
                   styles.themeButton,
-                  isDark &&
-                    styles.themeButtonActive,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.backgroundSelected,
+                  },
+                  mode === "dark" && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.backgroundSelected,
+                  },
                 ]}
               >
-                <Moon
-                  size={18}
-                  color="#fff"
-                />
-
-                <Text
-                  style={styles.themeTitle}
-                >
+                <Moon size={18} color={colors.text} />
+                <Text style={[styles.themeTitle, { color: colors.text }]}>
                   Escuro
                 </Text>
-
                 <Text
-                  style={
-                    styles.themeDescription
-                  }
+                  style={[
+                    styles.themeDescription,
+                    { color: colors.textSecondary },
+                  ]}
                 >
                   Mais foco
                 </Text>
@@ -254,16 +230,28 @@ export default function ProfilePage() {
 
           {/* LOGOUT */}
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={[
+              styles.logoutButton,
+              {
+                backgroundColor: colors.backgroundElement,
+                borderColor: colors.backgroundSelected,
+              },
+            ]}
             activeOpacity={0.8}
-            onPress={onSubmit}
+            onPress={handleLogout}
           >
             <LogOut
               size={18}
-              color="#fff"
+              color={colors.error}
             />
-
-            <Text style={styles.logoutText}>
+            <Text
+              style={[
+                styles.logoutText,
+                {
+                  color: colors.error,
+                },
+              ]}
+            >
               Sair da conta
             </Text>
           </TouchableOpacity>
@@ -276,18 +264,6 @@ export default function ProfilePage() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#09090B",
-  },
-
-  root: {
-    flex: 1,
-    backgroundColor: "#09090B",
-  },
-
-  container: {
-    minHeight: "100%",
-    paddingTop: 32,
-    paddingBottom: 48,
   },
 
   content: {
@@ -303,23 +279,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "bold",
-    color: "#FFFFFF",
   },
 
   subtitle: {
     marginTop: 4,
     fontSize: 14,
-    color: "#A1A1AA",
   },
 
   card: {
-    backgroundColor: "#18181B",
-
     borderWidth: 1,
-    borderColor: "#27272A",
-
     borderRadius: 24,
-
     padding: 20,
   },
 
@@ -332,18 +301,11 @@ const styles = StyleSheet.create({
   avatar: {
     width: 64,
     height: 64,
-
     borderRadius: 20,
-
-    backgroundColor: PRIMARY_COLOR,
-
     justifyContent: "center",
     alignItems: "center",
-
-    shadowColor: PRIMARY_COLOR,
     shadowOpacity: 0.4,
     shadowRadius: 10,
-
     elevation: 8,
   },
 
@@ -352,14 +314,12 @@ const styles = StyleSheet.create({
   },
 
   userName: {
-    color: "#fff",
     fontSize: 18,
     fontWeight: "700",
   },
 
   userEmail: {
     marginTop: 4,
-    color: "#A1A1AA",
     fontSize: 13,
   },
 
@@ -371,36 +331,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#fff",
   },
 
   input: {
     height: 52,
-
     borderRadius: 14,
-
     borderWidth: 1,
-    borderColor: "#27272A",
-
-    backgroundColor: "#111111",
-
     paddingHorizontal: 16,
-
-    color: "#fff",
     fontSize: 15,
   },
 
   primaryButton: {
     height: 52,
-
     borderRadius: 14,
-
-    backgroundColor: PRIMARY_COLOR,
-
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     gap: 8,
   },
 
@@ -413,14 +359,11 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-
     gap: 8,
-
     marginBottom: 18,
   },
 
   sectionTitle: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -432,57 +375,33 @@ const styles = StyleSheet.create({
 
   themeButton: {
     flex: 1,
-
     borderWidth: 1,
-    borderColor: "#27272A",
-
     borderRadius: 18,
-
     padding: 16,
-
-    backgroundColor: "#111111",
-  },
-
-  themeButtonActive: {
-    borderColor: PRIMARY_COLOR,
-    backgroundColor:
-      "rgba(38, 220, 62, 0.12)",
   },
 
   themeTitle: {
     marginTop: 10,
-
-    color: "#fff",
     fontSize: 15,
     fontWeight: "600",
   },
 
   themeDescription: {
     marginTop: 4,
-
-    color: "#A1A1AA",
     fontSize: 12,
   },
 
   logoutButton: {
     height: 54,
-
     borderRadius: 16,
-
     borderWidth: 1,
-    borderColor: "#27272A",
-
-    backgroundColor: "#18181B",
-
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     gap: 8,
   },
 
   logoutText: {
-    color: "#fff",
     fontSize: 15,
     fontWeight: "600",
   },
