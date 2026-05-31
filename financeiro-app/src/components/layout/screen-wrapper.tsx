@@ -31,6 +31,8 @@ export function ScreenWrapper({
         {
           paddingBottom:
             120 + insets.bottom,
+          alignItems: "center",
+          width: "100%",
         },
         style,
       ]}

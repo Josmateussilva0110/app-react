@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native";
 
 import { LucideIcon } from "lucide-react-native";
@@ -23,6 +25,8 @@ type FilterChipProps = {
   textColor: string;
 
   icon?: LucideIcon;
+
+  style?: StyleProp<ViewStyle>;
 };
 
 export function FilterChip({
@@ -33,6 +37,7 @@ export function FilterChip({
   inactiveColor,
   textColor,
   icon: Icon,
+  style,
 }: FilterChipProps) {
   return (
     <TouchableOpacity
@@ -45,6 +50,7 @@ export function FilterChip({
             ? activeColor
             : inactiveColor,
         },
+        style,
       ]}
     >
       <View style={styles.content}>
@@ -80,6 +86,7 @@ const styles = StyleSheet.create({
   content: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
   },
 
