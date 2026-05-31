@@ -13,6 +13,7 @@ export type Product = {
   preco: number;
   prioridade: Priority;
   status: Status;
+  lista_mes: boolean; 
   cadastradoPor: string;
 };
 
@@ -23,6 +24,7 @@ const mockProducts: Product[] = [
     preco: 3500,
     prioridade: "alta",
     status: "pendente",
+    lista_mes: true,
     cadastradoPor: "Mateus",
   },
 
@@ -32,6 +34,7 @@ const mockProducts: Product[] = [
     preco: 2500,
     prioridade: "alta",
     status: "finalizado",
+    lista_mes: false,
     cadastradoPor: "Mateus",
   },
 
@@ -41,6 +44,7 @@ const mockProducts: Product[] = [
     preco: 250,
     prioridade: "media",
     status: "finalizado",
+    lista_mes: true,
     cadastradoPor: "Mateus",
   },
 
@@ -50,6 +54,7 @@ const mockProducts: Product[] = [
     preco: 80,
     prioridade: "baixa",
     status: "finalizado",
+    lista_mes: true,
     cadastradoPor: "Mateus",
   },
 ];

@@ -15,7 +15,7 @@ export default function Index() {
   if (signed) {
     return (
       <Redirect
-        href="/(protected)/home"
+        href="/(protected)/month-list"
       />
     );
   }
