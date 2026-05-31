@@ -8,7 +8,7 @@ export function HomeFab() {
   const { colors: theme } = useTheme();
 
   return (
-    <Link href="/" asChild>
+    <Link href="/create-product" asChild>
       <Pressable style={styles.fab}>
         <LinearGradient
           colors={[theme.fabGradientStart, theme.fabGradientEnd]}

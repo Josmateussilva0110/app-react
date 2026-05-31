@@ -9,7 +9,6 @@ import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
 import { HomePriorityList } from "./home-priority-list";
 import { HomeEmptyState } from "./home-empty-state";
-import { HomeFab } from "./home-fab";
 import type { StatusFilter } from "../constants/home.constants";
 
 type ItemListScreenProps = {
@@ -83,8 +82,6 @@ export function ItemListScreen({
             <HomePriorityList products={filteredProducts} />
           )}
         </ScrollView>
-
-        {showFab && <HomeFab />}
       </SafeAreaView>
     </AppShell>
   );

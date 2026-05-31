@@ -1,9 +1,10 @@
 import { Redirect, Tabs } from "expo-router";
-import { useWindowDimensions } from "react-native";
-import { ListChecks, ShoppingBasket, User } from "lucide-react-native";
+import { View, StyleSheet, useWindowDimensions } from "react-native";
+import { ListChecks, ShoppingBasket, User, Plus } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/theme.context";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ProtectedLayout() {
   const { signed, loading } = useAuth();
@@ -16,8 +17,8 @@ export default function ProtectedLayout() {
 
   const BOTTOM = insets.bottom > 0 ? insets.bottom + 4 : 10;
 
-  // Calcula margem em pixels para centralizar
-  const TAB_WIDTH = width * 0.34;
+  // Wider bar to accommodate 4 items + center button
+  const TAB_WIDTH = width * 0.62;
   const SIDE_MARGIN = (width - TAB_WIDTH) / 2;
 
   return (
@@ -76,6 +77,28 @@ export default function ProtectedLayout() {
         }}
       />
 
+      <Tabs.Screen
+        name="create-product"
+        options={{
+          title: "",
+          tabBarLabel: () => null,
+          tabBarIcon: () => (
+            <View style={fabStyles.wrapper}>
+              <LinearGradient
+                colors={[colors.fabGradientStart, colors.fabGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={fabStyles.button}
+              >
+                <Plus size={24} color="#fff" strokeWidth={2.5} />
+              </LinearGradient>
+            </View>
+          ),
+          tabBarItemStyle: {
+            height: 55,
+          },
+        }}
+      />
 
       <Tabs.Screen
         name="itens"
@@ -90,12 +113,31 @@ export default function ProtectedLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Perfil",
-          tabBarIcon: ({ color }) => (
-            <User size={17} color={color} />
-          ),
+          href: null,
         }}
       />
     </Tabs>
   );
 }
+
+const fabStyles = StyleSheet.create({
+  wrapper: {
+    position: "relative",
+    top: -14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  button: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#22C55E",
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+});
+

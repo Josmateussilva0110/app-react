@@ -1,4 +1,4 @@
-import { View, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { Package, Clock3, Check } from "lucide-react-native";
 import { FilterChip } from "@/components/ui/filter-chips";
 import { useTheme } from "@/context/theme.context";
@@ -13,7 +13,11 @@ export function HomeFilters({ value, onChange }: Props) {
   const { colors: theme } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+    >
       <FilterChip
         label="Todos"
         icon={Package}
@@ -43,7 +47,7 @@ export function HomeFilters({ value, onChange }: Props) {
         inactiveColor={theme.card}
         textColor={value === "finalizado" ? "#ffffff" : theme.text}
       />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -51,6 +55,6 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     gap: 10,
-    flexWrap: "wrap",
+    paddingRight: 4,
   },
 });

@@ -6,10 +6,13 @@ import {
   StyleSheet,
   StatusBar,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Settings } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/context/theme.context";
 
 type AppShellProps = {
@@ -17,6 +20,7 @@ type AppShellProps = {
   subtitle?: string;
   children: ReactNode;
   rightElement?: ReactNode;
+  showSettings?: boolean;
 };
 
 export function AppShell({
@@ -24,8 +28,23 @@ export function AppShell({
   subtitle,
   children,
   rightElement,
+  showSettings = true,
 }: AppShellProps): React.JSX.Element {
   const { colors: theme } = useTheme();
+  const router = useRouter();
+
+  const headerRight = rightElement ?? (
+    showSettings ? (
+      <TouchableOpacity
+        onPress={() => router.push("/profile")}
+        activeOpacity={0.7}
+        style={[styles.settingsButton, { backgroundColor: theme.backgroundElement }]}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Settings size={18} color={theme.textSecondary} />
+      </TouchableOpacity>
+    ) : null
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.shellBackground }]}>
@@ -48,8 +67,8 @@ export function AppShell({
             ) : null}
           </View>
 
-          {rightElement ? (
-            <View style={styles.headerRight}>{rightElement}</View>
+          {headerRight ? (
+            <View style={styles.headerRight}>{headerRight}</View>
           ) : null}
         </View>
 
@@ -85,6 +104,15 @@ const styles = StyleSheet.create({
 
   headerRight: {
     marginLeft: 12,
+    paddingTop: 4,
+  },
+
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   title: {
