@@ -1,4 +1,7 @@
-import React, { useEffect } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   View,
@@ -32,7 +35,8 @@ export function CustomTabBar({
   state,
   navigation,
 }: any) {
-  const { colors, mode } = useTheme();
+  const { colors, mode } =
+    useTheme();
 
   const { width } =
     useWindowDimensions();
@@ -40,31 +44,103 @@ export function CustomTabBar({
   const insets =
     useSafeAreaInsets();
 
-  const BAR_WIDTH = width * 0.78;
+  const BAR_WIDTH = width * 0.65;
+
+  const BAR_HEIGHT =
+    width < 370
+      ? 56
+      : width < 430
+      ? 60
+      : 64;
+
+  const ICON_SIZE =
+    width < 370
+      ? 17
+      : width < 430
+      ? 18
+      : 19;
+
+  const FAB_SIZE =
+    width < 370
+      ? 56
+      : width < 430
+      ? 60
+      : 64;
+
+  const PILL_HEIGHT =
+    width < 370
+      ? 44
+      : width < 430
+      ? 46
+      : 48;
+
+  const PILL_TOP =
+    width < 370
+      ? 6
+      : width < 430
+      ? 7
+      : 8;
+
+  const FAB_TOP =
+    width < 370
+      ? -12
+      : width < 430
+      ? -15
+      : -18;
+
+  const MIDDLE_SPACE =
+    width < 370
+      ? 60
+      : width < 430
+      ? 70
+      : 80;
+
+  const PILL_WIDTH =
+    width < 370
+      ? 64
+      : width < 430
+      ? 70
+      : 72;
 
   const translateX =
     useSharedValue(0);
 
-  const LEFT_POSITION = 12;
+  const [leftCenter, setLeftCenter] =
+    useState(0);
 
-  const RIGHT_POSITION =
-    BAR_WIDTH - 84 - 12;
+  const [
+    rightCenter,
+    setRightCenter,
+  ] = useState(0);
+
+  const currentRoute =
+    state.routes[state.index]
+      ?.name;
 
   useEffect(() => {
-    const route =
-      state.routes[state.index]
-        ?.name;
+    if (
+      !leftCenter ||
+      !rightCenter
+    ) {
+      return;
+    }
 
     translateX.value =
       withTiming(
-        route === "itens"
-          ? RIGHT_POSITION
-          : LEFT_POSITION,
+        currentRoute === "itens"
+          ? rightCenter -
+              PILL_WIDTH / 2
+          : leftCenter -
+              PILL_WIDTH / 2,
         {
           duration: 280,
         }
       );
-  }, [state.index]);
+  }, [
+    currentRoute,
+    leftCenter,
+    rightCenter,
+  ]);
 
   const animatedStyle =
     useAnimatedStyle(() => ({
@@ -75,10 +151,6 @@ export function CustomTabBar({
         },
       ],
     }));
-
-  const currentRoute =
-    state.routes[state.index]
-      ?.name;
 
   return (
     <View
@@ -92,20 +164,36 @@ export function CustomTabBar({
         },
       ]}
     >
-      {/* Wrapper com border radius */}
-      <View style={styles.blurWrapper}>
+      <View
+        style={[
+          styles.blurWrapper,
+          {
+            borderRadius:
+              BAR_HEIGHT / 2,
+          },
+        ]}
+      >
         <BlurView
           intensity={100}
           experimentalBlurMethod="dimezisBlurView"
-          tint={mode === "dark" ? "dark" : "light"}
+          tint={
+            mode === "dark"
+              ? "dark"
+              : "light"
+          }
           style={[
             styles.container,
             {
               width: BAR_WIDTH,
+              height: BAR_HEIGHT,
+              borderRadius:
+                BAR_HEIGHT / 2,
+
               backgroundColor:
                 mode === "dark"
                   ? "rgba(20,20,22,0.75)"
                   : "rgba(255,255,255,0.85)",
+
               borderColor:
                 mode === "dark"
                   ? "rgba(255,255,255,0.08)"
@@ -118,6 +206,13 @@ export function CustomTabBar({
               styles.activePill,
               animatedStyle,
               {
+                width: PILL_WIDTH,
+                height: PILL_HEIGHT,
+                top: PILL_TOP,
+
+                borderRadius:
+                  PILL_HEIGHT / 2,
+
                 backgroundColor:
                   mode === "dark"
                     ? "rgba(34,197,94,0.18)"
@@ -129,6 +224,17 @@ export function CustomTabBar({
           <TouchableOpacity
             style={styles.tab}
             activeOpacity={0.8}
+            onLayout={(e) => {
+              const {
+                x,
+                width,
+              } =
+                e.nativeEvent.layout;
+
+              setLeftCenter(
+                x + width / 2
+              );
+            }}
             onPress={() =>
               navigation.navigate(
                 "month-list"
@@ -142,7 +248,7 @@ export function CustomTabBar({
               }
             >
               <ListChecks
-                size={22}
+                size={ICON_SIZE}
                 color={
                   currentRoute ===
                   "month-list"
@@ -153,11 +259,27 @@ export function CustomTabBar({
             </AnimatedTabIcon>
           </TouchableOpacity>
 
-          <View style={styles.middleSpace} />
+          <View
+            style={{
+              width:
+                MIDDLE_SPACE,
+            }}
+          />
 
           <TouchableOpacity
             style={styles.tab}
             activeOpacity={0.8}
+            onLayout={(e) => {
+              const {
+                x,
+                width,
+              } =
+                e.nativeEvent.layout;
+
+              setRightCenter(
+                x + width / 2
+              );
+            }}
             onPress={() =>
               navigation.navigate(
                 "itens"
@@ -171,7 +293,7 @@ export function CustomTabBar({
               }
             >
               <ShoppingBasket
-                size={22}
+                size={ICON_SIZE}
                 color={
                   currentRoute ===
                   "itens"
@@ -184,10 +306,14 @@ export function CustomTabBar({
         </BlurView>
       </View>
 
-      {/* FAB separado */}
       <TouchableOpacity
         activeOpacity={0.9}
-        style={styles.centerButton}
+        style={[
+          styles.centerButton,
+          {
+            top: FAB_TOP,
+          },
+        ]}
         onPress={() =>
           navigation.navigate(
             "create-product"
@@ -198,13 +324,25 @@ export function CustomTabBar({
           style={[
             styles.fab,
             {
+              width: FAB_SIZE,
+              height: FAB_SIZE,
+
+              borderRadius:
+                FAB_SIZE / 2,
+
               backgroundColor:
                 colors.primary,
             },
           ]}
         >
           <Plus
-            size={30}
+            size={
+              width < 370
+                ? 20
+                : width < 430
+                ? 22
+                : 24
+            }
             color="#FFF"
             strokeWidth={2.5}
           />
@@ -224,71 +362,38 @@ const styles =
     },
 
     blurWrapper: {
-      borderRadius: 40,
       overflow: "hidden",
     },
 
     container: {
-      height: 78,
-
-      borderRadius: 40,
-
       flexDirection: "row",
-
       alignItems: "center",
-
       borderWidth: 1,
     },
 
     activePill: {
       position: "absolute",
-
-      top: 10,
       left: 0,
-
-      width: 84,
-      height: 58,
-
-      borderRadius: 29,
-
-      backgroundColor:
-        "rgba(34,197,94,0.18)",
     },
 
     tab: {
       flex: 1,
-
       justifyContent: "center",
       alignItems: "center",
-    },
-
-    middleSpace: {
-      width: 90,
     },
 
     centerButton: {
       position: "absolute",
-
-      top: -24,
-
       alignSelf: "center",
-
       zIndex: 999,
     },
 
     fab: {
-      width: 72,
-      height: 72,
-
-      borderRadius: 36,
-
       justifyContent: "center",
       alignItems: "center",
 
       shadowColor: "#22C55E",
-
       shadowOpacity: 0.55,
-
       shadowRadius: 24,
 
       shadowOffset: {
