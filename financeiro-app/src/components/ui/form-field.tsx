@@ -66,7 +66,7 @@ const createStyles = (colors: ThemeColors) =>
       paddingLeft: 40,
       paddingRight: 12,
       fontSize: 15,
-      backgroundColor: colors.background,
+      backgroundColor: colors.backgroundElement, // era colors.background (preto puro)
       borderColor: colors.backgroundSelected,
       color: colors.text,
     },

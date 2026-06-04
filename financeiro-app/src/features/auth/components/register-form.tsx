@@ -40,7 +40,7 @@ export function RegisterForm() {
     }
 
     show("success", result.message);
-    router.replace("/(protected)/home");
+    router.replace("/(protected)/month-list");
   };
 
   return (
