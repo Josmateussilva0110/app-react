@@ -35,7 +35,7 @@ export function LoginForm() {
     }
 
     show("success", result.message);
-    router.replace("/(protected)/home");
+    router.replace("/(protected)/month-list");
   };
 
   return (
