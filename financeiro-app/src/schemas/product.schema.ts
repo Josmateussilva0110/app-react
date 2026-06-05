@@ -9,8 +9,17 @@ export const productSchema = z.object({
   price: z
     .string()
     .min(1, "O preço é obrigatório")
-    .refine((value) => !isNaN(parseFloat(value)), "O preço deve ser um número válido")
-    .transform((value) => parseFloat(value)),
+    .transform((value) => {
+      const normalized = value
+        .replace(/\./g, "") 
+        .replace(",", ".");
+
+      return Number(normalized);
+    })
+    .refine(
+      (value) => !isNaN(value),
+      "O preço deve ser um número válido"
+    ),
 
   priority: z
     .enum(["alta", "media", "baixa"])
