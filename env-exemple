@@ -1,0 +1,18 @@
+# ==============================================================================
+# SUPABASE
+# ==============================================================================
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+
+# ==============================================================================
+# BACKEND (TypeScript REST) 
+# ==============================================================================
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_JWT_SECRET=
+
+JWT_SECRET=
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+
+PORT=

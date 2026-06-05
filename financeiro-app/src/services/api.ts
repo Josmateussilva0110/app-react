@@ -1,7 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { tokenManager } from "./token.manager";
-
-const IP = "192.168.1.15";
+import { API_URL } from "@/config/env";
 
 // Extende o tipo do axios para suportar campos customizados
 declare module "axios" {
@@ -11,10 +10,9 @@ declare module "axios" {
   }
 }
 
-const BASE_URL = `http://${IP}:3001/api`
 
 export const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_URL,
   timeout: 10_000,
   headers: { "Content-Type": "application/json" },
 });
@@ -90,7 +88,7 @@ api.interceptors.response.use(
 
     try {
       // Usa axios base (não `api`) para evitar loop no interceptor
-      const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {
+      const { data } = await axios.post(`${API_URL}/auth/refresh`, {
         refreshToken,
       });
 
