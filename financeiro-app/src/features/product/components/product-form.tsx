@@ -1,9 +1,7 @@
 import { ScrollView, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { productSchema } from "@/schemas/product.schema";
-
-import { type ProductFormData, type ProductFormInput } from "../../../types/product.form.types";
+import { productFormSchema, type ProductFormData, type ProductFormInput } from "@/schemas/product.schema"; // ← tudo do mesmo lugar
 import { InfoSection } from "./info-section";
 import { PrioritySection } from "./priority-section";
 import { PaymentSection } from "./payment-section";
@@ -18,7 +16,7 @@ export function ProductForm() {
     handleSubmit,
     formState: { errors },
   } = useForm<ProductFormInput, unknown, ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productFormSchema), 
     defaultValues: {
       name:        "",
       price:       "",
@@ -32,7 +30,6 @@ export function ProductForm() {
   });
 
   function onSubmit(data: ProductFormData) {
-    // data.price já é number aqui (após o transform do Zod)
     console.log("Form submitted:", data);
   }
 
@@ -41,13 +38,13 @@ export function ProductForm() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      <InfoSection    control={control} errors={errors} />
+      <InfoSection     control={control} errors={errors} />
       <PrioritySection control={control} />
       <PaymentSection  control={control} />
       <CategorySection control={control} />
-      <DateSection    control={control} errors={errors} />
+      <DateSection     control={control} errors={errors} />
       <OptionsSection  control={control} />
-      <SaveButton onPress={handleSubmit(onSubmit,)} />
+      <SaveButton onPress={handleSubmit(onSubmit)} />
     </ScrollView>
   );
 }

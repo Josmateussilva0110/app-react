@@ -1,0 +1,5 @@
+{
+  "name": "aplicativo",
+  "private": true,
+  "workspaces": ["packages/*", "backend", "financeiro-app"]
+}

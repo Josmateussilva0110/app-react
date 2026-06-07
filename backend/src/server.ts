@@ -20,6 +20,7 @@ app.use(cors({
 
 
 app.use(express.json())
+app.use(express.urlencoded({ extended: true }));
 
 
 app.get("/api", (request: Request, response: Response) => {
