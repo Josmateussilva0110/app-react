@@ -1,17 +1,17 @@
 import { Request, Response } from "express"
-import UserService from "../services/UserService"
-import { userErrorHttpStatusMap } from "../errors/userErrorHttpMapper"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
+import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
+import ProductService from "../services/ProductService"
 
 class ProductController {
   async create(request: Request, response: Response) {
-    console.log("ProductController.create called with body:", request.body);
-    /*const result = await UserService.register(request.body)
+    const userId = request.user.id 
+    const result = await ProductService.create({ ...request.body, userId })
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
         result.error!.code,
-        userErrorHttpStatusMap
+        productErrorHttpStatusMap
       )
       return response.status(httpStatus).json({
         success: false,
@@ -21,9 +21,9 @@ class ProductController {
 
     return response.status(201).json({
       success: true,
-      message: "Usuário cadastrado com sucesso",
+      message: "Produto cadastrado com sucesso",
       data: result.data,
-    })*/
+    })
   }
 }
 

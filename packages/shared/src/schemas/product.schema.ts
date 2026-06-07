@@ -22,4 +22,5 @@ export const productSchema = z.object({
   monthList: z.boolean(),
 });
 
-export type ProductData = z.infer<typeof productSchema>;
+
+export type CreateProductDTO = z.infer<typeof productSchema>;

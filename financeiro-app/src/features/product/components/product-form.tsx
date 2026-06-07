@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
 import { productFormSchema, type ProductFormData, type ProductFormInput } from "@/schemas/product.schema"; // ← tudo do mesmo lugar
 import { InfoSection } from "./info-section";
 import { PrioritySection } from "./priority-section";
@@ -9,8 +10,13 @@ import { CategorySection } from "./category-section";
 import { DateSection } from "./date-section";
 import { OptionsSection } from "./options-section";
 import { SaveButton } from "./saveButton";
+import { requestData } from "../../../services/request";
+import { useToast } from "@/context/toast.context";
+
 
 export function ProductForm() {
+  const router = useRouter();
+  const { show } = useToast();
   const {
     control,
     handleSubmit,
@@ -29,8 +35,14 @@ export function ProductForm() {
     },
   });
 
-  function onSubmit(data: ProductFormData) {
-    console.log("Form submitted:", data);
+  async function onSubmit(data: ProductFormData) {
+    const response = await requestData<{ id: string }>({endpoint: "/product", method: "POST", data, withAuth: true})
+    if(!response.success) {
+      show("error", response.message);
+      return;
+    } 
+    show("success", response.message);
+    router.replace("/(protected)/month-list");
   }
 
   return (
