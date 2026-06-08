@@ -1,9 +1,8 @@
 import { ScrollView, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { productSchema } from "@/schemas/product.schema";
-
-import { type ProductFormData, type ProductFormInput } from "../../../types/product.form.types";
+import { useRouter } from "expo-router";
+import { productFormSchema, type ProductFormData, type ProductFormInput } from "@/schemas/product.schema"; 
 import { InfoSection } from "./info-section";
 import { PrioritySection } from "./priority-section";
 import { PaymentSection } from "./payment-section";
@@ -11,29 +10,45 @@ import { CategorySection } from "./category-section";
 import { DateSection } from "./date-section";
 import { OptionsSection } from "./options-section";
 import { SaveButton } from "./saveButton";
+import { requestData } from "../../../services/request";
+import { useToast } from "@/context/toast.context";
+
+
+const DEFAULT_VALUES: ProductFormInput = {
+  name:        "",
+  price:       "",
+  priority:    "media",
+  paymentType: "nao_comprado",
+  category:    "compras",
+  date:        "",
+  finished:    false,
+  monthList:   false,
+};
 
 export function ProductForm() {
+  const router = useRouter();
+  const { show } = useToast();
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProductFormInput, unknown, ProductFormData>({
-    resolver: zodResolver(productSchema),
-    defaultValues: {
-      name:        "",
-      price:       "",
-      priority:    "media",
-      paymentType: "nao_comprado",
-      category:    "compras",
-      date:        "",
-      finished:    false,
-      monthList:   false,
-    },
+    resolver: zodResolver(productFormSchema), 
+    defaultValues: DEFAULT_VALUES,
   });
 
-  function onSubmit(data: ProductFormData) {
-    // data.price já é number aqui (após o transform do Zod)
-    console.log("Form submitted:", data);
+
+
+  async function onSubmit(data: ProductFormData) {
+    const response = await requestData<{ id: string }>({endpoint: "/product", method: "POST", data, withAuth: true})
+    if(!response.success) {
+      show("error", response.message);
+      return;
+    } 
+    reset(DEFAULT_VALUES);
+    show("success", response.message);
+    router.replace("/(protected)/month-list");
   }
 
   return (
@@ -41,13 +56,13 @@ export function ProductForm() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      <InfoSection    control={control} errors={errors} />
+      <InfoSection     control={control} errors={errors} />
       <PrioritySection control={control} />
       <PaymentSection  control={control} />
       <CategorySection control={control} />
-      <DateSection    control={control} errors={errors} />
+      <DateSection     control={control} errors={errors} />
       <OptionsSection  control={control} />
-      <SaveButton onPress={handleSubmit(onSubmit,)} />
+      <SaveButton onPress={handleSubmit(onSubmit)} />
     </ScrollView>
   );
 }
