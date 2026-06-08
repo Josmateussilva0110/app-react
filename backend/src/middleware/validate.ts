@@ -12,7 +12,7 @@ export const validate =
 
     if (!result.success) {
       return response.status(422).json({
-        status: false,
+        success: false,
         message: "Erro de validação",
         errors: result.error.issues.map((issue) => ({
           field:   issue.path.length > 0 ? issue.path.join(".") : target,

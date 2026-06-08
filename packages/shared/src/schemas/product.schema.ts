@@ -6,8 +6,8 @@ export const categoryEnum    = z.enum(["compras", "alimentacao", "lazer", "espor
                                        "investimento", "saude", "presentes"]);
 
 export const productSchema = z.object({
-  name:        z.string().min(3, "O nome deve ter no mínimo 3 caracteres"),
-  price: z.number({ error: "O preço deve ser um número" }).positive("O preço deve ser positivo"),
+  name:        z.string().min(3, "O nome deve ter no mínimo 3 caracteres").max(100, "O nome deve ter no máximo 100 caracteres"),
+  price: z.number({ error: "O preço deve ser um número" }).positive("O preço deve ser positivo").max(1000000, "O preço deve ser menor que 1.000.000"),
   priority:    priorityEnum,
   paymentType: paymentTypeEnum,
   category:    categoryEnum,

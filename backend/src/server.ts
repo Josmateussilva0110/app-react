@@ -4,6 +4,7 @@ import dotenv from "dotenv"
 import router from "../src/routes/routes"
 import swaggerUi from "swagger-ui-express"
 import { swaggerSpec } from "./config/swagger"
+import { rateLimiter } from "./middleware/rateLimiter"
 
 dotenv.config()
 
@@ -18,10 +19,10 @@ app.use(cors({
 }))
 
 
-
+app.set("trust proxy", 1);
+app.use(rateLimiter);
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
-
 
 app.get("/api", (request: Request, response: Response) => {
   response.json({ status: "API rodando com TypeScript 🚀" })
@@ -35,4 +36,3 @@ const PORT = 3001
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🔥 Servidor rodando na porta ${PORT}`)
 })
-

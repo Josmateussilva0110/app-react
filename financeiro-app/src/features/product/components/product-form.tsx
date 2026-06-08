@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { productFormSchema, type ProductFormData, type ProductFormInput } from "@/schemas/product.schema"; // ← tudo do mesmo lugar
+import { productFormSchema, type ProductFormData, type ProductFormInput } from "@/schemas/product.schema"; 
 import { InfoSection } from "./info-section";
 import { PrioritySection } from "./priority-section";
 import { PaymentSection } from "./payment-section";
@@ -14,26 +14,31 @@ import { requestData } from "../../../services/request";
 import { useToast } from "@/context/toast.context";
 
 
+const DEFAULT_VALUES: ProductFormInput = {
+  name:        "",
+  price:       "",
+  priority:    "media",
+  paymentType: "nao_comprado",
+  category:    "compras",
+  date:        "",
+  finished:    false,
+  monthList:   false,
+};
+
 export function ProductForm() {
   const router = useRouter();
   const { show } = useToast();
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<ProductFormInput, unknown, ProductFormData>({
     resolver: zodResolver(productFormSchema), 
-    defaultValues: {
-      name:        "",
-      price:       "",
-      priority:    "media",
-      paymentType: "nao_comprado",
-      category:    "compras",
-      date:        "",
-      finished:    false,
-      monthList:   false,
-    },
+    defaultValues: DEFAULT_VALUES,
   });
+
+
 
   async function onSubmit(data: ProductFormData) {
     const response = await requestData<{ id: string }>({endpoint: "/product", method: "POST", data, withAuth: true})
@@ -41,6 +46,7 @@ export function ProductForm() {
       show("error", response.message);
       return;
     } 
+    reset(DEFAULT_VALUES);
     show("success", response.message);
     router.replace("/(protected)/month-list");
   }

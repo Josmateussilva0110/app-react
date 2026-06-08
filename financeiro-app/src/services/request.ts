@@ -50,7 +50,6 @@ export async function requestData<TResponse, TRequest = unknown>({
     return response.data;
   } catch (error) {
     const err = error as AxiosError<ApiResponse>;
-    console.error(error)
 
     return {
       success: false,

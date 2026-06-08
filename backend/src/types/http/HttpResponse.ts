@@ -1,5 +1,5 @@
 export interface HttpResponse<T = unknown> {
-  status: boolean
+  success: boolean
   message: string
   data?: T
   errors?: Array<{
