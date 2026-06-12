@@ -24,6 +24,7 @@ import {
 } from "@/lib/storage";
 
 import { useTheme } from "@/context/theme.context";
+import { useRouter } from "expo-router";
 
 type ProductCardProps = {
   p: Product;
@@ -66,6 +67,7 @@ export function ProductCard({
   onDelete,
 }: ProductCardProps): React.JSX.Element {
   const { colors: theme } = useTheme();
+  const router = useRouter();
 
   const config = priorityConfig[p.prioridade];
 
@@ -90,6 +92,10 @@ export function ProductCard({
   }
 
   return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/(protected)/product-detail/${p.id}` as any)}
+    >
     <View
       style={[
         styles.card,
@@ -206,8 +212,17 @@ export function ProductCard({
             </Text>
           </View>
         </View>
+
+        {/* Navigation hint */}
+        <View style={styles.footer}>
+          <View style={[styles.footerLine, { backgroundColor: theme.cardBorderDefault }]} />
+          <View style={[styles.chevronWrapper, { backgroundColor: theme.backgroundElement }]}>
+            <ChevronRight size={14} color={theme.cardChevron} />
+          </View>
+        </View>
       </View>
     </View>
+    </TouchableOpacity>
   );
 }
 
