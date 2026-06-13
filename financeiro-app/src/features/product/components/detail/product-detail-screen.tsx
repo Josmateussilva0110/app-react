@@ -6,6 +6,7 @@ import {
   Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
@@ -23,6 +24,7 @@ export function ProductDetailScreen({ product }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const { show } = useToast();
+  const insets = useSafeAreaInsets();
 
   // Fade-in suave do conteúdo ao montar
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,7 +53,10 @@ export function ProductDetailScreen({ product }: Props) {
         showsVerticalScrollIndicator={false}
         bounces
         overScrollMode="never"
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 14) + 64 + 24 },
+        ]}
       >
         {/* Hero — full-bleed, sem AppShell */}
         <ProductDetailHeader
@@ -77,9 +82,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  scrollContent: {},
   body: {
     paddingHorizontal: 20,
     paddingTop: 24,

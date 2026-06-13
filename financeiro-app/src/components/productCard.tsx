@@ -1,19 +1,11 @@
-// components/ProductCard.tsx
-
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 
 import {
-  Flame,
-  Sparkles,
-  Snowflake,
-  Trash2,
-  ChevronRight,
   User,
 } from "lucide-react-native";
 
@@ -64,32 +56,12 @@ const priorityConfig: Record<
 
 export function ProductCard({
   p,
-  onDelete,
 }: ProductCardProps): React.JSX.Element {
   const { colors: theme } = useTheme();
   const router = useRouter();
 
   const config = priorityConfig[p.prioridade];
 
-
-  function handleDelete(): void {
-    Alert.alert(
-      "Remover item",
-      `Deseja remover "${p.nome}"?`,
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: () => onDelete?.(p.id),
-        },
-      ]
-    );
-  }
 
   return (
     <TouchableOpacity
@@ -153,33 +125,6 @@ export function ProductCard({
                 {p.cadastradoPor}
               </Text>
             </View>
-
-            {/* Delete */}
-            {onDelete ? (
-              <TouchableOpacity
-                style={[
-                  styles.deleteButton,
-                  {
-                    backgroundColor:
-                      theme.cardDeleteBg,
-                  },
-                ]}
-                onPress={handleDelete}
-                hitSlop={{
-                  top: 8,
-                  bottom: 8,
-                  left: 8,
-                  right: 8,
-                }}
-              >
-                <Trash2
-                  size={15}
-                  color={
-                    theme.cardDeleteIcon
-                  }
-                />
-              </TouchableOpacity>
-            ) : null}
           </View>
         </View>
 
@@ -210,14 +155,6 @@ export function ProductCard({
             >
               {formatBRL(p.preco)}
             </Text>
-          </View>
-        </View>
-
-        {/* Navigation hint */}
-        <View style={styles.footer}>
-          <View style={[styles.footerLine, { backgroundColor: theme.cardBorderDefault }]} />
-          <View style={[styles.chevronWrapper, { backgroundColor: theme.backgroundElement }]}>
-            <ChevronRight size={14} color={theme.cardChevron} />
           </View>
         </View>
       </View>
