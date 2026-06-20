@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
 import { useTheme } from "@/context/theme.context";
-import type { Product } from "@/lib/storage";
+import type { ProductResponse } from "@app/shared";
 
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
@@ -23,7 +23,7 @@ import type { StatusFilter } from "../constants/home.constants";
 type ItemListScreenProps = {
   title: string;
   subtitle: string;
-  products: Product[];
+  products: ProductResponse[];
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
@@ -51,14 +51,14 @@ export function ItemListScreen({
     }
 
     return products.filter(
-      (product) => product.status === statusFilter
+      (product) => product.finished === (statusFilter === "finalizado")
     );
   }, [products, statusFilter]);
 
   const total = useMemo(
     () =>
       filteredProducts.reduce(
-        (sum, product) => sum + product.preco,
+        (sum, product) => sum + product.price,
         0
       ),
     [filteredProducts]
@@ -67,7 +67,7 @@ export function ItemListScreen({
   const highCount = useMemo(
     () =>
       filteredProducts.filter(
-        (product) => product.prioridade === "alta"
+        (product) => product.priority === "alta"
       ).length,
     [filteredProducts]
   );

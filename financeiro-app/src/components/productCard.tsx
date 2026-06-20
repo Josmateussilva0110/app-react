@@ -12,8 +12,11 @@ import {
 import {
   formatBRL,
   type Priority,
-  type Product,
 } from "@/lib/storage";
+
+import { ProductResponse } from "@app/shared";
+
+type Product = ProductResponse;
 
 import { useTheme } from "@/context/theme.context";
 import { useRouter } from "expo-router";
@@ -60,7 +63,7 @@ export function ProductCard({
   const { colors: theme } = useTheme();
   const router = useRouter();
 
-  const config = priorityConfig[p.prioridade];
+  const config = priorityConfig[p.priority];
 
 
   return (
@@ -122,7 +125,7 @@ export function ProductCard({
                   },
                 ]}
               >
-                {p.cadastradoPor}
+                {p.user_name}
               </Text>
             </View>
           </View>
@@ -141,7 +144,7 @@ export function ProductCard({
               ]}
               numberOfLines={1}
             >
-              {p.nome}
+              {p.name}
             </Text>
 
             <Text
@@ -153,7 +156,7 @@ export function ProductCard({
                 },
               ]}
             >
-              {formatBRL(p.preco)}
+              {formatBRL(p.price)}
             </Text>
           </View>
         </View>

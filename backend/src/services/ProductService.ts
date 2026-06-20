@@ -69,7 +69,7 @@ class ProductService {
 
             const { data: products, error, count } = await supabase
                 .from("products")
-                .select<string, ProductResponse>(PRODUCT_SELECT_FIELDS, { count: "exact" })
+                .select(`${PRODUCT_SELECT_FIELDS}, user_id`, { count: "exact" })
                 .order("date", { ascending: false })
                 .range(from, to)
 
@@ -84,12 +84,35 @@ class ProductService {
                 }
             }
 
+            const rows = products ?? []
+
+            // Resolve usernames from Supabase Auth in batch
+            const uniqueUserIds = [...new Set(rows.map((p: any) => p.user_id as string))]
+            const userMap = new Map<string, string>()
+
+            await Promise.all(
+                uniqueUserIds.map(async (uid) => {
+                    try {
+                        const { data } = await supabase.auth.admin.getUserById(uid)
+                        const username = data?.user?.user_metadata?.username ?? ""
+                        userMap.set(uid, username)
+                    } catch {
+                        userMap.set(uid, "")
+                    }
+                })
+            )
+
+            const items: ProductResponse[] = rows.map((p: any) => {
+                const { user_id, ...rest } = p
+                return { ...rest, user_name: userMap.get(user_id) ?? "" }
+            })
+
             const total = count ?? 0
 
             return {
                 status: true,
                 data: {
-                    items: products ?? [],
+                    items,
                     meta: {
                         total,
                         page,

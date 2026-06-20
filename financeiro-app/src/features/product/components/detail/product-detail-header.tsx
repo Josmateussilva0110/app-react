@@ -10,7 +10,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/theme.context";
-import { formatBRL, type Priority, type Product } from "@/lib/storage";
+import { formatBRL, type Priority } from "@/lib/storage";
+import { ProductResponse } from "@app/shared";
 
 const PRIORITY_CONFIG: Record<
   Priority,
@@ -22,14 +23,14 @@ const PRIORITY_CONFIG: Record<
 };
 
 interface Props {
-  product: Product;
+  product: ProductResponse;
   onBack: () => void;
 }
 
 export function ProductDetailHeader({ product, onBack }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const cfg = PRIORITY_CONFIG[product.prioridade];
+  const cfg = PRIORITY_CONFIG[product.priority];
   const Icon = cfg.icon;
 
   return (
@@ -99,7 +100,7 @@ export function ProductDetailHeader({ product, onBack }: Props) {
           style={[styles.productName, { color: colors.textSecondary }]}
           numberOfLines={2}
         >
-          {product.nome}
+          {product.name}
         </Text>
 
         {/* Eyebrow label — finance vernacular */}
@@ -113,7 +114,7 @@ export function ProductDetailHeader({ product, onBack }: Props) {
           adjustsFontSizeToFit
           numberOfLines={1}
         >
-          {formatBRL(product.preco)}
+          {formatBRL(product.price)}
         </Text>
       </View>
 

@@ -8,7 +8,7 @@ import {
 } from "lucide-react-native";
 
 import { useTheme } from "@/context/theme.context";
-import type { Product } from "@/lib/storage";
+import { ProductResponse } from "@app/shared";
 
 interface InfoRowProps {
   icon: LucideIcon;
@@ -60,13 +60,13 @@ function InfoRow({
 }
 
 interface Props {
-  product: Product;
+  product: ProductResponse;
 }
 
 export function ProductDetailInfo({ product }: Props) {
   const { colors } = useTheme();
 
-  const isFinished = product.status === "finalizado";
+  const isFinished = product.finished === true;
   const statusCfg = isFinished
     ? { label: "Finalizado", color: colors.alertTextSuccess, Icon: CheckCircle2 }
     : { label: "Pendente",   color: colors.alertTextDanger,  Icon: Clock };
@@ -121,7 +121,7 @@ export function ProductDetailInfo({ product }: Props) {
           iconColor={colors.primary}
           iconBg={`${colors.primary}15`}
           label="Cadastrado por"
-          value={product.cadastradoPor}
+          value={product.user_name}
         />
 
         <InfoRow
@@ -129,9 +129,9 @@ export function ProductDetailInfo({ product }: Props) {
           iconColor={colors.primary}
           iconBg={`${colors.primary}15`}
           label="Lista do mês"
-          value={product.lista_mes ? "Sim" : "Não"}
+          value={product.month_list ? "Sim" : "Não"}
           valueColor={
-            product.lista_mes ? colors.primary : colors.textSecondary
+            product.month_list ? colors.primary : colors.textSecondary
           }
           isLast
         />

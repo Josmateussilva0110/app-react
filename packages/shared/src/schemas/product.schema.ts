@@ -22,9 +22,25 @@ export const productSchema = z.object({
   monthList: z.boolean(),
 });
 
-
+/** Schema for the product as returned by the API */
+export const productResponseSchema = z.object({
+  id:           z.string(),
+  name:         z.string(),
+  price:        z.number(),
+  priority:     priorityEnum,
+  payment_type: paymentTypeEnum,
+  category:     categoryEnum,
+  date:         z.string(),
+  finished:     z.boolean(),
+  month_list:   z.union([z.boolean(), z.string()]),
+  user_name:    z.string(),
+  created_at:   z.string(),
+  updated_at:   z.string(),
+});
 
 export type CreateProductDTO = z.infer<typeof productSchema>;
+export type ProductResponse  = z.infer<typeof productResponseSchema>;
+
 export interface CreateProductInput extends CreateProductDTO {
     userId: string
 }

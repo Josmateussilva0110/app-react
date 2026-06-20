@@ -1,3 +1,5 @@
 import { ProductRow } from "./product-row";
 
-export type ProductResponse = Omit<ProductRow, "user_id">;
+export type ProductResponse = Omit<ProductRow, "user_id"> & {
+  user_name: string;
+};
