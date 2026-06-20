@@ -23,4 +23,7 @@ export const productSchema = z.object({
 });
 
 
+
+
 export type CreateProductDTO = z.infer<typeof productSchema>;
+

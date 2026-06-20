@@ -2,10 +2,21 @@ import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { supabase } from "../database/supabase/supabase"
 import { CreateProductDTO } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
+import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
+import { ProductResponse } from "../types/product/product-response"
+
 
 export interface CreateProductInput extends CreateProductDTO {
-  userId: string
+    userId: string
 }
+
+type PaginationParams = { page: number; limit: number }
+
+type PaginatedProducts = {
+    items: ProductResponse[]
+    meta: { total: number; page: number; limit: number; totalPages: number }
+}
+
 
 class ProductService {
     async create(data: CreateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
@@ -55,6 +66,64 @@ class ProductService {
                     code: ProductErrorCode.PRODUCT_CREATE_FAILED,
                     message: "Não foi possível cadastrar o produto. Tente novamente.",
                 },
+            }
+        }
+    }
+
+    async getAll({ page, limit }: PaginationParams): Promise<ServiceResult<PaginatedProducts, ProductErrorCode>> {
+        try {
+            const from = (page - 1) * limit
+            const to = from + limit - 1
+
+            const { data: products, error, count } = await supabase
+                .from("products")
+                .select(PRODUCT_SELECT_FIELDS, {
+                    count: "exact",
+                })
+                .order("date", { ascending: false })
+                .range(from, to)
+                .returns<ProductResponse[]>()
+
+            if (error) {
+                console.error("[ProductService.getAll] Supabase error:", error)
+                return {
+                    status: false,
+                    error: { code: ProductErrorCode.PRODUCT_FETCH_FAILED, message: "Não foi possível buscar os produtos." },
+                }
+            }
+
+            if (!products || products.length === 0) {
+                return {
+                    status: true,
+                    data: {
+                        items: products ?? [],
+                        meta: {
+                        total: count ?? 0,
+                        page,
+                        limit,
+                        totalPages: Math.ceil((count ?? 0) / limit),
+                        },
+                    },
+                };
+            }
+
+            return {
+                status: true,
+                data: {
+                    items: products,
+                    meta: {
+                        total: count ?? 0,
+                        page,
+                        limit,
+                        totalPages: Math.ceil((count ?? 0) / limit),
+                    },
+                },
+            }
+        } catch (error) {
+            console.error("[ProductService.getAll] error:", error)
+            return {
+                status: false,
+                error: { code: ProductErrorCode.PRODUCT_FETCH_FAILED, message: "Não foi possível buscar os produtos." },
             }
         }
     }
