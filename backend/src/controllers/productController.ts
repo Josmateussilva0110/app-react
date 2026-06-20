@@ -2,14 +2,7 @@ import { Request, Response } from "express"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
-import { z } from "zod"
-
-
-const paginationSchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-})
-
+import { paginationSchema } from "../types/pagination/pagination-schema"
 
 
 class ProductController {

@@ -8,6 +8,6 @@ import { rateLimiter } from "../middleware/rateLimiter";
 const router = Router();
 
 router.post("/product", authMiddleware, validate(productSchema), ProductController.create);
-router.get("/products", rateLimiter, ProductController.getAll);
+router.get("/products", authMiddleware, rateLimiter, ProductController.getAll);
 
 export default router;

@@ -24,6 +24,7 @@ export const productSchema = z.object({
 
 
 
-
 export type CreateProductDTO = z.infer<typeof productSchema>;
-
+export interface CreateProductInput extends CreateProductDTO {
+    userId: string
+}

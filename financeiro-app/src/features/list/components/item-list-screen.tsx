@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
+import { useTheme } from "@/context/theme.context";
 import type { Product } from "@/lib/storage";
 
 import { HomeSummaryCard } from "./home-summary-card";
@@ -15,6 +24,9 @@ type ItemListScreenProps = {
   title: string;
   subtitle: string;
   products: Product[];
+  loading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
   showSummary?: boolean;
   showFab?: boolean;
 };
@@ -23,9 +35,13 @@ export function ItemListScreen({
   title,
   subtitle,
   products,
+  loading = false,
+  error = null,
+  onRefresh,
   showSummary = true,
   showFab = true,
 }: ItemListScreenProps) {
+  const { colors } = useTheme();
   const [statusFilter, setStatusFilter] =
     useState<StatusFilter>("todos");
 
@@ -56,12 +72,57 @@ export function ItemListScreen({
     [filteredProducts]
   );
 
+  if (loading && products.length === 0) {
+    return (
+      <AppShell title={title} subtitle={subtitle}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Carregando produtos…
+          </Text>
+        </View>
+      </AppShell>
+    );
+  }
+
+  if (error && products.length === 0) {
+    return (
+      <AppShell title={title} subtitle={subtitle}>
+        <View style={styles.centered}>
+          <Text style={[styles.errorText, { color: colors.error }]}>
+            {error}
+          </Text>
+          {onRefresh && (
+            <TouchableOpacity
+              onPress={onRefresh}
+              activeOpacity={0.7}
+              style={[styles.retryBtn, { borderColor: colors.primary }]}
+            >
+              <Text style={[styles.retryText, { color: colors.primary }]}>
+                Tentar novamente
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell title={title} subtitle={subtitle}>
       <SafeAreaView style={styles.container} edges={["bottom"]}>
         <ScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={onRefresh}
+                tintColor={colors.primary}
+              />
+            ) : undefined
+          }
         >
           {showSummary && (
             <HomeSummaryCard
@@ -95,5 +156,34 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
     gap: 20,
+  },
+  centered: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    padding: 24,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 15,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  retryBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

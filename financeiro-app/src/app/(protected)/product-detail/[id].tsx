@@ -12,7 +12,7 @@ export default function ProductDetailPage() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const products = useProducts();
+  const { products } = useProducts();
 
   const product = products.find((p) => p.id === id);
 
