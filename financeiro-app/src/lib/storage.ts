@@ -1,79 +1,56 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { requestData } from "@/services/request";
+import type { ProductResponse } from "@app/shared";
 
-export type Priority =
-  | "alta"
-  | "media"
-  | "baixa";
+export type Priority = "alta" | "media" | "baixa";
 
-export type Status = 'pendente' | 'finalizado';
+export type Status = "pendente" | "finalizado";
 
-export type Product = {
-  id: string;
-  nome: string;
-  preco: number;
-  prioridade: Priority;
-  status: Status;
-  lista_mes: boolean; 
-  cadastradoPor: string;
+
+type UseProductsReturn = {
+  products: ProductResponse[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
 };
 
-const mockProducts: Product[] = [
-  {
-    id: "1",
-    nome: "Notebook",
-    preco: 3500,
-    prioridade: "alta",
-    status: "pendente",
-    lista_mes: true,
-    cadastradoPor: "Mateus",
-  },
+export function useProducts(): UseProductsReturn {
+  const [products, setProducts] = useState<ProductResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  {
-    id: "4",
-    nome: "Teste",
-    preco: 2500,
-    prioridade: "alta",
-    status: "finalizado",
-    lista_mes: false,
-    cadastradoPor: "Mateus",
-  },
+  const fetchProducts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
 
-  {
-    id: "2",
-    nome: "Teclado",
-    preco: 250,
-    prioridade: "media",
-    status: "finalizado",
-    lista_mes: true,
-    cadastradoPor: "Mateus",
-  },
+    const response = await requestData<ProductResponse[], { page: number; limit: number }>({
+      endpoint: "/products",
+      method: "GET",
+      data: { page: 1, limit: 20 },
+      withAuth: true,
+    });
 
-  {
-    id: "3",
-    nome: "Mouse Pad",
-    preco: 80,
-    prioridade: "baixa",
-    status: "finalizado",
-    lista_mes: true,
-    cadastradoPor: "Mateus",
-  },
-];
 
-export function useProducts(): Product[] {
-  const [products] =
-    useState<Product[]>(mockProducts);
+    if (!response.success || !response.data) {
+      setError(response.message);
+      setProducts([]);
+    } else {
+      setProducts(response.data);
+    }
 
-  return products;
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  return { products, loading, error, refetch: fetchProducts };
 }
 
-export function formatBRL(
-  value: number
-): string {
-  return new Intl.NumberFormat(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-    }
-  ).format(value);
+export function formatBRL(value: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }

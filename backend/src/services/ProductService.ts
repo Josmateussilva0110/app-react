@@ -1,11 +1,14 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { supabase } from "../database/supabase/supabase"
-import { CreateProductDTO } from "@app/shared"
+import { CreateProductInput } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
+import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
+import { ProductResponse } from "../types/product/product-response"
+import { PaginationParams, PaginatedProducts } from "../types/pagination/pagination-schema"
 
-export interface CreateProductInput extends CreateProductDTO {
-  userId: string
-}
+
+
+
 
 class ProductService {
     async create(data: CreateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
@@ -54,6 +57,77 @@ class ProductService {
                 error: {
                     code: ProductErrorCode.PRODUCT_CREATE_FAILED,
                     message: "Não foi possível cadastrar o produto. Tente novamente.",
+                },
+            }
+        }
+    }
+
+    async getAll({ page, limit }: PaginationParams): Promise<ServiceResult<PaginatedProducts, ProductErrorCode>> {
+        try {
+            const from = (page - 1) * limit
+            const to = from + limit - 1
+
+            const { data: products, error, count } = await supabase
+                .from("products")
+                .select(`${PRODUCT_SELECT_FIELDS}, user_id`, { count: "exact" })
+                .order("date", { ascending: false })
+                .range(from, to)
+
+            if (error) {
+                console.error("[ProductService.getAll] Supabase error:", error)
+                return {
+                    status: false,
+                    error: {
+                        code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                        message: "Não foi possível buscar os produtos.",
+                    },
+                }
+            }
+
+            const rows = products ?? []
+
+            // Resolve usernames from Supabase Auth in batch
+            const uniqueUserIds = [...new Set(rows.map((p: any) => p.user_id as string))]
+            const userMap = new Map<string, string>()
+
+            await Promise.all(
+                uniqueUserIds.map(async (uid) => {
+                    try {
+                        const { data } = await supabase.auth.admin.getUserById(uid)
+                        const username = data?.user?.user_metadata?.username ?? ""
+                        userMap.set(uid, username)
+                    } catch {
+                        userMap.set(uid, "")
+                    }
+                })
+            )
+
+            const items: ProductResponse[] = rows.map((p: any) => {
+                const { user_id, ...rest } = p
+                return { ...rest, user_name: userMap.get(user_id) ?? "" }
+            })
+
+            const total = count ?? 0
+
+            return {
+                status: true,
+                data: {
+                    items,
+                    meta: {
+                        total,
+                        page,
+                        limit,
+                        totalPages: Math.ceil(total / limit),
+                    },
+                },
+            }
+        } catch (error) {
+            console.error("[ProductService.getAll] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                    message: "Não foi possível buscar os produtos.",
                 },
             }
         }

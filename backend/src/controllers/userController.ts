@@ -9,12 +9,12 @@ class UserController {
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
-        result.error!.code,
+        result.error.code,
         userErrorHttpStatusMap
       )
       return response.status(httpStatus).json({
         success: false,
-        message: result.error?.message,
+        message: result.error.message,
       })
     }
 
@@ -30,12 +30,12 @@ class UserController {
     const result = await UserService.login(email, password)
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
-        result.error!.code,
+        result.error.code,
         userErrorHttpStatusMap
       )
       return response.status(httpStatus).json({
         success: false,
-        message: result.error?.message,
+        message: result.error.message,
       })
     }
 
@@ -53,12 +53,12 @@ class UserController {
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
-        result.error!.code,
+        result.error.code,
         userErrorHttpStatusMap
       )
       return response.status(httpStatus).json({
         success: false,
-        message: result.error?.message,
+        message: result.error.message,
       })
     }
 
@@ -82,12 +82,12 @@ class UserController {
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
-        result.error!.code,
+        result.error.code,
         userErrorHttpStatusMap
       )
       return response.status(httpStatus).json({
         success: false,
-        message: result.error?.message,
+        message: result.error.message,
       })
     }
 

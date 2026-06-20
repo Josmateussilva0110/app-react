@@ -1,9 +1,13 @@
-import { ScrollView, StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { useRef, useEffect } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Animated,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppShell } from "@/components/appShell";
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import type { Product } from "@/lib/storage";
@@ -20,68 +24,69 @@ export function ProductDetailScreen({ product }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const { show } = useToast();
+  const insets = useSafeAreaInsets();
 
-  const backButton = (
-    <TouchableOpacity
-      onPress={() => router.back()}
-      activeOpacity={0.7}
-      style={[styles.backButton, { backgroundColor: colors.backgroundElement }]}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-    >
-      <ArrowLeft size={18} color={colors.textSecondary} />
-    </TouchableOpacity>
-  );
+  // Fade-in suave do conteúdo ao montar
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 280,
+      delay: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   function handleEdit() {
-    // TODO: navegar para tela de edição quando implementada
     show("info", "Funcionalidade de edição em breve");
   }
 
   function handleDelete() {
-    // TODO: chamar API de exclusão
     show("success", `"${product.nome}" removido com sucesso`);
     router.back();
   }
 
   return (
-    <AppShell
-      title="Detalhes"
-      subtitle={product.nome}
-      rightElement={backButton}
-      showSettings={false}
-    >
-      <SafeAreaView style={styles.safe} edges={["bottom"]}>
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <ProductDetailHeader product={product} />
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces
+        overScrollMode="never"
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 14) + 64 + 24 },
+        ]}
+      >
+        {/* Hero — full-bleed, sem AppShell */}
+        <ProductDetailHeader
+          product={product}
+          onBack={() => router.back()}
+        />
+
+        {/* Corpo com fade-in */}
+        <Animated.View style={[styles.body, { opacity: fadeAnim }]}>
           <ProductDetailInfo product={product} />
           <ProductDetailActions
             productName={product.nome}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
-        </ScrollView>
-      </SafeAreaView>
-    </AppShell>
+        </Animated.View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  root: {
     flex: 1,
   },
-  content: {
-    padding: 20,
-    paddingBottom: 100,
-    gap: 20,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  scrollContent: {},
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 52,
+    gap: 16,
   },
 });

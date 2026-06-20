@@ -1,27 +1,22 @@
-// components/ProductCard.tsx
-
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 
 import {
-  Flame,
-  Sparkles,
-  Snowflake,
-  Trash2,
-  ChevronRight,
   User,
 } from "lucide-react-native";
 
 import {
   formatBRL,
   type Priority,
-  type Product,
 } from "@/lib/storage";
+
+import { ProductResponse } from "@app/shared";
+
+type Product = ProductResponse;
 
 import { useTheme } from "@/context/theme.context";
 import { useRouter } from "expo-router";
@@ -64,32 +59,12 @@ const priorityConfig: Record<
 
 export function ProductCard({
   p,
-  onDelete,
 }: ProductCardProps): React.JSX.Element {
   const { colors: theme } = useTheme();
   const router = useRouter();
 
-  const config = priorityConfig[p.prioridade];
+  const config = priorityConfig[p.priority];
 
-
-  function handleDelete(): void {
-    Alert.alert(
-      "Remover item",
-      `Deseja remover "${p.nome}"?`,
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: () => onDelete?.(p.id),
-        },
-      ]
-    );
-  }
 
   return (
     <TouchableOpacity
@@ -150,36 +125,9 @@ export function ProductCard({
                   },
                 ]}
               >
-                {p.cadastradoPor}
+                {p.user_name}
               </Text>
             </View>
-
-            {/* Delete */}
-            {onDelete ? (
-              <TouchableOpacity
-                style={[
-                  styles.deleteButton,
-                  {
-                    backgroundColor:
-                      theme.cardDeleteBg,
-                  },
-                ]}
-                onPress={handleDelete}
-                hitSlop={{
-                  top: 8,
-                  bottom: 8,
-                  left: 8,
-                  right: 8,
-                }}
-              >
-                <Trash2
-                  size={15}
-                  color={
-                    theme.cardDeleteIcon
-                  }
-                />
-              </TouchableOpacity>
-            ) : null}
           </View>
         </View>
 
@@ -196,7 +144,7 @@ export function ProductCard({
               ]}
               numberOfLines={1}
             >
-              {p.nome}
+              {p.name}
             </Text>
 
             <Text
@@ -208,16 +156,8 @@ export function ProductCard({
                 },
               ]}
             >
-              {formatBRL(p.preco)}
+              {formatBRL(p.price)}
             </Text>
-          </View>
-        </View>
-
-        {/* Navigation hint */}
-        <View style={styles.footer}>
-          <View style={[styles.footerLine, { backgroundColor: theme.cardBorderDefault }]} />
-          <View style={[styles.chevronWrapper, { backgroundColor: theme.backgroundElement }]}>
-            <ChevronRight size={14} color={theme.cardChevron} />
           </View>
         </View>
       </View>

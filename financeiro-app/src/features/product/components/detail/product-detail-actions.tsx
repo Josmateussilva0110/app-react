@@ -15,23 +15,19 @@ export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
   function handleDelete() {
     Alert.alert(
       "Remover item",
-      `Deseja remover "${productName}"? Esta ação não pode ser desfeita.`,
+      `Deseja remover "${productName}"?\nEsta ação não pode ser desfeita.`,
       [
         { text: "Cancelar", style: "cancel" },
-        {
-          text: "Remover",
-          style: "destructive",
-          onPress: onDelete,
-        },
+        { text: "Remover",  style: "destructive", onPress: onDelete },
       ]
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Edit button */}
+      {/* Editar — gradient primário */}
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         onPress={onEdit}
         style={styles.editWrap}
       >
@@ -39,28 +35,28 @@ export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
           colors={[colors.fabGradientStart, colors.fabGradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.editButton}
+          style={styles.editBtn}
         >
-          <Pencil size={18} color="#fff" />
-          <Text style={styles.editText}>Editar Produto</Text>
+          <Pencil size={16} color="#fff" strokeWidth={2.5} />
+          <Text style={styles.editText}>Editar Item</Text>
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Delete button */}
+      {/* Remover — outlined danger */}
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.7}
         onPress={handleDelete}
         style={[
-          styles.deleteButton,
+          styles.deleteBtn,
           {
-            backgroundColor: colors.cardBackground,
-            borderColor: `${colors.error}30`,
+            backgroundColor: `${colors.error}0C`,
+            borderColor: `${colors.error}28`,
           },
         ]}
       >
-        <Trash2 size={18} color={colors.error} />
+        <Trash2 size={16} color={colors.error} strokeWidth={2.5} />
         <Text style={[styles.deleteText, { color: colors.error }]}>
-          Remover
+          Remover Item
         </Text>
       </TouchableOpacity>
     </View>
@@ -69,15 +65,16 @@ export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: 10,
+    marginTop: 4,
   },
   editWrap: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: "hidden",
   },
-  editButton: {
-    height: 56,
-    borderRadius: 16,
+  editBtn: {
+    height: 58,
+    borderRadius: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -85,13 +82,13 @@ const styles = StyleSheet.create({
   },
   editText: {
     color: "#fff",
-    fontWeight: "700",
     fontSize: 16,
+    fontWeight: "700",
     letterSpacing: 0.2,
   },
-  deleteButton: {
-    height: 56,
-    borderRadius: 16,
+  deleteBtn: {
+    height: 58,
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -99,8 +96,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   deleteText: {
-    fontWeight: "700",
     fontSize: 16,
+    fontWeight: "700",
     letterSpacing: 0.2,
   },
 });
