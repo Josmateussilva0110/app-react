@@ -1,8 +1,9 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
-import { supabase } from "../database/supabase/supabase"
+import { supabaseAuth } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
 import { createClient } from "@supabase/supabase-js"
+import { env } from "../config/env"
 
 interface RegisterDTO {
     username: string
@@ -15,7 +16,7 @@ class UserService {
         try {
             const { username, email, password } = data
 
-            const { error } = await supabase.auth.signUp({
+            const { error } = await supabaseAuth.auth.signUp({
                 email,
                 password,
                 options: {
@@ -60,7 +61,7 @@ class UserService {
 
     async login(email: string, password: string): Promise<ServiceResult<AuthTokens, UserErrorCode>> {
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseAuth.auth.signInWithPassword({
                 email,
                 password,
             })
@@ -103,8 +104,8 @@ class UserService {
     async logout(accessToken: string): Promise<ServiceResult<null, UserErrorCode>> {
         try {
             const userClient = createClient(
-                process.env.SUPABASE_URL!,
-                process.env.SUPABASE_ANON_KEY!,
+                env.SUPABASE_URL,
+                env.SUPABASE_ANON_KEY,
                 { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
             )
 
@@ -129,7 +130,7 @@ class UserService {
 
     async refresh(refreshToken: string): Promise<ServiceResult<AuthTokens, UserErrorCode>> {
         try {
-            const { data, error } = await supabase.auth.refreshSession({
+            const { data, error } = await supabaseAuth.auth.refreshSession({
                 refresh_token: refreshToken,
             })
 

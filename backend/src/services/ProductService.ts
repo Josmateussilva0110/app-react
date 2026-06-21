@@ -1,14 +1,10 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
-import { supabase } from "../database/supabase/supabase"
+import { supabaseAdmin } from "../database/supabase/supabase"
 import { CreateProductInput } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
 import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
 import { ProductResponse } from "../types/product/product-response"
 import { PaginationParams, PaginatedProducts } from "../types/pagination/pagination-schema"
-
-
-
-
 
 class ProductService {
     async create(data: CreateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
@@ -18,7 +14,7 @@ class ProductService {
             const [day, month, year] = date.split("/")
             const isoDate = `${year}-${month}-${day}`
 
-            const { data: product, error } = await supabase
+            const { data: product, error } = await supabaseAdmin
                 .from("products")
                 .insert({
                     user_id: data.userId,  // snake_case
@@ -67,7 +63,7 @@ class ProductService {
             const from = (page - 1) * limit
             const to = from + limit - 1
 
-            const { data: products, error, count } = await supabase
+            const { data: products, error, count } = await supabaseAdmin
                 .from("products")
                 .select(`${PRODUCT_SELECT_FIELDS}, user_id`, { count: "exact" })
                 .order("date", { ascending: false })
@@ -93,7 +89,7 @@ class ProductService {
             await Promise.all(
                 uniqueUserIds.map(async (uid) => {
                     try {
-                        const { data } = await supabase.auth.admin.getUserById(uid)
+                        const { data } = await supabaseAdmin.auth.admin.getUserById(uid)
                         const username = data?.user?.user_metadata?.username ?? ""
                         userMap.set(uid, username)
                     } catch {
