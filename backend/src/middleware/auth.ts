@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express"
-import { supabase } from "../database/supabase/supabase"
+import { supabaseAdmin } from "../database/supabase/supabase"
 
 export async function authMiddleware(request: Request, response: Response, next: NextFunction): Promise<void> {
   const authHeader = request.headers.authorization
@@ -11,7 +11,7 @@ export async function authMiddleware(request: Request, response: Response, next:
 
   const token = authHeader.split(" ")[1]
 
-  const { data, error } = await supabase.auth.getUser(token)
+  const { data, error } = await supabaseAdmin.auth.getUser(token)
 
   if (error || !data.user) {
     response.status(401).json({ success: false, message: "Token inválido ou expirado" })

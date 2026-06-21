@@ -30,7 +30,6 @@ export function useProducts(): UseProductsReturn {
       withAuth: true,
     });
 
-
     if (!response.success || !response.data) {
       setError(response.message);
       setProducts([]);

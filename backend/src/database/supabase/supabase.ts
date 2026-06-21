@@ -1,9 +1,23 @@
 import { createClient } from "@supabase/supabase-js"
-import dotenv from "dotenv"
+import { env } from "../../config/env"
 
-dotenv.config({ path: "../.env" })
+const clientOptions = {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+    },
+} as const
 
-export const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+/** Bypasses RLS — use only for server-side DB and admin auth APIs. */
+export const supabaseAdmin = createClient(
+    env.SUPABASE_URL,
+    env.SUPABASE_SERVICE_ROLE_KEY,
+    clientOptions
+)
+
+/** Auth flows (login/register/refresh) — must not share session with supabaseAdmin. */
+export const supabaseAuth = createClient(
+    env.SUPABASE_URL,
+    env.SUPABASE_ANON_KEY,
+    clientOptions
 )
