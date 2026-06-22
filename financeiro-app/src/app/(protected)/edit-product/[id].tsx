@@ -94,6 +94,7 @@ export default function EditProductScreen() {
   return (
     <AppShell title="Editar Produto" subtitle={product.name}>
       <ProductForm
+        key={product.id}
         mode="edit"
         productId={product.id}
         initialValues={productToFormValues(product)}

@@ -26,7 +26,7 @@ export function useProducts(): UseProductsReturn {
     const response = await requestData<ProductResponse[], { page: number; limit: number }>({
       endpoint: "/products",
       method: "GET",
-      data: { page: 1, limit: 20 },
+      data: { page: 1, limit: 100 },
       withAuth: true,
     });
 
