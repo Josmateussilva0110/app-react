@@ -44,3 +44,8 @@ export type ProductResponse  = z.infer<typeof productResponseSchema>;
 export interface CreateProductInput extends CreateProductDTO {
     userId: string
 }
+
+export interface UpdateProductInput extends CreateProductDTO {
+    id: string
+    userId: string
+}

@@ -7,9 +7,10 @@ interface Props {
   productName: string;
   onEdit: () => void;
   onDelete: () => void;
+  deleting?: boolean;
 }
 
-export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
+export function ProductDetailActions({ productName, onEdit, onDelete, deleting = false }: Props) {
   const { colors } = useTheme();
 
   function handleDelete() {
@@ -29,7 +30,8 @@ export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onEdit}
-        style={styles.editWrap}
+        disabled={deleting}
+        style={[styles.editWrap, deleting && styles.disabled]}
       >
         <LinearGradient
           colors={[colors.fabGradientStart, colors.fabGradientEnd]}
@@ -46,17 +48,19 @@ export function ProductDetailActions({ productName, onEdit, onDelete }: Props) {
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={handleDelete}
+        disabled={deleting}
         style={[
           styles.deleteBtn,
           {
             backgroundColor: `${colors.error}0C`,
             borderColor: `${colors.error}28`,
           },
+          deleting && styles.disabled,
         ]}
       >
         <Trash2 size={16} color={colors.error} strokeWidth={2.5} />
         <Text style={[styles.deleteText, { color: colors.error }]}>
-          Remover Item
+          {deleting ? "Removendo…" : "Remover Item"}
         </Text>
       </TouchableOpacity>
     </View>
@@ -67,6 +71,9 @@ const styles = StyleSheet.create({
   container: {
     gap: 10,
     marginTop: 4,
+  },
+  disabled: {
+    opacity: 0.65,
   },
   editWrap: {
     borderRadius: 18,

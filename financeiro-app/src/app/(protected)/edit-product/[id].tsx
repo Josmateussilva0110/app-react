@@ -1,43 +1,33 @@
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
 import { ArrowLeft, PackageX } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useProducts } from "@/lib/storage";
+import { AppShell } from "@/components/appShell";
 import { useTheme } from "@/context/theme.context";
-import { ProductDetailScreen } from "@/features/product/components/detail";
+import { useProducts } from "@/lib/storage";
+import { productToFormValues } from "@/lib/product.utils";
+import { ProductForm } from "@/features/product/components/product-form";
 
-export default function ProductDetailPage() {
+export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { products, loading, refetch } = useProducts();
 
-  const product = products.find((p) => p.id === id);
+  const product = products.find((item) => item.id === id);
 
   if (loading && !product) {
     return (
-      <View
-        style={[
-          styles.loadingRoot,
-          {
-            backgroundColor: colors.background,
-            paddingTop: insets.top + 12,
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Carregando item…
-        </Text>
-      </View>
+      <AppShell title="Editar Produto" subtitle="Carregando dados do item">
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+            Carregando produto…
+          </Text>
+        </View>
+      </AppShell>
     );
   }
 
@@ -63,7 +53,6 @@ export default function ProductDetailPage() {
               borderColor: colors.cardBorderDefault,
             },
           ]}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <ArrowLeft size={17} color={colors.text} strokeWidth={2.2} />
         </TouchableOpacity>
@@ -79,13 +68,7 @@ export default function ProductDetailPage() {
           </View>
 
           <Text style={[styles.errorTitle, { color: colors.text }]}>
-            Item não encontrado
-          </Text>
-
-          <Text
-            style={[styles.errorSubtitle, { color: colors.textSecondary }]}
-          >
-            Este item pode ter sido removido ou não existe mais na sua lista.
+            Produto não encontrado
           </Text>
 
           <TouchableOpacity
@@ -108,24 +91,33 @@ export default function ProductDetailPage() {
     );
   }
 
-  return <ProductDetailScreen product={product} onDeleted={refetch} />;
+  return (
+    <AppShell title="Editar Produto" subtitle={product.name}>
+      <ProductForm
+        mode="edit"
+        productId={product.id}
+        initialValues={productToFormValues(product)}
+        onSuccess={refetch}
+      />
+    </AppShell>
+  );
 }
 
 const styles = StyleSheet.create({
-  loadingRoot: {
+  centered: {
     flex: 1,
-    paddingHorizontal: 24,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-  },
-  errorRoot: {
-    flex: 1,
-    paddingHorizontal: 24,
+    padding: 24,
   },
   loadingText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  errorRoot: {
+    flex: 1,
+    paddingHorizontal: 24,
   },
   backBtn: {
     width: 38,
@@ -155,13 +147,6 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: "700",
     letterSpacing: -0.3,
-  },
-  errorSubtitle: {
-    fontSize: 14,
-    fontWeight: "400",
-    textAlign: "center",
-    lineHeight: 21,
-    maxWidth: 240,
   },
   errorBtn: {
     marginTop: 16,
