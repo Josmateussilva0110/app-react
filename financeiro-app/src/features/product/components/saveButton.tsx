@@ -5,13 +5,20 @@ import { useTheme } from "@/context/theme.context";
 
 interface SaveButtonProps {
   onPress: () => void;
+  label?: string;
+  loading?: boolean;
 }
 
-export function SaveButton({ onPress }: SaveButtonProps) {
+export function SaveButton({ onPress, label = "Salvar Produto", loading = false }: SaveButtonProps) {
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.wrap}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      disabled={loading}
+      style={[styles.wrap, loading && styles.disabled]}
+    >
       <LinearGradient
         colors={[colors.fabGradientStart, colors.fabGradientEnd]}
         start={{ x: 0, y: 0 }}
@@ -19,7 +26,7 @@ export function SaveButton({ onPress }: SaveButtonProps) {
         style={styles.button}
       >
         <Save size={20} color="#fff" />
-        <Text style={styles.text}>Salvar Produto</Text>
+        <Text style={styles.text}>{loading ? "Salvando…" : label}</Text>
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -30,6 +37,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderRadius: 16,
     overflow: "hidden",
+  },
+  disabled: {
+    opacity: 0.65,
   },
   button: {
     height: 56,

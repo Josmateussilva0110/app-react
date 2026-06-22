@@ -59,6 +59,13 @@ export default function ProtectedLayout() {
           href: null,
         }}
       />
+
+      <Tabs.Screen
+        name="edit-product/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

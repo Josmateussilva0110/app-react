@@ -1,8 +1,16 @@
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import { useProducts } from "@/lib/storage";
 
 export default function HomeScreen() {
   const { products, loading, error, refetch } = useProducts();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
 
   return (
     <ItemListScreen

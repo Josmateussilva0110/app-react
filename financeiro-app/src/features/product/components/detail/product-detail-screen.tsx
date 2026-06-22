@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -10,21 +10,25 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
-import type { Product } from "@/lib/storage";
+import type { ProductResponse } from "@app/shared";
+
+import { requestData } from "@/services/request";
 
 import { ProductDetailHeader } from "./product-detail-header";
 import { ProductDetailInfo } from "./product-detail-info";
 import { ProductDetailActions } from "./product-detail-actions";
 
 interface Props {
-  product: Product;
+  product: ProductResponse;
+  onDeleted?: () => void;
 }
 
-export function ProductDetailScreen({ product }: Props) {
+export function ProductDetailScreen({ product, onDeleted }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const { show } = useToast();
   const insets = useSafeAreaInsets();
+  const [deleting, setDeleting] = useState(false);
 
   // Fade-in suave do conteúdo ao montar
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -39,11 +43,27 @@ export function ProductDetailScreen({ product }: Props) {
   }, [fadeAnim]);
 
   function handleEdit() {
-    show("info", "Funcionalidade de edição em breve");
+    router.push(`/(protected)/edit-product/${product.id}` as any);
   }
 
-  function handleDelete() {
-    show("success", `"${product.nome}" removido com sucesso`);
+  async function handleDelete() {
+    setDeleting(true);
+
+    const response = await requestData({
+      endpoint: `/products/${product.id}`,
+      method: "DELETE",
+      withAuth: true,
+    });
+
+    setDeleting(false);
+
+    if (!response.success) {
+      show("error", response.message);
+      return;
+    }
+
+    show("success", response.message);
+    onDeleted?.();
     router.back();
   }
 
@@ -68,9 +88,10 @@ export function ProductDetailScreen({ product }: Props) {
         <Animated.View style={[styles.body, { opacity: fadeAnim }]}>
           <ProductDetailInfo product={product} />
           <ProductDetailActions
-            productName={product.nome}
+            productName={product.name}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            deleting={deleting}
           />
         </Animated.View>
       </ScrollView>

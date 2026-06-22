@@ -3,6 +3,7 @@ import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
 import { paginationSchema } from "../types/pagination/pagination-schema"
+import { ProductIdParam } from "../types/product/product-id-param"
 
 
 class ProductController {
@@ -60,6 +61,53 @@ class ProductController {
       data: result.data.items,
       meta: result.data.meta,
     });
+  }
+
+  async update(request: Request, response: Response) {
+    const userId = request.user.id
+    const { id } = request.params as ProductIdParam
+
+    const result = await ProductService.update({ ...request.body, id, userId })
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        productErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Produto atualizado com sucesso",
+      data: result.data,
+    })
+  }
+
+  async delete(request: Request, response: Response) {
+    const userId = request.user.id
+    const { id } = request.params as ProductIdParam
+
+    const result = await ProductService.delete(id, userId)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        productErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Produto removido com sucesso",
+    })
   }
 }
 

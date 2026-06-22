@@ -4,11 +4,20 @@ import {
   Clock,
   User,
   CalendarCheck,
+  Calendar,
+  CreditCard,
+  Tag,
   type LucideIcon,
 } from "lucide-react-native";
 
 import { useTheme } from "@/context/theme.context";
 import { ProductResponse } from "@app/shared";
+import {
+  formatProductDate,
+  getCategoryLabel,
+  getPaymentLabel,
+  isMonthList,
+} from "@/lib/product.utils";
 
 interface InfoRowProps {
   icon: LucideIcon;
@@ -67,6 +76,7 @@ export function ProductDetailInfo({ product }: Props) {
   const { colors } = useTheme();
 
   const isFinished = product.finished === true;
+  const inMonthList = isMonthList(product.month_list);
   const statusCfg = isFinished
     ? { label: "Finalizado", color: colors.alertTextSuccess, Icon: CheckCircle2 }
     : { label: "Pendente",   color: colors.alertTextDanger,  Icon: Clock };
@@ -90,14 +100,12 @@ export function ProductDetailInfo({ product }: Props) {
         },
       ]}
     >
-      {/* Card header — extrato style */}
       <View style={styles.cardHeader}>
         <Text style={[styles.cardTitle, { color: colors.textSecondary }]}>
           INFORMAÇÕES
         </Text>
       </View>
 
-      {/* Full-bleed divider — receipt aesthetic */}
       <View
         style={[
           styles.fullDivider,
@@ -105,7 +113,6 @@ export function ProductDetailInfo({ product }: Props) {
         ]}
       />
 
-      {/* Rows */}
       <View style={styles.rows}>
         <InfoRow
           icon={statusCfg.Icon}
@@ -117,11 +124,35 @@ export function ProductDetailInfo({ product }: Props) {
         />
 
         <InfoRow
+          icon={Calendar}
+          iconColor={colors.primary}
+          iconBg={`${colors.primary}15`}
+          label="Data"
+          value={formatProductDate(product.date)}
+        />
+
+        <InfoRow
+          icon={Tag}
+          iconColor={colors.primary}
+          iconBg={`${colors.primary}15`}
+          label="Categoria"
+          value={getCategoryLabel(product.category)}
+        />
+
+        <InfoRow
+          icon={CreditCard}
+          iconColor={colors.primary}
+          iconBg={`${colors.primary}15`}
+          label="Pagamento"
+          value={getPaymentLabel(product.payment_type)}
+        />
+
+        <InfoRow
           icon={User}
           iconColor={colors.primary}
           iconBg={`${colors.primary}15`}
           label="Cadastrado por"
-          value={product.user_name}
+          value={product.user_name || "—"}
         />
 
         <InfoRow
@@ -129,10 +160,8 @@ export function ProductDetailInfo({ product }: Props) {
           iconColor={colors.primary}
           iconBg={`${colors.primary}15`}
           label="Lista do mês"
-          value={product.month_list ? "Sim" : "Não"}
-          valueColor={
-            product.month_list ? colors.primary : colors.textSecondary
-          }
+          value={inMonthList ? "Sim" : "Não"}
+          valueColor={inMonthList ? colors.primary : colors.textSecondary}
           isLast
         />
       </View>
@@ -171,7 +200,7 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: 46, // alinha com o texto, não com o ícone
+    marginLeft: 46,
   },
   rowLeft: {
     flexDirection: "row",
@@ -194,5 +223,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     letterSpacing: 0.1,
+    flexShrink: 1,
+    textAlign: "right",
+    marginLeft: 12,
   },
 });

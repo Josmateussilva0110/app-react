@@ -7,12 +7,14 @@ import {
 
 import {
   User,
+  Calendar,
 } from "lucide-react-native";
 
 import {
   formatBRL,
   type Priority,
 } from "@/lib/storage";
+import { formatProductDate, getCategoryLabel } from "@/lib/product.utils";
 
 import { ProductResponse } from "@app/shared";
 
@@ -96,8 +98,24 @@ export function ProductCard({
       <View style={styles.cardInner}>
         {/* Header */}
         <View style={styles.header}>
+          <View
+            style={[
+              styles.priorityBadge,
+              {
+                backgroundColor: config.bgColor,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.priorityText,
+                { color: config.color },
+              ]}
+            >
+              {config.label}
+            </Text>
+          </View>
 
-          {/* Right Side */}
           <View style={styles.rightHeader}>
             {/* User */}
             <View
@@ -158,6 +176,30 @@ export function ProductCard({
             >
               {formatBRL(p.price)}
             </Text>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Calendar size={12} color={theme.textSecondary} />
+                <Text
+                  style={[styles.metaText, { color: theme.textSecondary }]}
+                >
+                  {formatProductDate(p.date)}
+                </Text>
+              </View>
+
+              <Text
+                style={[styles.metaDot, { color: theme.textSecondary }]}
+              >
+                •
+              </Text>
+
+              <Text
+                style={[styles.metaText, { color: theme.textSecondary }]}
+                numberOfLines={1}
+              >
+                {getCategoryLabel(p.category)}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -251,6 +293,28 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+
+  metaText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+
+  metaDot: {
+    fontSize: 12,
   },
 
   footer: {
