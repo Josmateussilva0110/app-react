@@ -1,71 +1,27 @@
-import { Redirect, Tabs } from "expo-router";
-
+import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/context/theme.context";
 
-import { CustomTabBar } from "@/components/navigation/custom-tab-bar";
-
 export default function ProtectedLayout() {
-  const { signed, loading } =
-    useAuth();
-
-  const { colors } =
-    useTheme();
+  const { signed, loading } = useAuth();
+  const { colors } = useTheme();
 
   if (loading) return null;
-
-  if (!signed) {
-    return (
-      <Redirect href="/login" />
-    );
-  }
+  if (!signed) return <Redirect href="/login" />;
 
   return (
-    <Tabs
-      tabBar={(props) => (
-        <CustomTabBar {...props} />
-      )}
+    <Stack
       screenOptions={{
         headerShown: false,
-
-        sceneStyle: {
-          backgroundColor:
-            colors.background,
-        },
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Tabs.Screen
-        name="month-list"
-      />
+      {/* As tabs ficam num único "slot" do Stack */}
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
-      <Tabs.Screen
-        name="create-product"
-      />
-
-      <Tabs.Screen
-        name="itens"
-      />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="product-detail/[id]"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="edit-product/[id]"
-        options={{
-          href: null,
-        }}
-      />
-    </Tabs>
+      {/* Screens que empilham por cima das tabs */}
+      <Stack.Screen name="product-detail/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="edit-product/[id]" options={{ headerShown: false }} />
+    </Stack>
   );
 }

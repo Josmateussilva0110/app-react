@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet } from "react-native";
 import { ProductCard } from "@/components/productCard";
 import type { Group } from "../constants/home.constants";
+import { useProducts } from "@/lib/storage";
 
-type Product = ReturnType<typeof import("@/lib/storage").useProducts>[number];
+type Product = ReturnType<typeof useProducts>["products"][number];
 
 type Props = {
   group: Group;
