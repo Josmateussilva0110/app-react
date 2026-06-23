@@ -29,14 +29,6 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "#FFF",
 
-    shadowColor: "#22C55E",
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-
     elevation: 12,
   },
 });

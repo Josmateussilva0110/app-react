@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,8 +14,9 @@ import { CategorySection } from "./category-section";
 import { DateSection } from "./date-section";
 import { OptionsSection } from "./options-section";
 import { SaveButton } from "./saveButton";
-import { requestData } from "../../../services/request";
 import { useToast } from "@/context/toast.context";
+import { useUpdateProduct } from "../../../hooks/use-update-product";
+import { useCreateProduct } from "../../../hooks/use-create-product";
 
 const DEFAULT_VALUES: ProductFormInput = {
   name: "",
@@ -44,54 +44,48 @@ export function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const { show } = useToast();
-  const [submitting, setSubmitting] = useState(false);
   const isEdit = mode === "edit";
 
-  const {
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<ProductFormInput, unknown, ProductFormData>({
-    resolver: zodResolver(productFormSchema),
-    defaultValues: initialValues ?? DEFAULT_VALUES,
-  });
+  const createMutation = useCreateProduct();
+  const updateMutation = useUpdateProduct(productId ?? "");
+
+  const { control, handleSubmit, reset, formState: { errors } } =
+    useForm<ProductFormInput, unknown, ProductFormData>({
+      resolver: zodResolver(productFormSchema),
+      defaultValues: initialValues ?? DEFAULT_VALUES,
+    });
 
   async function onSubmit(data: ProductFormData) {
-    setSubmitting(true);
+    try {
+      const result = isEdit
+        ? await updateMutation.mutateAsync(data)
+        : await createMutation.mutateAsync(data);
 
-    const response = isEdit
-      ? await requestData<{ id: string }>({
-          endpoint: `/products/${productId}`,
-          method: "PUT",
-          data,
-          withAuth: true,
-        })
-      : await requestData<{ id: string }>({
-          endpoint: "/products",
-          method: "POST",
-          data,
-          withAuth: true,
-        });
+      if (!result.success) {
+        show("error", result.message);
+        return;
+      }
 
-    setSubmitting(false);
-
-    if (!response.success) {
-      show("error", response.message);
-      return;
-    }
-
-    if (isEdit) {
-      show("success", response.message);
+      show("success", result.message);
       onSuccess?.();
-      router.back();
-      return;
-    }
 
-    reset(DEFAULT_VALUES);
-    show("success", response.message);
-    router.replace("/(protected)/month-list");
+      if (isEdit) {
+        router.back();
+        return;
+      }
+
+      reset(DEFAULT_VALUES);
+      router.replace("/(protected)/(tabs)/month-list");
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro inesperado";
+      show("error", message);
+    }
   }
+
+  const isPending = isEdit
+    ? updateMutation.isPending
+    : createMutation.isPending;
 
   return (
     <ScrollView
@@ -107,7 +101,7 @@ export function ProductForm({
       <SaveButton
         onPress={handleSubmit(onSubmit)}
         label={isEdit ? "Salvar Alterações" : "Salvar Produto"}
-        loading={submitting}
+        loading={isPending}
       />
     </ScrollView>
   );

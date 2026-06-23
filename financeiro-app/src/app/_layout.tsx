@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
-
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/query-client";
 import { ToastProvider } from "@/context/toast.context";
 import { AuthProvider } from "@/context/auth.context";
 import { ThemeProvider, useTheme } from "@/context/theme.context";
@@ -25,12 +26,15 @@ function AppNavigator() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <ToastProvider>
-          <AppNavigator />
-        </ToastProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <AppNavigator />
+          </ToastProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
+
