@@ -8,8 +8,9 @@ import {
 } from "react-native";
 import { ArrowLeft, PackageX } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { useProducts } from "@/lib/storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+import { useProducts } from "../../../hooks/use-products";
 import { useTheme } from "@/context/theme.context";
 import { ProductDetailScreen } from "@/features/product/components/detail";
 
@@ -18,11 +19,19 @@ export default function ProductDetailPage() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { products, loading, refetch } = useProducts();
 
-  const product = products.find((p) => p.id === id);
 
-  if (loading && !product) {
+  const { data: products, isLoading, refetch } = useProducts();
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
+  const product = products?.find((p) => p.id === id);
+
+  if (isLoading && !product) {
     return (
       <View
         style={[
@@ -82,9 +91,7 @@ export default function ProductDetailPage() {
             Item não encontrado
           </Text>
 
-          <Text
-            style={[styles.errorSubtitle, { color: colors.textSecondary }]}
-          >
+          <Text style={[styles.errorSubtitle, { color: colors.textSecondary }]}>
             Este item pode ter sido removido ou não existe mais na sua lista.
           </Text>
 
