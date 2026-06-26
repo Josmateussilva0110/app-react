@@ -15,6 +15,9 @@
 # production
 /build
 
+packages/shared/dist/
+backend/dist/
+
 # misc
 .DS_Store
 *.pem
