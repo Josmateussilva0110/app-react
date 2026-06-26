@@ -1,1 +1,6 @@
+# Local (mesma rede Wi-Fi):
+# EXPO_PUBLIC_API_URL=http://192.168.x.x:3001/api
+#
+# Produção (Render):
+# EXPO_PUBLIC_API_URL=https://financeiro-api.onrender.com/api
 EXPO_PUBLIC_API_URL=

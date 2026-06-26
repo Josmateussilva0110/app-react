@@ -5,14 +5,17 @@ EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 
 # ==============================================================================
-# BACKEND (TypeScript REST) 
+# BACKEND (TypeScript REST)
 # ==============================================================================
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_JWT_SECRET=
+SUPABASE_ANON_KEY=
 
-JWT_SECRET=
-JWT_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
+NODE_ENV=development
+PORT=3001
+ALLOWED_ORIGINS=http://localhost:8081
 
-PORT=
+# ==============================================================================
+# APP MOBILE — após deploy no Render, use a URL HTTPS do serviço:
+# EXPO_PUBLIC_API_URL=https://financeiro-api.onrender.com/api
+# ==============================================================================

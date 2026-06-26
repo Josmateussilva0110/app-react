@@ -1,0 +1,29 @@
+# Deploy do backend no Render (Blueprint)
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Após conectar o repositório no Render, defina as variáveis marcadas com sync: false
+# no painel Environment (valores do Supabase).
+
+services:
+  - type: web
+    name: financeiro-api
+    runtime: node
+    rootDir: backend
+    region: oregon
+    plan: free
+    buildCommand: npm ci && npm run build && npm prune --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # Opcional: origens permitidas no CORS (Expo web). App mobile não envia Origin.
+      # Ex.: https://seu-app.expo.dev,http://localhost:8081
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:8081
