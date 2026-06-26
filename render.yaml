@@ -11,8 +11,11 @@ services:
     rootDir: .
     region: oregon
     plan: free
-    buildCommand: npm ci && npm run build -w backend && npm prune --omit=dev
-    startCommand: node backend/dist/index.js
+    buildCommand: |
+      npm ci
+      cd backend
+      npm run build
+    startCommand: cd backend && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

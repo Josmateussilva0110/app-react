@@ -1,5 +1,12 @@
 {
   "name": "aplicativo",
   "private": true,
-  "workspaces": ["packages/*", "backend", "financeiro-app"]
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "financeiro-app"
+  ],
+  "engines": {
+    "node": "20.x"
+  }
 }
