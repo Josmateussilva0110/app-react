@@ -8,11 +8,11 @@ services:
   - type: web
     name: financeiro-api
     runtime: node
-    rootDir: backend
+    rootDir: .
     region: oregon
     plan: free
-    buildCommand: npm ci && npm run build && npm prune --omit=dev
-    startCommand: npm start
+    buildCommand: npm ci && npm run build -w backend && npm prune --omit=dev
+    startCommand: node backend/dist/index.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
