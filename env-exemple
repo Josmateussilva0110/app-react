@@ -7,7 +7,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 # ==============================================================================
 # BACKEND (TypeScript REST)
 # ==============================================================================
-SUPABASE_URL=
+SUPABASE_URL=a
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_ANON_KEY=
 

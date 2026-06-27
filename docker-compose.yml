@@ -11,6 +11,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
     volumes:
       # Output: APK gerado será salvo aqui no host
       - ./build:/app/build
