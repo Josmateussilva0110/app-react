@@ -1,0 +1,22 @@
+# ================================================================
+# Docker Compose - Build APK Android
+# ================================================================
+# Uso:
+#   docker compose run --rm build-apk
+#   ou: ./build-apk.sh
+# ================================================================
+
+services:
+  build-apk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      # Output: APK gerado será salvo aqui no host
+      - ./build:/app/build
+      # Cache: persiste o cache do Gradle entre builds
+      - gradle-cache:/root/.gradle
+
+volumes:
+  gradle-cache:
+    name: financeiro-app-gradle-cache

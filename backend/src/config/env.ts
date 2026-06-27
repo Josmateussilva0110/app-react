@@ -2,7 +2,11 @@ import path from "path"
 import { config } from "dotenv"
 import { z } from "zod"
 
-config({ path: path.resolve(__dirname, "../../../.env") }) 
+// Local: carrega .env da raiz do monorepo ou de backend/
+const backendRoot = path.resolve(__dirname, "../..")
+const monorepoRoot = path.resolve(backendRoot, "..")
+config({ path: path.join(monorepoRoot, ".env") })
+config({ path: path.join(backendRoot, ".env") })
 
 const envSchema = z.object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -14,7 +18,8 @@ const envSchema = z.object({
     ALLOWED_ORIGINS: z
         .string()
         .default("http://localhost:8081")
-        .transform((val) => val.split(",").map((s) => s.trim())),
+        .transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean)),
+    RENDER_EXTERNAL_URL: z.string().url().optional(),
 }).transform((data) => {
     const anonKey = data.SUPABASE_ANON_KEY ?? data.EXPO_PUBLIC_SUPABASE_ANON_KEY
     if (!anonKey) {
@@ -24,8 +29,14 @@ const envSchema = z.object({
             message: "Defina SUPABASE_ANON_KEY ou EXPO_PUBLIC_SUPABASE_ANON_KEY",
         }])
     }
-    const { EXPO_PUBLIC_SUPABASE_ANON_KEY: _, ...rest } = data
-    return { ...rest, SUPABASE_ANON_KEY: anonKey }
+
+    const origins = new Set(data.ALLOWED_ORIGINS)
+    if (data.RENDER_EXTERNAL_URL) {
+        origins.add(data.RENDER_EXTERNAL_URL)
+    }
+
+    const { EXPO_PUBLIC_SUPABASE_ANON_KEY: _, RENDER_EXTERNAL_URL: __, ...rest } = data
+    return { ...rest, SUPABASE_ANON_KEY: anonKey, ALLOWED_ORIGINS: [...origins] }
 })
 
 const parsed = envSchema.safeParse(process.env)

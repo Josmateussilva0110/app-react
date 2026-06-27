@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --watch src --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.ts"
+    "start": "node dist/server.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "keywords": [],
   "author": "",

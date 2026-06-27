@@ -1,16 +1,10 @@
 import { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useTheme } from "@/context/theme.context";
 import type { ProductResponse } from "@app/shared";
 
@@ -42,45 +36,29 @@ export function ItemListScreen({
   showFab = true,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
-  const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>("todos");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
 
   const filteredProducts = useMemo(() => {
-    if (statusFilter === "todos") {
-      return products;
-    }
-
+    if (statusFilter === "todos") return products;
     return products.filter(
       (product) => product.finished === (statusFilter === "finalizado")
     );
   }, [products, statusFilter]);
 
   const total = useMemo(
-    () =>
-      filteredProducts.reduce(
-        (sum, product) => sum + product.price,
-        0
-      ),
+    () => filteredProducts.reduce((sum, p) => sum + p.price, 0),
     [filteredProducts]
   );
 
   const highCount = useMemo(
-    () =>
-      filteredProducts.filter(
-        (product) => product.priority === "alta"
-      ).length,
+    () => filteredProducts.filter((p) => p.priority === "alta").length,
     [filteredProducts]
   );
 
   if (loading && products.length === 0) {
     return (
       <AppShell title={title} subtitle={subtitle}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Carregando produtos…
-          </Text>
-        </View>
+        <LoadingState message="Carregando produtos…" />
       </AppShell>
     );
   }
@@ -88,22 +66,7 @@ export function ItemListScreen({
   if (error && products.length === 0) {
     return (
       <AppShell title={title} subtitle={subtitle}>
-        <View style={styles.centered}>
-          <Text style={[styles.errorText, { color: colors.error }]}>
-            {error}
-          </Text>
-          {onRefresh && (
-            <TouchableOpacity
-              onPress={onRefresh}
-              activeOpacity={0.7}
-              style={[styles.retryBtn, { borderColor: colors.primary }]}
-            >
-              <Text style={[styles.retryText, { color: colors.primary }]}>
-                Tentar novamente
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <ErrorState error={error} onRetry={onRefresh} />
       </AppShell>
     );
   }
@@ -132,10 +95,7 @@ export function ItemListScreen({
             />
           )}
 
-          <HomeFilters
-            value={statusFilter}
-            onChange={setStatusFilter}
-          />
+          <HomeFilters value={statusFilter} onChange={setStatusFilter} />
 
           {filteredProducts.length === 0 ? (
             <HomeEmptyState />
@@ -156,34 +116,5 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
     gap: 20,
-  },
-  centered: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    padding: 24,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginTop: 8,
-  },
-  errorText: {
-    fontSize: 15,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 22,
-  },
-  retryBtn: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  retryText: {
-    fontSize: 14,
-    fontWeight: "600",
   },
 });

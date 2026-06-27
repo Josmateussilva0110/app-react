@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Node modules (serão instalados no container)
+**/node_modules
+
+# Build output
+build/
+
+# Projetos nativos gerados (serão recriados via expo prebuild)
+financeiro-app/android
+financeiro-app/ios
+financeiro-app/.expo
+
+# Backend source (não é necessário para o build do app)
+backend/src
+backend/dist
+
+# Arquivos de ambiente locais
+**/.env.local
+
+# IDE e ferramentas
+.vscode
+.claude
+**/.claude
+**/CLAUDE.md
+**/AGENTS.md
+
+# Misc
+*.apk
+*.aab

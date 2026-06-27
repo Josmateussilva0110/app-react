@@ -1,7 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pencil, Trash2 } from "lucide-react-native";
 import { useTheme } from "@/context/theme.context";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
+
 
 interface Props {
   productName: string;
@@ -10,62 +13,74 @@ interface Props {
   deleting?: boolean;
 }
 
-export function ProductDetailActions({ productName, onEdit, onDelete, deleting = false }: Props) {
-  const { colors } = useTheme();
 
-  function handleDelete() {
-    Alert.alert(
-      "Remover item",
-      `Deseja remover "${productName}"?\nEsta ação não pode ser desfeita.`,
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Remover",  style: "destructive", onPress: onDelete },
-      ]
-    );
-  }
+
+export function ProductDetailActions({
+  productName,
+  onEdit,
+  onDelete,
+  deleting = false,
+}: Props) {
+  const { colors } = useTheme();
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   return (
-    <View style={styles.container}>
-      {/* Editar — gradient primário */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onEdit}
-        disabled={deleting}
-        style={[styles.editWrap, deleting && styles.disabled]}
-      >
-        <LinearGradient
-          colors={[colors.fabGradientStart, colors.fabGradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.editBtn}
+    <>
+      <View style={styles.container}>
+        {/* Editar — gradient primário */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onEdit}
+          disabled={deleting}
+          style={[styles.editWrap, deleting && styles.disabled]}
         >
-          <Pencil size={16} color="#fff" strokeWidth={2.5} />
-          <Text style={styles.editText}>Editar Item</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={[colors.fabGradientStart, colors.fabGradientEnd]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.editBtn}
+          >
+            <Pencil size={16} color="#fff" strokeWidth={2.5} />
+            <Text style={styles.editText}>Editar Item</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
-      {/* Remover — outlined danger */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={handleDelete}
-        disabled={deleting}
-        style={[
-          styles.deleteBtn,
-          {
-            backgroundColor: `${colors.error}0C`,
-            borderColor: `${colors.error}28`,
-          },
-          deleting && styles.disabled,
-        ]}
-      >
-        <Trash2 size={16} color={colors.error} strokeWidth={2.5} />
-        <Text style={[styles.deleteText, { color: colors.error }]}>
-          {deleting ? "Removendo…" : "Remover Item"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+        {/* Remover — outlined danger */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setConfirmVisible(true)}  // abre o modal
+          disabled={deleting}
+          style={[
+            styles.deleteBtn,
+            {
+              backgroundColor: `${colors.error}0C`,
+              borderColor: `${colors.error}28`,
+            },
+            deleting && styles.disabled,
+          ]}
+        >
+          <Trash2 size={16} color={colors.error} strokeWidth={2.5} />
+          <Text style={[styles.deleteText, { color: colors.error }]}>
+            {deleting ? "Removendo…" : "Remover Item"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal de confirmação */}
+      <ConfirmDeleteModal
+        visible={confirmVisible}
+        productName={productName}
+        deleting={deleting}
+        onConfirm={() => {
+          setConfirmVisible(false);
+          onDelete();
+        }}
+        onCancel={() => setConfirmVisible(false)}
+      />
+    </>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

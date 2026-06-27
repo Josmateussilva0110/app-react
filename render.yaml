@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: financeiro-api
+    runtime: node
+    rootDir: .
+    region: oregon
+    plan: free
+
+    buildCommand: >
+      npm ci --include=dev &&
+      npm run build -w packages/shared &&
+      npm run build -w backend
+
+    startCommand: node backend/dist/server.js
+
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 30001
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:8081
