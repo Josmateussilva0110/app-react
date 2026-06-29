@@ -23,6 +23,12 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
 }))
 
+// ── Rotas ────────────────────────────────────────────────
+app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", env: env.NODE_ENV })
+})
+
+
 // ── Rate limit ANTES do parse do body ───────────────────
 app.use(rateLimiter)
 
@@ -30,10 +36,6 @@ app.use(rateLimiter)
 app.use(express.json({ limit: "10kb" }))   // limita tamanho do body
 app.use(express.urlencoded({ extended: true }))
 
-// ── Rotas ────────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", env: env.NODE_ENV })
-})
 
 app.use("/api", router)
 

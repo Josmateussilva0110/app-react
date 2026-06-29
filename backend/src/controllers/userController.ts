@@ -97,6 +97,52 @@ class UserController {
       data: result.data,
     })
   }
+
+  async getProfile(request: Request, response: Response): Promise<Response> {
+    const userId = request.user.id
+
+    const result = await UserService.getProfile(userId)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      data: result.data,
+    })
+  }
+
+  async updateProfile(request: Request, response: Response): Promise<Response> {
+    const userId = request.user.id
+    const { username } = request.body
+
+    const result = await UserService.updateProfile(userId, { username })
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Perfil atualizado com sucesso.",
+      data: result.data,
+    })
+  }
 }
 
 export default new UserController()

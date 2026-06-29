@@ -1,34 +1,84 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
+  ActivityIndicator,
 } from "react-native";
-import { User as UserIcon, Save } from "lucide-react-native";
+import { User as UserIcon, Save, RefreshCw } from "lucide-react-native";
 import { useTheme, type ThemeColors } from "@/context/theme.context";
-
-// Substituir por dados reais do useAuth quando disponível
-const MOCK_USER = {
-  name: "Mateus",
-  email: "mateus@email.com",
-};
+import { useToast } from "@/context/toast.context";
+import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 
 export function ProfileUserCard() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
-  const [name, setName] = useState(MOCK_USER.name);
+  const { show } = useToast();
+  const { data: profile, isLoading, isError, refetch } = useProfile();
+  const updateProfile = useUpdateProfile();
+
+  const [name, setName] = useState("");
+
+  // Sync local state when profile loads or updates
+  useEffect(() => {
+    if (profile?.username) {
+      setName(profile.username);
+    }
+  }, [profile?.username]);
 
   const handleSave = () => {
     if (!name.trim()) {
-      Alert.alert("Erro", "Informe um nome.");
+      show("error", "Informe um nome.");
       return;
     }
-    Alert.alert("Sucesso", "Perfil atualizado.");
+
+    if (name.trim() === profile?.username) {
+      show("info", "Nenhuma alteração detectada.");
+      return;
+    }
+
+    updateProfile.mutate(
+      { username: name.trim() },
+      {
+        onSuccess: () => {
+          show("success", "Perfil atualizado com sucesso!");
+        },
+        onError: (error) => {
+          show("error", error.message || "Não foi possível atualizar o perfil.");
+        },
+      }
+    );
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.card, styles.centered]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Carregando perfil...</Text>
+      </View>
+    );
+  }
+
+  if (isError || !profile) {
+    return (
+      <View style={[styles.card, styles.centered]}>
+        <Text style={styles.errorText}>Erro ao carregar perfil.</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          activeOpacity={0.8}
+          onPress={() => refetch()}
+        >
+          <RefreshCw size={16} color="#fff" />
+          <Text style={styles.buttonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const hasChanges = name.trim() !== profile.username;
 
   return (
     <View style={styles.card}>
@@ -40,10 +90,10 @@ export function ProfileUserCard() {
 
         <View style={styles.userInfo}>
           <Text style={styles.userName} numberOfLines={1}>
-            {MOCK_USER.name}
+            {profile.username}
           </Text>
           <Text style={styles.userEmail} numberOfLines={1}>
-            {MOCK_USER.email}
+            {profile.email}
           </Text>
         </View>
       </View>
@@ -58,15 +108,26 @@ export function ProfileUserCard() {
           placeholder="Seu nome"
           placeholderTextColor={colors.textSecondary}
           style={styles.input}
+          editable={!updateProfile.isPending}
         />
 
         <TouchableOpacity
-          style={styles.button}
+          style={[
+            styles.button,
+            (!hasChanges || updateProfile.isPending) && styles.buttonDisabled,
+          ]}
           activeOpacity={0.8}
           onPress={handleSave}
+          disabled={!hasChanges || updateProfile.isPending}
         >
-          <Save size={18} color="#fff" />
-          <Text style={styles.buttonText}>Salvar alterações</Text>
+          {updateProfile.isPending ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Save size={18} color="#fff" />
+          )}
+          <Text style={styles.buttonText}>
+            {updateProfile.isPending ? "Salvando..." : "Salvar alterações"}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -81,6 +142,32 @@ const createStyles = (colors: ThemeColors) =>
       padding: 20,
       backgroundColor: colors.backgroundElement,
       borderColor: colors.backgroundSelected,
+    },
+    centered: {
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 160,
+      gap: 12,
+    },
+    loadingText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 4,
+    },
+    errorText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
+    retryButton: {
+      height: 42,
+      borderRadius: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingHorizontal: 20,
+      backgroundColor: colors.primary,
     },
     userRow: {
       flexDirection: "row",
@@ -138,6 +225,9 @@ const createStyles = (colors: ThemeColors) =>
       justifyContent: "center",
       gap: 8,
       backgroundColor: colors.primary,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
     },
     buttonText: {
       color: "#fff",
