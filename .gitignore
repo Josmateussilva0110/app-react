@@ -154,14 +154,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-#IMAGENS EM PUBLIC
-public/images/users/*
-!public/images/users/.gitkeep
 
-
-/users/*
-!/users/.gitkeep
-**/users/
 
 public/diplomas/*
 !public/diplomas/.gitkeep
