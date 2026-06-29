@@ -4,6 +4,7 @@ import { supabaseAuth } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
 import { createClient } from "@supabase/supabase-js"
 import { env } from "../config/env"
+import { UserProfile } from "../types/users/profile"
 
 interface RegisterDTO {
     username: string
@@ -163,6 +164,85 @@ class UserService {
                 error: {
                     code: UserErrorCode.LOGIN_FAILED,
                     message: "Erro ao renovar sessão.",
+                },
+            }
+        }
+    }
+
+    async getProfile(userId: string ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
+        try {
+            const { data, error } = await supabaseAuth
+                .from("users")
+                .select("id, username, email")
+                .eq("id", userId)
+                .single()
+
+            if (error || !data) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.USER_NOT_FOUND,
+                        message: "Usuário não encontrado.",
+                    },
+                }
+            }
+
+            return {
+                status: true,
+                data: {
+                    id: data.id,
+                    username: data.username,
+                    email: data.email,
+                },
+            }
+        } catch (error) {
+            console.error("[UserService.getProfile] error:", error)
+
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.USER_FETCH_FAILED,
+                    message: "Erro ao buscar perfil do usuário.",
+                },
+            }
+        }
+    }
+
+    async updateProfile(userId: string, updates: { username: string } ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
+        try {
+            const { data, error } = await supabaseAuth
+                .from("users")
+                .update({ username: updates.username })
+                .eq("id", userId)
+                .select("id, username, email")
+                .single()
+
+            if (error || !data) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.USER_UPDATE_FAILED,
+                        message: "Não foi possível atualizar o perfil.",
+                    },
+                }
+            }
+
+            return {
+                status: true,
+                data: {
+                    id: data.id,
+                    username: data.username,
+                    email: data.email,
+                },
+            }
+        } catch (error) {
+            console.error("[UserService.updateProfile] error:", error)
+
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.USER_UPDATE_FAILED,
+                    message: "Erro ao atualizar perfil do usuário.",
                 },
             }
         }
