@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { tokenManager } from "./token.manager";
+import { serverStatusManager } from "./server-status.manager";
 import { API_URL } from "@/config/env";
 
 // Extende o tipo do axios para suportar campos customizados
@@ -19,6 +20,8 @@ export const api = axios.create({
 
 
 api.interceptors.request.use((config) => {
+  serverStatusManager.onRequestStart();
+
   if (config._skipAuth) return config;
 
   const token = tokenManager.getAccessToken();
@@ -47,8 +50,12 @@ function flushQueue(error: unknown, token: string | null = null) {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+    (response) => {
+      serverStatusManager.onRequestEnd();
+      return response;
+    },
   async (error: AxiosError) => {
+    serverStatusManager.onRequestEnd();
     const original = error.config!;
     const status = error.response?.status;
     const isRefreshEndpoint = original.url?.includes("/auth/refresh");
