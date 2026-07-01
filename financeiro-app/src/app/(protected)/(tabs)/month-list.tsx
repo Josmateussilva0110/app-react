@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useMemo } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import { useProducts } from "@/lib/storage";
-import { isMonthList } from "@/lib/product.utils";
+import { isMonthList, isFinished } from "@/lib/product.utils";
 
 export default function MonthListScreen() {
   const { products, loading, error, refetch } = useProducts();
@@ -15,9 +15,10 @@ export default function MonthListScreen() {
   );
 
   const monthProducts = useMemo(
-    () => products.filter((p) => isMonthList(p.month_list)),
-    [products]
-  );
+  () =>
+    products.filter((p) => isMonthList(p.month_list) && !isFinished(p.finished)),
+  [products]
+);
 
   return (
     <ItemListScreen

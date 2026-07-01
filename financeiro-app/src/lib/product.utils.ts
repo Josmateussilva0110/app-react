@@ -22,6 +22,12 @@ export function isMonthList(value: boolean | string | undefined): boolean {
   return value === "true" || value === "t";
 }
 
+
+export function isFinished(value: boolean | string | undefined): boolean {
+  if (typeof value === "boolean") return value;
+  return value === "true" || value === "t";
+}
+
 export function getPaymentLabel(key: string): string {
   return PAYMENT_TYPES.find((item) => item.key === key)?.label ?? key;
 }
