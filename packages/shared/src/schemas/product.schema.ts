@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const priorityEnum    = z.enum(["alta", "media", "baixa"]);
 export const paymentTypeEnum = z.enum(["debito", "credito", "pix", "dinheiro", "nao_comprado"]);
-export const categoryEnum    = z.enum(["compras", "alimentacao", "lazer", "esporte",
+export const categoryEnum    = z.enum(["casa", "alimentacao", "lazer", "esporte", "vestuario", "eletronicos", "cuidados_pessoais",
                                        "investimento", "saude", "presentes"]);
 
 export const productSchema = z.object({
