@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { getAuth, removeAuth, saveAuth } from "@/storage/auth.storage";
-import { registerUser ,loginUser } from "@/services/auth.service";
+import { registerUser, loginUser } from "@/services/auth.service";
 import { tokenManager } from "@/services/token.manager";
 import { AuthData, AuthUser } from "@/types/auth.types";
 
@@ -40,23 +40,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Refresh bem-sucedido pelo interceptor → atualiza state e SecureStore
-    tokenManager.onRefreshed((accessToken, refreshToken, expiresAt) => {
+    const unsubRefreshed = tokenManager.onRefreshed((accessToken, refreshToken, expiresAt) => {
       setAuthData((prev) => {
         if (!prev) return null;
         const updated = { ...prev, accessToken, refreshToken, expiresAt };
-        saveAuth(updated); // fire-and-forget: persistência assíncrona
+        saveAuth(updated);
         return updated;
       });
     });
 
-    // Token definitivamente expirado → logout silencioso
-    tokenManager.onExpired(() => {
+    const unsubExpired = tokenManager.onExpired(() => {
       removeAuth();
       setAuthData(null);
     });
 
     loadUser();
+
+    return () => {
+      unsubRefreshed();
+      unsubExpired();
+    };
   }, []);
 
   async function loadUser() {
@@ -91,25 +94,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const tryRefreshToken = useCallback(
     async (data: AuthData): Promise<boolean> => {
-      try {
-        // Importação dinâmica para evitar dependência circular
-        const { refreshAccessToken } = await import("@/services/auth.service");
-        const result = await refreshAccessToken(data.refreshToken);
+      const { refreshAccessToken } = await import("@/services/auth.service");
+      const result = await refreshAccessToken(data.refreshToken);
 
-        if (!result.success || !result.data) return false;
-
-        tokenManager.setTokens(
-          result.data.accessToken,
-          result.data.refreshToken
-        );
-
+      if (result.success && result.data) {
+        tokenManager.setTokens(result.data.accessToken, result.data.refreshToken);
         await saveAuth(result.data);
         setAuthData(result.data);
-
         return true;
-      } catch {
-        return false;
       }
+
+      if (result.error?.reason === "network_error") {
+        tokenManager.setTokens(data.accessToken, data.refreshToken);
+        setAuthData(data);
+        if (__DEV__) console.warn("[Auth] Refresh falhou por rede, sessão local mantida");
+        return true;
+      }
+
+      if (__DEV__) console.warn("[Auth] Refresh rejeitado pelo servidor:", result.message);
+      return false;
     },
     []
   );
