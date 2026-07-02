@@ -1,11 +1,13 @@
+import { useState } from "react";
 import {
   View,
   Text,
   TextInput,
+  TouchableOpacity,
   StyleSheet,
   type TextInputProps,
 } from "react-native";
-import type { LucideIcon } from "lucide-react-native";
+import { Eye, EyeOff, type LucideIcon } from "lucide-react-native";
 import { useTheme, type ThemeColors } from "@/context/theme.context";
 
 type Props = TextInputProps & {
@@ -14,9 +16,18 @@ type Props = TextInputProps & {
   error?: string;
 };
 
-export function FormField({ label, icon: Icon, error, ...inputProps }: Props) {
+export function FormField({
+  label,
+  icon: Icon,
+  error,
+  secureTextEntry,
+  ...inputProps
+}: Props) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+
+  const isPasswordField = Boolean(secureTextEntry);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   return (
     <View style={styles.field}>
@@ -28,11 +39,31 @@ export function FormField({ label, icon: Icon, error, ...inputProps }: Props) {
         <TextInput
           style={[
             styles.input,
+            isPasswordField && styles.inputWithTrailingIcon,
             error && styles.inputError,
           ]}
           placeholderTextColor={colors.textSecondary}
+          secureTextEntry={isPasswordField && !isPasswordVisible}
           {...inputProps}
         />
+
+        {isPasswordField && (
+          <TouchableOpacity
+            style={styles.trailingIcon}
+            onPress={() => setIsPasswordVisible((prev) => !prev)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isPasswordVisible ? "Ocultar senha" : "Mostrar senha"
+            }
+          >
+            {isPasswordVisible ? (
+              <EyeOff size={18} color={colors.textSecondary} />
+            ) : (
+              <Eye size={18} color={colors.textSecondary} />
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
@@ -66,9 +97,18 @@ const createStyles = (colors: ThemeColors) =>
       paddingLeft: 40,
       paddingRight: 12,
       fontSize: 15,
-      backgroundColor: colors.backgroundElement, // era colors.background (preto puro)
+      backgroundColor: colors.backgroundElement,
       borderColor: colors.backgroundSelected,
       color: colors.text,
+    },
+    inputWithTrailingIcon: {
+      paddingRight: 44,
+    },
+    trailingIcon: {
+      position: "absolute",
+      right: 12,
+      zIndex: 1,
+      padding: 2,
     },
     inputError: {
       borderWidth: 1.5,
