@@ -5,6 +5,7 @@ import { RegisterSchema } from "../schemas/registerSchema"
 import { LoginSchema } from "../schemas/loginSchema"
 import { UpdateProfileSchema } from "../schemas/updateProfileSchema"
 import { loginRateLimiter } from "../middleware/loginRateLimit"
+import { refreshRateLimiter } from "../middleware/refreshRateLimit"
 import { authMiddleware } from "../middleware/auth"
 
 
@@ -16,7 +17,7 @@ router.post("/login", loginRateLimiter, validate(LoginSchema), UserController.lo
 router.get("/profile", authMiddleware, UserController.getProfile)
 router.put("/profile", authMiddleware, validate(UpdateProfileSchema), UserController.updateProfile)
 router.post("/logout", authMiddleware, UserController.logout)
-router.post("/auth/refresh", loginRateLimiter, UserController.refresh.bind(UserController))
+router.post("/auth/refresh", refreshRateLimiter, UserController.refresh.bind(UserController))
 
 
 export default router
