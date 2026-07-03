@@ -1,7 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
-import { useProducts } from "../../../hooks/use-products";
+import { useProducts } from "@/hooks/use-products";
 import { ProductDetailScreen } from "@/features/product/components/detail";
 import { LoadingState } from "@/components/ui/loading-state";
 import { AppShell } from "@/components/appShell";
@@ -11,14 +9,7 @@ import { ErrorState } from "@/components/ui/error-state";
 export default function ProductDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-
   const { data: products, isLoading, refetch } = useProducts();
-
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch])
-  );
 
   const product = products?.find((p) => p.id === id);
 

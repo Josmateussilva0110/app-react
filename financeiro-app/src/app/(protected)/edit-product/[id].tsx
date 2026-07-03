@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
 import { useTheme } from "@/context/theme.context";
-import { useProducts } from "@/lib/storage";
+import { useProducts } from "@/hooks/use-products";
 import { productToFormValues } from "@/lib/product.utils";
 import { ProductForm } from "@/features/product/components/product-form";
 
@@ -14,7 +14,7 @@ export default function EditProductScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { products, loading, refetch } = useProducts();
+  const { data: products = [], isLoading: loading, refetch } = useProducts();
 
   const product = products.find((item) => item.id === id);
 

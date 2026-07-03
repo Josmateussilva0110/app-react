@@ -1,24 +1,16 @@
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
-import { useProducts } from "@/lib/storage";
+import { useProducts } from "@/hooks/use-products";
 
 export default function HomeScreen() {
-  const { products, loading, error, refetch } = useProducts();
-
-  useFocusEffect(
-    useCallback(() => {
-      refetch();
-    }, [refetch])
-  );
+  const { data: products = [], isLoading, error, refetch } = useProducts();
 
   return (
     <ItemListScreen
       title="Meus Itens"
       subtitle="Controle seus itens por prioridade"
       products={products}
-      loading={loading}
-      error={error}
+      loading={isLoading}
+      error={error?.message ?? null}
       onRefresh={refetch}
     />
   );

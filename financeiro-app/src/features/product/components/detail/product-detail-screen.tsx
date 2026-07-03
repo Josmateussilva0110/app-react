@@ -7,10 +7,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import type { ProductResponse } from "@app/shared";
+import { PRODUCTS_KEY } from "@/hooks/use-products";
 
 import { requestData } from "@/services/request";
 
@@ -28,6 +30,7 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
   const { colors } = useTheme();
   const { show } = useToast();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
 
   // Fade-in suave do conteúdo ao montar
@@ -63,6 +66,7 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
     }
 
     show("success", response.message);
+    queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
     onDeleted?.();
     router.back();
   }
