@@ -23,7 +23,7 @@ const DEFAULT_VALUES: ProductFormInput = {
   price: "",
   priority: "media",
   paymentType: "nao_comprado",
-  category: "compras",
+  category: "casa",
   date: "",
   finished: false,
   monthList: false,

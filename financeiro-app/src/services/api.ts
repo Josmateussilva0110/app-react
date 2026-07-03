@@ -1,8 +1,16 @@
-import axios, { AxiosError } from "axios";
-import { tokenManager } from "./token.manager";
-import { API_URL } from "@/config/env";
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  InternalAxiosRequestConfig,
+} from "axios";
 
-// Extende o tipo do axios para suportar campos customizados
+import { API_URL } from "@/config/env";
+import { AUTH_ROUTES } from "@/config/api-routes";
+
+import { tokenManager } from "./token.manager";
+import { refreshService } from "./refresh.service";
+import { serverStatusManager } from "./server-status.manager";
+
 declare module "axios" {
   interface InternalAxiosRequestConfig {
     _skipAuth?: boolean;
@@ -10,104 +18,117 @@ declare module "axios" {
   }
 }
 
-
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10_000,
-  headers: { "Content-Type": "application/json" },
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
+/**
+ * REQUEST INTERCEPTOR
+ */
+api.interceptors.request.use(async (config) => {
+  serverStatusManager.onRequestStart();
 
-api.interceptors.request.use((config) => {
-  if (config._skipAuth) return config;
+  if (config._skipAuth) {
+    return config;
+  }
+
+  /**
+   * 🔴 CRÍTICO: espera refresh global terminar
+   * (evita requests com token expirado no boot do app)
+   */
+  await tokenManager.waitRefresh();
 
   const token = tokenManager.getAccessToken();
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    if (!config.headers) {
+      config.headers = new AxiosHeaders();
+    }
+
+    config.headers.set("Authorization", `Bearer ${token}`);
   }
 
   return config;
 });
 
-
-
-let isRefreshing = false;
-
-let pendingQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
-
-function flushQueue(error: unknown, token: string | null = null) {
-  pendingQueue.forEach(({ resolve, reject }) =>
-    error ? reject(error) : resolve(token!)
-  );
-  pendingQueue = [];
-}
-
+/**
+ * RESPONSE INTERCEPTOR
+ */
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    serverStatusManager.onRequestEnd();
+    return response;
+  },
+
   async (error: AxiosError) => {
-    const original = error.config!;
+    serverStatusManager.onRequestEnd();
+
+    const original = error.config as InternalAxiosRequestConfig | undefined;
+
+    if (!original) {
+      return Promise.reject(error);
+    }
+
     const status = error.response?.status;
-    const isRefreshEndpoint = original.url?.includes("/auth/refresh");
+    const isRefreshEndpoint =
+      original.url?.includes(AUTH_ROUTES.refresh);
 
-    // 401 no próprio endpoint de refresh → sessão morta, faz logout
-    if (status === 401 && isRefreshEndpoint) {
-      tokenManager.clearTokens();
-      tokenManager.notifyExpired();
+    /**
+     * Refresh falhou de verdade (token inválido)
+     */
+    if (isRefreshEndpoint && (status === 401 || status === 403)) {
+      await refreshService.logout();
       return Promise.reject(error);
     }
 
-    // Ignora erros que não são 401, ou que já foram retentados, ou sem auth
-    if (status !== 401 || original._retry || original._skipAuth) {
+    /**
+     * Timeout / Render dormindo no refresh
+     */
+    if (isRefreshEndpoint && !error.response) {
       return Promise.reject(error);
     }
 
-    // Já tem um refresh em andamento → enfileira essa request
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        pendingQueue.push({ resolve, reject });
-      }).then((newToken) => {
-        original.headers.Authorization = `Bearer ${newToken}`;
-        return api(original);
-      });
+    /**
+     * Não é erro de autenticação
+     */
+    if (status !== 401 || original._skipAuth || original._retry) {
+      return Promise.reject(error);
     }
 
+    /**
+     * 🔴 PONTO PRINCIPAL: usa refreshService único
+     */
     const refreshToken = tokenManager.getRefreshToken();
 
     if (!refreshToken) {
-      tokenManager.clearTokens();
-      tokenManager.notifyExpired();
+      await refreshService.logout();
       return Promise.reject(error);
     }
 
-    original._retry = true;
-    isRefreshing = true;
-
     try {
-      // Usa axios base (não `api`) para evitar loop no interceptor
-      const { data } = await axios.post(`${API_URL}/auth/refresh`, {
-        refreshToken,
-      });
+      original._retry = true;
 
-      const { accessToken, refreshToken: newRefresh, expiresAt } = data.data;
+      const session = await refreshService.refresh(refreshToken);
 
-      tokenManager.setTokens(accessToken, newRefresh);
-      tokenManager.notifyRefreshed(accessToken, newRefresh, expiresAt);
+      const newToken = session.accessToken;
 
-      flushQueue(null, accessToken);
+      if (!original.headers) {
+        original.headers = new AxiosHeaders();
+      }
 
-      original.headers.Authorization = `Bearer ${accessToken}`;
+      original.headers.set(
+        "Authorization",
+        `Bearer ${newToken}`
+      );
+
       return api(original);
     } catch (refreshError) {
-      flushQueue(refreshError);
-      tokenManager.clearTokens();
-      tokenManager.notifyExpired();
+      await refreshService.logout();
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   }
 );

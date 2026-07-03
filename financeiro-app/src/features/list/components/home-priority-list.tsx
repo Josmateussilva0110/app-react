@@ -1,12 +1,11 @@
 import { View, StyleSheet } from "react-native";
 import { HomePrioritySection } from "./home-priority-section";
 import { PRIORITY_GROUPS } from "../constants/home.constants";
-import { useProducts } from "@/lib/storage";
-
-type Product = ReturnType<typeof useProducts>["products"][number];
+import type { ProductResponse } from "@app/shared";
 
 type Props = {
-  products: Product[];
+  products: ProductResponse[];
+
 };
 
 export function HomePriorityList({ products }: Props) {

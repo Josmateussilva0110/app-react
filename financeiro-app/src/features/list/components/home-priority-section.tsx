@@ -1,13 +1,11 @@
 import { View, Text, StyleSheet } from "react-native";
 import { ProductCard } from "@/components/productCard";
 import type { Group } from "../constants/home.constants";
-import { useProducts } from "@/lib/storage";
-
-type Product = ReturnType<typeof useProducts>["products"][number];
+import type { ProductResponse } from "@app/shared";
 
 type Props = {
   group: Group;
-  items: Product[];
+  items: ProductResponse[];
 };
 
 export function HomePrioritySection({ group, items }: Props) {

@@ -1,10 +1,16 @@
 import { AxiosError, type AxiosRequestConfig, type Method } from "axios";
 import { api } from "@/services/api";
 
+export type ApiErrorReason = "network_error" | "server_error";
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
+  error?: {
+    reason: ApiErrorReason;
+    status?: number;
+  };
 }
 
 interface RequestProps<TRequest = unknown> {
@@ -28,15 +34,20 @@ export async function requestData<TResponse, TRequest = unknown>({
     const config: AxiosRequestConfig = {
       url: endpoint,
       method,
-      params,
-      headers: { ...headers },
-      _skipAuth: !withAuth, // lido pelo interceptor de request
+      headers: {
+        ...headers,
+      },
+      _skipAuth: !withAuth,
     } as AxiosRequestConfig;
 
     if (method.toUpperCase() === "GET") {
-      config.params = { ...params, ...(data as Record<string, unknown>) };
+      config.params = {
+        ...params,
+        ...(data as Record<string, unknown>),
+      };
     } else {
       config.data = data;
+      config.params = params;
     }
 
     if (data instanceof FormData) {
@@ -47,14 +58,33 @@ export async function requestData<TResponse, TRequest = unknown>({
     }
 
     const response = await api<ApiResponse<TResponse>>(config);
+
     return response.data;
   } catch (error) {
     const err = error as AxiosError<ApiResponse>;
 
+    // O servidor respondeu (4xx / 5xx)
+    if (err.response) {
+      return {
+        success: false,
+        message:
+          err.response.data?.message ??
+          "Erro ao processar solicitação.",
+        error: {
+          reason: "server_error",
+          status: err.response.status,
+        },
+      };
+    }
+
+    // Timeout / internet / Render dormindo
     return {
       success: false,
       message:
-        err.response?.data?.message ?? "Erro inesperado. Tente novamente.",
+        "Não foi possível conectar ao servidor. Tente novamente em alguns instantes.",
+      error: {
+        reason: "network_error",
+      },
     };
   }
 }

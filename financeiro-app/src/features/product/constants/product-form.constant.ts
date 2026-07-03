@@ -3,9 +3,12 @@ import {
   Gamepad2,
   Gift,
   HeartPulse,
-  ShoppingCart,
   TrendingUp,
   UtensilsCrossed,
+  Shirt,
+  Monitor,
+  Home,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react-native";
 
@@ -24,11 +27,14 @@ export const PAYMENT_TYPES = [
 ] as const;
 
 export const CATEGORIES: { key: string; label: string; icon: LucideIcon }[] = [
-  { key: "compras",      label: "Compras",      icon: ShoppingCart },
-  { key: "alimentacao",  label: "Alimentação",  icon: UtensilsCrossed },
-  { key: "lazer",        label: "Lazer",        icon: Gamepad2 },
-  { key: "esporte",      label: "Esporte",      icon: Dumbbell },
-  { key: "investimento", label: "Investimento", icon: TrendingUp },
-  { key: "saude",        label: "Saúde",        icon: HeartPulse },
-  { key: "presentes",    label: "Presentes",    icon: Gift },
+  { key: "alimentacao",         label: "Alimentação",       icon: UtensilsCrossed },
+  { key: "lazer",                label: "Lazer",             icon: Gamepad2 },
+  { key: "esporte",              label: "Esporte",           icon: Dumbbell },
+  { key: "investimento",         label: "Investimento",      icon: TrendingUp },
+  { key: "saude",                label: "Saúde",             icon: HeartPulse },
+  { key: "presentes",            label: "Presentes",         icon: Gift },
+  { key: "vestuario",            label: "Vestuário",         icon: Shirt },
+  { key: "eletronicos",          label: "Eletrônicos",       icon: Monitor },
+  { key: "casa",                 label: "Casa",              icon: Home },
+  { key: "cuidados_pessoais",    label: "Cuidados Pessoais", icon: Sparkles },
 ];

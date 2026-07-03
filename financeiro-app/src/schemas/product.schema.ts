@@ -13,7 +13,7 @@ export const productFormSchema = productSchema.extend({
 
   priority:    productSchema.shape.priority.catch("media"),
   paymentType: productSchema.shape.paymentType.catch("nao_comprado"),
-  category:    productSchema.shape.category.catch("compras"),
+  category:    productSchema.shape.category.catch("casa"),
 });
 
 export type ProductFormInput = z.input<typeof productFormSchema>;
