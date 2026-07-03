@@ -1,8 +1,17 @@
-export type ServerStatus = "idle" | "waking";
-type Listener = (status: ServerStatus) => void;
+export type ServerStatus = "idle" | "waking" | "retrying";
+
+export interface ServerStatusSnapshot {
+  status: ServerStatus;
+  attempt: number;
+  maxAttempts: number;
+}
+
+type Listener = (snapshot: ServerStatusSnapshot) => void;
 
 class ServerStatusManager {
   private status: ServerStatus = "idle";
+  private attempt = 0;
+  private maxAttempts = 0;
   private listeners = new Set<Listener>();
   private pendingRequests = 0;
   private wakeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -22,7 +31,7 @@ class ServerStatusManager {
 
     if (!this.wakeTimer) {
       this.wakeTimer = setTimeout(() => {
-        if (this.pendingRequests > 0) this.setStatus("waking");
+        if (this.pendingRequests > 0) this.emit("waking");
       }, this.WAKE_THRESHOLD_MS);
     }
   };
@@ -33,8 +42,17 @@ class ServerStatusManager {
 
     if (this.pendingRequests === 0) {
       this.clearWakeTimer();
-      this.setStatus("idle");
+      this.attempt = 0;
+      this.maxAttempts = 0;
+      this.emit("idle");
     }
+  };
+
+  onColdStartRetry = (attempt: number, maxAttempts: number): void => {
+    this.attempt = attempt;
+    this.maxAttempts = maxAttempts;
+    this.clearWakeTimer();
+    this.emit("retrying");
   };
 
   private clearWakeTimer(): void {
@@ -44,24 +62,23 @@ class ServerStatusManager {
     }
   }
 
-  private setStatus(status: ServerStatus): void {
-    if (this.status === status) return;
+  private emit(status: ServerStatus): void {
     this.status = status;
-    this.listeners.forEach((listener) => listener(status));
+    const snapshot: ServerStatusSnapshot = {
+      status,
+      attempt: this.attempt,
+      maxAttempts: this.maxAttempts,
+    };
+    this.listeners.forEach((listener) => listener(snapshot));
   }
 
   subscribe = (listener: Listener): (() => void) => {
     this.listeners.add(listener);
-    listener(this.status);
-
-    return () => {
-      this.listeners.delete(listener);
-    };
+    listener({ status: this.status, attempt: this.attempt, maxAttempts: this.maxAttempts });
+    return () => this.listeners.delete(listener);
   };
 
-  getStatus = (): ServerStatus => {
-    return this.status;
-  };
+  getStatus = (): ServerStatus => this.status;
 }
 
 export const serverStatusManager = new ServerStatusManager();

@@ -9,7 +9,7 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: {
     reason: ApiErrorReason;
-    status?: number; 
+    status?: number;
   };
 }
 
@@ -34,15 +34,20 @@ export async function requestData<TResponse, TRequest = unknown>({
     const config: AxiosRequestConfig = {
       url: endpoint,
       method,
-      params,
-      headers: { ...headers },
+      headers: {
+        ...headers,
+      },
       _skipAuth: !withAuth,
     } as AxiosRequestConfig;
 
     if (method.toUpperCase() === "GET") {
-      config.params = { ...params, ...(data as Record<string, unknown>) };
+      config.params = {
+        ...params,
+        ...(data as Record<string, unknown>),
+      };
     } else {
       config.data = data;
+      config.params = params;
     }
 
     if (data instanceof FormData) {
@@ -53,23 +58,33 @@ export async function requestData<TResponse, TRequest = unknown>({
     }
 
     const response = await api<ApiResponse<TResponse>>(config);
+
     return response.data;
   } catch (error) {
     const err = error as AxiosError<ApiResponse>;
 
+    // O servidor respondeu (4xx / 5xx)
     if (err.response) {
       return {
         success: false,
         message:
-          err.response.data?.message ?? "Erro ao processar solicitação.",
-        error: { reason: "server_error", status: err.response.status },
+          err.response.data?.message ??
+          "Erro ao processar solicitação.",
+        error: {
+          reason: "server_error",
+          status: err.response.status,
+        },
       };
     }
 
+    // Timeout / internet / Render dormindo
     return {
       success: false,
-      message: "Falha de conexão. Verifique sua internet e tente novamente.",
-      error: { reason: "network_error" },
+      message:
+        "Não foi possível conectar ao servidor. Tente novamente em alguns instantes.",
+      error: {
+        reason: "network_error",
+      },
     };
   }
 }

@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { getAuth, removeAuth, saveAuth } from "@/storage/auth.storage";
-import { registerUser, loginUser } from "@/services/auth.service";
+import { registerUser, loginUser, refreshAccessToken } from "@/services/auth.service";
 import { tokenManager } from "@/services/token.manager";
 import { AuthData, AuthUser } from "@/types/auth.types";
 
@@ -28,8 +28,12 @@ interface AuthContextData {
   accessToken: string | null;
   loading: boolean;
   signed: boolean;
-  register: (data: RegisterDTO) => Promise<{ success: boolean; message: string }>;
-  login: (data: LoginDTO) => Promise<{ success: boolean; message: string }>;
+  register: (
+    data: RegisterDTO
+  ) => Promise<{ success: boolean; message: string }>;
+  login: (
+    data: LoginDTO
+  ) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
 }
 
@@ -40,21 +44,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubRefreshed = tokenManager.onRefreshed((accessToken, refreshToken, expiresAt) => {
-      setAuthData((prev) => {
-        if (!prev) return null;
-        const updated = { ...prev, accessToken, refreshToken, expiresAt };
-        saveAuth(updated);
-        return updated;
-      });
-    });
+    const unsubRefreshed = tokenManager.onRefreshed(
+      async (accessToken, refreshToken, expiresAt) => {
+        setAuthData((prev) => {
+          if (!prev) return null;
 
-    const unsubExpired = tokenManager.onExpired(() => {
-      removeAuth();
+          const updated = {
+            ...prev,
+            accessToken,
+            refreshToken,
+            expiresAt,
+          };
+
+          saveAuth(updated);
+
+          return updated;
+        });
+      }
+    );
+
+    const unsubExpired = tokenManager.onExpired(async () => {
+      tokenManager.clearTokens();
+      await removeAuth();
       setAuthData(null);
     });
 
-    loadUser();
+    void loadUser();
 
     return () => {
       unsubRefreshed();
@@ -66,106 +81,129 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const data = await getAuth();
 
-      if (!data) return;
-
-      const isExpired = Date.now() >= data.expiresAt;
-
-      if (isExpired) {
-        // Deixa o refreshToken disponível para o tryRefreshToken
-        tokenManager.setTokens("", data.refreshToken);
-        const refreshed = await tryRefreshToken(data);
-
-        if (!refreshed) {
-          tokenManager.clearTokens();
-          await removeAuth();
-        }
-
+      if (!data) {
         return;
       }
 
-      tokenManager.setTokens(data.accessToken, data.refreshToken);
-      setAuthData(data);
-    } catch (error) {
-      if (__DEV__) console.error("[Auth] Erro ao carregar usuário:", error);
+      // Mantém os tokens imediatamente.
+      // NÃO limpa o access token aqui.
+      tokenManager.setTokens(
+        data.accessToken,
+        data.refreshToken
+      );
+
+      const expired = Date.now() >= data.expiresAt;
+
+      if (!expired) {
+        setAuthData(data);
+        return;
+      }
+
+      const refreshed = await tryRefreshToken(data);
+
+      if (!refreshed) {
+        tokenManager.clearTokens();
+        await removeAuth();
+        setAuthData(null);
+      }
+    } catch (err) {
+      if (__DEV__) {
+        console.error("[AUTH]", err);
+      }
+
+      tokenManager.clearTokens();
+      await removeAuth();
+      setAuthData(null);
     } finally {
       setLoading(false);
     }
   }
 
   const tryRefreshToken = useCallback(
-    async (data: AuthData): Promise<boolean> => {
-      const { refreshAccessToken } = await import("@/services/auth.service");
-      const result = await refreshAccessToken(data.refreshToken);
+    async (current: AuthData): Promise<boolean> => {
+      try {
+        const result = await refreshAccessToken(
+          current.refreshToken
+        );
 
-      if (result.success && result.data) {
-        tokenManager.setTokens(result.data.accessToken, result.data.refreshToken);
-        await saveAuth(result.data);
-        setAuthData(result.data);
-        return true;
+        if (result.success && result.data) {
+          tokenManager.setTokens(
+            result.data.accessToken,
+            result.data.refreshToken
+          );
+
+          await saveAuth(result.data);
+
+          setAuthData(result.data);
+
+          return true;
+        }
+
+        if (result.error?.reason === "network_error") {
+          /**
+           * Render dormindo.
+           *
+           * Mantemos a sessão local.
+           * O interceptor fará novo refresh
+           * quando surgir um 401.
+           */
+
+          tokenManager.setTokens(
+            current.accessToken,
+            current.refreshToken
+          );
+
+          setAuthData(current);
+
+          return true;
+        }
+
+        return false;
+      } catch {
+        return false;
       }
-
-      if (result.error?.reason === "network_error") {
-        tokenManager.setTokens(data.accessToken, data.refreshToken);
-        setAuthData(data);
-        if (__DEV__) console.warn("[Auth] Refresh falhou por rede, sessão local mantida");
-        return true;
-      }
-
-      if (__DEV__) console.warn("[Auth] Refresh rejeitado pelo servidor:", result.message);
-      return false;
     },
     []
   );
 
-  async function register(
-    dto: RegisterDTO
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const result = await registerUser(dto);
+  async function register(dto: RegisterDTO) {
+    const result = await registerUser(dto);
 
-      if (!result.success) {
-        return { success: false, message: result.message };
-      }
-
-      return { success: true, message: result.message };
-    } catch (error) {
-      if (__DEV__) console.error("[Auth] Erro no registro:", error);
-      return { success: false, message: "Erro inesperado. Tente novamente." };
-    }
+    return {
+      success: result.success,
+      message: result.message,
+    };
   }
 
-  async function login(
-    dto: LoginDTO
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const result = await loginUser(dto);
+  async function login(dto: LoginDTO) {
+    const result = await loginUser(dto);
 
-      if (!result.success || !result.data) {
-        return { success: false, message: result.message };
-      }
-
-      tokenManager.setTokens(
-        result.data.accessToken,
-        result.data.refreshToken
-      );
-
-      await saveAuth(result.data);
-      setAuthData(result.data);
-
-      return { success: true, message: result.message };
-    } catch (error) {
-      if (__DEV__) console.error("[Auth] Erro no login:", error);
-      return { success: false, message: "Erro inesperado. Tente novamente." };
+    if (!result.success || !result.data) {
+      return {
+        success: false,
+        message: result.message,
+      };
     }
+
+    tokenManager.setTokens(
+      result.data.accessToken,
+      result.data.refreshToken
+    );
+
+    await saveAuth(result.data);
+
+    setAuthData(result.data);
+
+    return {
+      success: true,
+      message: result.message,
+    };
   }
 
-  async function logout(): Promise<void> {
-    try {
-      await removeAuth();
-    } finally {
-      tokenManager.clearTokens();
-      setAuthData(null);
-    }
+  async function logout() {
+    tokenManager.clearTokens();
+    await removeAuth();
+    setAuthData(null);
   }
 
   return (
@@ -173,8 +211,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user: authData?.user ?? null,
         accessToken: authData?.accessToken ?? null,
+        signed: authData !== null,
         loading,
-        signed: !!authData,
         login,
         logout,
         register,

@@ -24,12 +24,12 @@ export function ProfileUserCard() {
 
   // Sync local state when profile loads or updates
   useEffect(() => {
-    if (profile?.username) {
+    if (profile) {
       setName(profile.username);
     }
-  }, [profile?.username]);
+  }, [profile]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       show("error", "Informe um nome.");
       return;
@@ -40,17 +40,15 @@ export function ProfileUserCard() {
       return;
     }
 
-    updateProfile.mutate(
-      { username: name.trim() },
-      {
-        onSuccess: () => {
-          show("success", "Perfil atualizado com sucesso!");
-        },
-        onError: (error) => {
-          show("error", error.message || "Não foi possível atualizar o perfil.");
-        },
-      }
-    );
+    try {
+      await updateProfile.mutateAsync({
+        username: name.trim(),
+      });
+
+      show("success", "Perfil atualizado com sucesso!");
+    } catch (error: any) {
+      show("error", error.message || "Não foi possível atualizar o perfil.");
+    }
   };
 
   if (isLoading) {
