@@ -1,6 +1,7 @@
 export const PRODUCT_SELECT_FIELDS = `
   id,
   name,
+  user_id,
   price,
   priority,
   payment_type,

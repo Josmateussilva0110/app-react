@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
-import { paginationSchema } from "../types/pagination/pagination-schema"
+import { paginationSchema } from "@app/shared"
 import { ProductIdParam } from "../types/product/product-id-param"
 
 
@@ -58,8 +58,7 @@ class ProductController {
 
     return response.status(200).json({
       success: true,
-      data: result.data.items,
-      meta: result.data.meta,
+      data: result.data,
     });
   }
 

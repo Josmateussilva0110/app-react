@@ -6,10 +6,14 @@ import { AppShell } from "@/components/appShell";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useTheme } from "@/context/theme.context";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { matchesSearch } from "@/lib/text.utils";
 import type { ProductResponse } from "@app/shared";
 
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
+import { HomeSearchInput } from "./home-search-input";
+import { HomeUserFilter, ALL_USERS_VALUE } from "./home-user-filter";
 import { HomePriorityList } from "./home-priority-list";
 import { HomeEmptyState } from "./home-empty-state";
 import type { StatusFilter } from "../constants/home.constants";
@@ -37,13 +41,27 @@ export function ItemListScreen({
 }: ItemListScreenProps) {
   const { colors } = useTheme();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const [userFilter, setUserFilter] = useState<string>(ALL_USERS_VALUE);
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput, 250);
 
   const filteredProducts = useMemo(() => {
-    if (statusFilter === "todos") return products;
-    return products.filter(
-      (product) => product.finished === (statusFilter === "finalizado")
-    );
-  }, [products, statusFilter]);
+    return products.filter((product) => {
+      if (
+        statusFilter !== "todos" &&
+        product.finished !== (statusFilter === "finalizado")
+      ) {
+        return false;
+      }
+      if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
+        return false;
+      }
+      if (!matchesSearch(product.name, search)) {
+        return false;
+      }
+      return true;
+    });
+  }, [products, statusFilter, userFilter, search]);
 
   const total = useMemo(
     () => filteredProducts.reduce((sum, p) => sum + p.price, 0),
@@ -95,7 +113,15 @@ export function ItemListScreen({
             />
           )}
 
+          <HomeSearchInput value={searchInput} onChange={setSearchInput} />
+
           <HomeFilters value={statusFilter} onChange={setStatusFilter} />
+
+          <HomeUserFilter
+            products={products}
+            value={userFilter}
+            onChange={setUserFilter}
+          />
 
           {filteredProducts.length === 0 ? (
             <HomeEmptyState />
