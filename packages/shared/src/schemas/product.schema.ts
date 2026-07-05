@@ -26,6 +26,7 @@ export const productSchema = z.object({
 export const productResponseSchema = z.object({
   id:           z.string(),
   name:         z.string(),
+  user_id:      z.string(),
   price:        z.number(),
   priority:     priorityEnum,
   payment_type: paymentTypeEnum,

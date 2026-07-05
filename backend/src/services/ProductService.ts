@@ -1,10 +1,14 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { supabaseAdmin } from "../database/supabase/supabase"
-import { CreateProductInput, UpdateProductInput } from "@app/shared"
+import {
+    CreateProductInput,
+    UpdateProductInput,
+    PaginationParams,
+    PaginatedResult,
+    ProductResponse,
+} from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
 import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
-import { ProductResponse } from "../types/product/product-response"
-import { PaginationParams, PaginatedProducts } from "../types/pagination/pagination-schema"
 
 class ProductService {
     private toIsoDate(date: string): string {
@@ -193,14 +197,14 @@ class ProductService {
         }
     }
 
-    async getAll({ page, limit }: PaginationParams): Promise<ServiceResult<PaginatedProducts, ProductErrorCode>> {
+    async getAll({ page, limit }: PaginationParams): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
         try {
             const from = (page - 1) * limit
             const to = from + limit - 1
 
             const { data: products, error, count } = await supabaseAdmin
                 .from("products")
-                .select(`${PRODUCT_SELECT_FIELDS}, user_id`, { count: "exact" })
+                .select(PRODUCT_SELECT_FIELDS, { count: "exact" })
                 .order("date", { ascending: false })
                 .range(from, to)
 
@@ -235,7 +239,7 @@ class ProductService {
 
             const items: ProductResponse[] = rows.map((p: any) => {
                 const { user_id, ...rest } = p
-                return { ...rest, user_name: userMap.get(user_id) ?? "" }
+                return { ...rest, user_id, user_name: userMap.get(user_id) ?? "" }
             })
 
             const total = count ?? 0
