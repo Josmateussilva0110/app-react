@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { ProductFormData, productSchema } from "@/schemas/product.schema";
+import { ProductFormData, productFormSchema } from "@/schemas/product.schema";
 import { Control } from "react-hook-form";
 
 // Valores ANTES do transform (price é string vinda do input)
-export type ProductFormInput = z.input<typeof productSchema>;
+export type ProductFormInput = z.input<typeof productFormSchema>;
 export type ProductFormControl = Control<ProductFormInput, unknown, ProductFormData>;
 
 // Valores APÓS o transform (price vira number — payload final)

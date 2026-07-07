@@ -25,7 +25,7 @@ export function ServerWakeOverlay() {
           </Text>
 
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            A primeira requisição pode levar até 1 minuto. Obrigado pela paciência!
+            A primeira requisição pode levar até 1 minuto. Obrigado pela paciência ♥
             {maxAttempts > 0 && ` (tentativa ${attempt}/${maxAttempts})`}
           </Text>
         </View>
