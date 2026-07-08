@@ -2,8 +2,10 @@
 # Docker Compose - Build APK Android
 # ================================================================
 # Uso:
-#   docker compose run --rm build-apk
-#   ou: ./build-apk.sh
+#   ./build-apk.sh                  # build rápido (código via volume)
+#   ./build-apk.sh --rebuild-image  # reconstrói imagem (deps/Dockerfile)
+#   ./build-apk.sh --clean-prebuild # regera projeto Android nativo
+#   ./build-apk.sh --no-cache       # rebuild completo da imagem Docker
 # ================================================================
 
 services:
@@ -12,13 +14,22 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
+      - CI=1
       - NODE_ENV=production
+      - CLEAN_PREBUILD=${CLEAN_PREBUILD:-0}
     volumes:
-      # Output: APK gerado será salvo aqui no host
+      - ./financeiro-app:/app/financeiro-app
+      - ./packages/shared:/app/packages/shared
+      - ./docker/entrypoint-build.sh:/usr/local/bin/entrypoint-build.sh:ro
       - ./build:/app/build
-      # Cache: persiste o cache do Gradle entre builds
       - gradle-cache:/root/.gradle
+      - android-cache:/root/.android-cache
+      - expo-cache:/root/.expo
 
 volumes:
   gradle-cache:
     name: financeiro-app-gradle-cache
+  android-cache:
+    name: financeiro-app-android-project
+  expo-cache:
+    name: financeiro-app-expo-cache

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # ================================================================
 # Dockerfile - Build local do APK Android
 # Expo SDK 54 / React Native 0.81 / financeiro-app
@@ -21,6 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     git \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Detectar arquitetura e criar symlink para JAVA_HOME portável
@@ -62,20 +64,25 @@ COPY packages/shared/package.json ./packages/shared/
 COPY financeiro-app/package.json ./financeiro-app/
 COPY backend/package.json ./backend/
 
-RUN npm ci --ignore-scripts
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --ignore-scripts
 
 # ----------------------------------------------------------------
-# 4. Copiar código-fonte
+# 4. Pré-compilar shared (cache de layer; código montado em runtime)
 # ----------------------------------------------------------------
 COPY tsconfig.base.json ./
 COPY packages/shared/ ./packages/shared/
-COPY financeiro-app/ ./financeiro-app/
 
-# Copiar .env se existir (variáveis como EXPO_PUBLIC_API_URL)
+RUN npm run build --workspace=@app/shared
+
+# ----------------------------------------------------------------
+# 5. Copiar app (fallback quando volumes não estão montados)
+# ----------------------------------------------------------------
+COPY financeiro-app/ ./financeiro-app/
 COPY financeiro-app/.env* ./financeiro-app/
 
 # ----------------------------------------------------------------
-# 5. Entrypoint para build
+# 6. Entrypoint para build
 # ----------------------------------------------------------------
 COPY docker/entrypoint-build.sh /usr/local/bin/entrypoint-build.sh
 RUN chmod +x /usr/local/bin/entrypoint-build.sh
