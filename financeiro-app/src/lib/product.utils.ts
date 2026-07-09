@@ -17,6 +17,30 @@ export function formatProductDate(date: string): string {
   return date;
 }
 
+export function getProductMonthYear(date: string): { month: number; year: number } | null {
+  // Accept DD/MM/YYYY
+  const dmMatch = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (dmMatch) {
+    const [, day, month, year] = dmMatch;
+    return { month: Number(month) - 1, year: Number(year) };
+  }
+
+  // Accept ISO YYYY-MM-DD
+  const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month] = isoMatch;
+    return { month: Number(month) - 1, year: Number(year) };
+  }
+
+  // Fallback: try Date parse
+  const d = new Date(date);
+  if (!isNaN(d.getTime())) {
+    return { month: d.getMonth(), year: d.getFullYear() };
+  }
+
+  return null;
+}
+
 export function isMonthList(value: boolean | string | undefined): boolean {
   if (typeof value === "boolean") return value;
   return value === "true" || value === "t";

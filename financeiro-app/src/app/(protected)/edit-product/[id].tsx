@@ -20,7 +20,7 @@ export default function EditProductScreen() {
 
   if (loading && !product) {
     return (
-      <AppShell title="Editar Produto" subtitle="Carregando dados do item">
+      <AppShell title="Editar Produto" subtitle="Carregando dados do item" showBack>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
@@ -92,7 +92,7 @@ export default function EditProductScreen() {
   }
 
   return (
-    <AppShell title="Editar Produto" subtitle={product.name}>
+    <AppShell title="Editar Produto" subtitle={product.name} showBack>
       <ProductForm
         key={product.id}
         mode="edit"
