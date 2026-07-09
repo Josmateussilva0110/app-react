@@ -2,12 +2,15 @@ import { Modal, View, Text, ActivityIndicator, StyleSheet } from "react-native";
 import { useTheme } from "@/context/theme.context";
 import { Spacing } from "@/constants/theme";
 import { useServerStatus } from "@/hooks/use-server-status";
+import { useProducts } from "@/hooks/use-products";
 
 export function ServerWakeOverlay() {
   const { status, attempt, maxAttempts } = useServerStatus();
   const { colors } = useTheme();
+  const shouldWaitForProducts = status === "waking" || status === "retrying";
+  const { isSuccess } = useProducts({ enabled: shouldWaitForProducts });
 
-  if (status !== "waking") return null;
+  if (!shouldWaitForProducts || isSuccess) return null;
 
   return (
     <Modal transparent animationType="fade" visible statusBarTranslucent>
