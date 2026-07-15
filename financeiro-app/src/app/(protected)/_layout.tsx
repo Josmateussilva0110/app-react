@@ -21,6 +21,7 @@ export default function ProtectedLayout() {
 
       {/* Screens que empilham por cima das tabs */}
       <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+      <Stack.Screen name="dashboard-category" options={{ headerShown: false }} />
       <Stack.Screen name="product-detail/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="edit-product/[id]" options={{ headerShown: false }} />
     </Stack>

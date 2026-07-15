@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 
 import { AppShell } from "@/components/appShell";
@@ -167,18 +167,16 @@ export default function DashboardScreen() {
 
   const handleCategoryPress = useCallback(
     (category: string) => {
-      // navigate (não push) garante atualização dos params na tab já montada.
-      // userId "" limpa filtro sticky de usuário anterior.
-      router.navigate({
-        pathname: "/(protected)/(tabs)/itens",
+      router.push({
+        pathname: "/(protected)/dashboard-category",
         params: {
           category,
           month: String(month),
           year: String(year),
           status: statusFilter,
-          userId: userId !== ALL_USERS ? userId : "",
+          ...(userId !== ALL_USERS ? { userId } : {}),
         },
-      });
+      } as unknown as Href);
     },
     [router, month, year, statusFilter, userId]
   );
