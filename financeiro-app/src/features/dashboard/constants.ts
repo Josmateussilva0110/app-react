@@ -50,8 +50,19 @@ export const PAYMENT_LABELS: Record<string, string> = {
   nao_comprado: "Não comprado",
 };
 
+export const PAYMENT_COLORS: Record<string, string> = {
+  credito: "#3B82F6",
+  pix: "#22C55E",
+  debito: "#F59E0B",
+  dinheiro: "#A855F7",
+};
+
 export function paymentLabel(key: string): string {
   return PAYMENT_LABELS[key] ?? key ?? "Outros";
+}
+
+export function paymentColor(key: string, fallback = "#71717A"): string {
+  return PAYMENT_COLORS[key] ?? fallback;
 }
 
 export const MONTHS_FULL = [
@@ -83,10 +94,10 @@ export function formatBRL(value: number): string {
   return `${sign}R$ ${withDots},${decPart}`;
 }
 
-/** Versão compacta para eixos de gráfico (ex.: R$ 1,2k). */
-export function formatBRLCompact(value: number): string {
-  if (Math.abs(value) >= 1000) {
-    return `R$ ${(value / 1000).toFixed(1).replace(".", ",")}k`;
-  }
-  return `R$ ${Math.round(value)}`;
+/** Valor inteiro em Reais para rótulos de gráfico (ex.: R$ 2.100). */
+export function formatBRLChart(value: number): string {
+  const rounded = Math.round(value);
+  const withDots = Math.abs(rounded).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const sign = rounded < 0 ? "-" : "";
+  return `${sign}R$ ${withDots}`;
 }

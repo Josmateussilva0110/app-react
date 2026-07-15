@@ -28,6 +28,15 @@ function isTruthyFlag(value: unknown): boolean {
     return value === true || value === "true" || value === 1 || value === "t"
 }
 
+function matchesStatus(
+    finished: unknown,
+    status: "todos" | "pendente" | "finalizado"
+): boolean {
+    if (status === "todos") return true
+    if (status === "finalizado") return isTruthyFlag(finished)
+    return !isTruthyFlag(finished)
+}
+
 class ProductService {
     private toIsoDate(date: string): string {
         const [day, month, year] = date.split("/")
@@ -274,7 +283,7 @@ class ProductService {
         query: StatsQuery
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
         try {
-            const { month, year, userId } = query
+            const { month, year, userId, status = "todos" } = query
 
             const { data: products, error } = await supabaseAdmin
                 .from("products")
@@ -316,13 +325,15 @@ class ProductService {
                 if (!ym) continue
                 const price = Number(p.price) || 0
 
-                if (ym.year === year) {
+                const matchesUser = !userId || p.user_id === userId
+                const matchesFinished = matchesStatus(p.finished, status)
+
+                if (ym.year === year && matchesFinished) {
                     if (!evoByUser.has(p.user_id)) evoByUser.set(p.user_id, new Array(12).fill(0))
                     evoByUser.get(p.user_id)![ym.month - 1] += price
                 }
 
-                const matchesUser = !userId || p.user_id === userId
-                if (ym.year !== year || ym.month !== month || !matchesUser) continue
+                if (ym.year !== year || ym.month !== month || !matchesUser || !matchesFinished) continue
 
                 total += price
                 itemsCount += 1

@@ -7,7 +7,7 @@ import Svg, {
   Text as SvgText,
 } from "react-native-svg";
 import { useTheme } from "@/context/theme.context";
-import { MONTHS_ABBR, formatBRLCompact } from "../constants";
+import { MONTHS_ABBR, formatBRLChart } from "../constants";
 
 export type EvolutionSeriesUI = {
   userName: string;
@@ -18,7 +18,7 @@ export type EvolutionSeriesUI = {
 type EvolutionLineChartProps = {
   months: number[]; // 1-12
   series: EvolutionSeriesUI[];
-  meta: number;
+  average: number;
 };
 
 const HEIGHT = 200;
@@ -26,7 +26,7 @@ const PAD_TOP = 14;
 const PAD_BOTTOM = 24;
 const PAD_X = 10;
 
-export function EvolutionLineChart({ months, series, meta }: EvolutionLineChartProps) {
+export function EvolutionLineChart({ months, series, average }: EvolutionLineChartProps) {
   const { colors } = useTheme();
   const [width, setWidth] = useState(0);
 
@@ -34,7 +34,7 @@ export function EvolutionLineChart({ months, series, meta }: EvolutionLineChartP
 
   const n = months.length;
   const allValues = series.flatMap((s) => s.data);
-  const maxVal = Math.max(1, ...allValues, meta > 0 ? meta : 0);
+  const maxVal = Math.max(1, ...allValues, average > 0 ? average : 0);
 
   const plotW = Math.max(0, width - PAD_X * 2);
   const plotH = HEIGHT - PAD_TOP - PAD_BOTTOM;
@@ -56,10 +56,12 @@ export function EvolutionLineChart({ months, series, meta }: EvolutionLineChartP
             </Text>
           </View>
         ))}
-        {meta > 0 && (
+        {average > 0 && (
           <View style={styles.legendItem}>
             <View style={[styles.dashDot, { borderColor: colors.warning }]} />
-            <Text style={[styles.legendText, { color: colors.textSecondary }]}>Meta</Text>
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+              Média ({formatBRLChart(average)})
+            </Text>
           </View>
         )}
       </View>
@@ -77,13 +79,13 @@ export function EvolutionLineChart({ months, series, meta }: EvolutionLineChartP
               strokeWidth={1}
             />
 
-            {/* meta */}
-            {meta > 0 && meta <= maxVal && (
+            {/* média de gastos */}
+            {average > 0 && average <= maxVal && (
               <Line
                 x1={PAD_X}
-                y1={y(meta)}
+                y1={y(average)}
                 x2={PAD_X + plotW}
-                y2={y(meta)}
+                y2={y(average)}
                 stroke={colors.warning}
                 strokeWidth={1.5}
                 strokeDasharray="6 5"
@@ -128,7 +130,7 @@ export function EvolutionLineChart({ months, series, meta }: EvolutionLineChartP
       </View>
 
       <Text style={[styles.caption, { color: colors.textSecondary }]}>
-        Topo do gráfico ≈ {formatBRLCompact(maxVal)}
+        Topo do gráfico ≈ {formatBRLChart(maxVal)}
         {!hasData ? " · sem lançamentos no ano" : ""}
       </Text>
     </View>

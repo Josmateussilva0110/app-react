@@ -67,42 +67,44 @@ export function MetaCard({ total, meta, segments, onSaveMeta, saving }: MetaCard
       </View>
 
       <View style={styles.metaRow}>
-        <Text style={[styles.metaValue, { color: colors.text }]}>
+        <Text style={[styles.metaValue, { color: colors.text }]} numberOfLines={2}>
           {formatBRL(total)}{" "}
           <Text style={{ color: colors.textSecondary }}>/ {formatBRL(meta)}</Text>
         </Text>
 
-        {editing ? (
-          <View style={styles.editRow}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              keyboardType="numeric"
-              placeholder="0"
-              placeholderTextColor={colors.textSecondary}
-              style={[
-                styles.input,
-                { color: colors.text, borderColor: colors.border, backgroundColor: colors.backgroundElement },
-              ]}
-            />
-            <Pressable
-              onPress={handleSave}
-              disabled={saving}
-              style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.saveText}>Salvar</Text>
-              )}
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={() => setEditing(true)}>
+        {!editing && (
+          <Pressable onPress={() => setEditing(true)} style={styles.editLinkWrap}>
             <Text style={[styles.editLink, { color: colors.primary }]}>Editar meta</Text>
           </Pressable>
         )}
       </View>
+
+      {editing && (
+        <View style={styles.editRow}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor={colors.textSecondary}
+            style={[
+              styles.input,
+              { color: colors.text, borderColor: colors.border, backgroundColor: colors.backgroundElement },
+            ]}
+          />
+          <Pressable
+            onPress={handleSave}
+            disabled={saving}
+            style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.saveText}>Salvar</Text>
+            )}
+          </Pressable>
+        </View>
+      )}
 
       <View
         style={[
@@ -134,10 +136,13 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 6,
   },
   title: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -153,13 +158,20 @@ const styles = StyleSheet.create({
   },
   metaRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    gap: 8,
   },
   metaValue: {
+    flex: 1,
+    flexBasis: "60%",
+    minWidth: 0,
     fontSize: 15,
     fontWeight: "700",
+  },
+  editLinkWrap: {
+    flexShrink: 0,
   },
   editLink: {
     fontSize: 14,
@@ -169,9 +181,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    width: "100%",
   },
   input: {
-    width: 100,
+    flex: 1,
+    minWidth: 0,
     height: 38,
     borderRadius: 10,
     borderWidth: 1,
