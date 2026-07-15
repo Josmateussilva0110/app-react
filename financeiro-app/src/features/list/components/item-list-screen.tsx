@@ -11,6 +11,9 @@ import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
 import type { ProductResponse } from "@app/shared";
 
+import { FilterChip } from "@/components/ui/filter-chips";
+import { categoryMeta } from "@/features/dashboard/constants";
+
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
 import { HomeMonthYearFilter } from "./home-month-year-filter";
@@ -18,7 +21,7 @@ import { HomeSearchInput } from "./home-search-input";
 import { HomeUserFilter, ALL_USERS_VALUE } from "./home-user-filter";
 import { HomePriorityList } from "./home-priority-list";
 import { HomeEmptyState } from "./home-empty-state";
-import type { StatusFilter } from "../constants/home.constants";
+import type { InitialListFilters, StatusFilter } from "../constants/home.constants";
 
 type ItemListScreenProps = {
   title: string;
@@ -30,6 +33,16 @@ type ItemListScreenProps = {
   showSummary?: boolean;
   showFab?: boolean;
   showDashboard?: boolean;
+  initialFilters?: InitialListFilters;
+  /** Limpa o filtro de categoria também na rota (params sticky). */
+  onClearCategory?: () => void;
+  /** Notifica o pai para refetch com filtros no GET /products. */
+  onQueryFiltersChange?: (filters: InitialListFilters) => void;
+  /**
+   * Quando true, category/month/year/status/user já vieram filtrados da API;
+   * a lista só aplica busca local e mantém os chips em sync.
+   */
+  serverFiltered?: boolean;
 };
 
 export function ItemListScreen({
@@ -42,16 +55,55 @@ export function ItemListScreen({
   showSummary = true,
   showFab = true,
   showDashboard = false,
+  initialFilters,
+  onClearCategory,
+  onQueryFiltersChange,
+  serverFiltered = false,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
-  const [userFilter, setUserFilter] = useState<string>(ALL_USERS_VALUE);
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(
+    initialFilters?.category ?? null
+  );
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+    initialFilters?.status ?? "todos"
+  );
+  const [userFilter, setUserFilter] = useState<string>(
+    initialFilters?.userId ?? ALL_USERS_VALUE
+  );
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(
+    initialFilters?.month ?? null
+  );
+  const [selectedYear, setSelectedYear] = useState<number | null>(
+    initialFilters?.year ?? null
+  );
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 250);
 
+  // Substitui o snapshot completo (não faz patch): campos omitidos voltam ao default.
   useEffect(() => {
+    if (!initialFilters) return;
+
+    setCategoryFilter(initialFilters.category ?? null);
+    setStatusFilter(initialFilters.status ?? "todos");
+    setUserFilter(initialFilters.userId ?? ALL_USERS_VALUE);
+    setSelectedMonth(
+      initialFilters.month !== undefined ? initialFilters.month : null
+    );
+    setSelectedYear(
+      initialFilters.year !== undefined ? initialFilters.year : null
+    );
+  }, [
+    initialFilters,
+    initialFilters?.category,
+    initialFilters?.status,
+    initialFilters?.userId,
+    initialFilters?.month,
+    initialFilters?.year,
+  ]);
+
+  useEffect(() => {
+    if (serverFiltered) return;
+    if (initialFilters?.month !== undefined || initialFilters?.year !== undefined) return;
     if (products.length === 0) return;
     if (selectedMonth !== null || selectedYear !== null) return;
 
@@ -68,42 +120,88 @@ export function ItemListScreen({
       setSelectedMonth(cm);
       setSelectedYear(cy);
     }
-  }, [products, selectedMonth, selectedYear]);
+  }, [
+    products,
+    selectedMonth,
+    selectedYear,
+    initialFilters?.month,
+    initialFilters?.year,
+    serverFiltered,
+  ]);
+
+  const emitQueryFilters = (next: {
+    category?: string | null;
+    status?: StatusFilter;
+    userId?: string;
+    month?: number | null;
+    year?: number | null;
+  }) => {
+    if (!onQueryFiltersChange) return;
+
+    const nextCategory = next.category !== undefined ? next.category : categoryFilter;
+    const nextStatus = next.status ?? statusFilter;
+    const nextUser = next.userId !== undefined ? next.userId : userFilter;
+    const nextMonth = next.month !== undefined ? next.month : selectedMonth;
+    const nextYear = next.year !== undefined ? next.year : selectedYear;
+
+    onQueryFiltersChange({
+      category: nextCategory || undefined,
+      status: nextStatus,
+      userId: nextUser === ALL_USERS_VALUE ? undefined : nextUser,
+      month: nextMonth,
+      year: nextYear,
+    });
+  };
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
-      if (
-        statusFilter !== "todos" &&
-        product.finished !== (statusFilter === "finalizado")
-      ) {
-        return false;
-      }
-      if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
-        return false;
-      }
-      // Filter by month/year if selected
-      try {
-        const my = (() => {
-          const dmMatch = product.date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-          if (dmMatch) return { month: Number(dmMatch[2]) - 1, year: Number(dmMatch[3]) };
-          const isoMatch = product.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-          if (isoMatch) return { month: Number(isoMatch[2]) - 1, year: Number(isoMatch[1]) };
-          const d = new Date(product.date);
-          if (!isNaN(d.getTime())) return { month: d.getMonth(), year: d.getFullYear() };
-          return null;
-        })();
+      if (!serverFiltered) {
+        if (categoryFilter && product.category !== categoryFilter) {
+          return false;
+        }
+        if (
+          statusFilter !== "todos" &&
+          product.finished !== (statusFilter === "finalizado")
+        ) {
+          return false;
+        }
+        if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
+          return false;
+        }
+        try {
+          const my = (() => {
+            const dmMatch = product.date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            if (dmMatch) return { month: Number(dmMatch[2]) - 1, year: Number(dmMatch[3]) };
+            const isoMatch = product.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) return { month: Number(isoMatch[2]) - 1, year: Number(isoMatch[1]) };
+            const d = new Date(product.date);
+            if (!isNaN(d.getTime())) return { month: d.getMonth(), year: d.getFullYear() };
+            return null;
+          })();
 
-        if (selectedMonth !== null && my && my.month !== selectedMonth) return false;
-        if (selectedYear !== null && my && my.year !== selectedYear) return false;
-      } catch (e) {
-        // ignore parse errors and don't filter out
+          if (selectedMonth !== null && my && my.month !== selectedMonth) return false;
+          if (selectedYear !== null && my && my.year !== selectedYear) return false;
+        } catch {
+          // ignore parse errors
+        }
       }
       if (!matchesSearch(product.name, search)) {
         return false;
       }
       return true;
     });
-  }, [products, statusFilter, userFilter, search, selectedMonth, selectedYear]);
+  }, [
+    products,
+    categoryFilter,
+    statusFilter,
+    userFilter,
+    search,
+    selectedMonth,
+    selectedYear,
+    serverFiltered,
+  ]);
+
+  const categoryChip = categoryFilter ? categoryMeta(categoryFilter) : null;
 
   const total = useMemo(
     () => filteredProducts.reduce((sum, p) => sum + p.price, 0),
@@ -157,7 +255,29 @@ export function ItemListScreen({
 
           <HomeSearchInput value={searchInput} onChange={setSearchInput} />
 
-          <HomeFilters value={statusFilter} onChange={setStatusFilter} />
+          {categoryChip && (
+            <FilterChip
+              label={`${categoryChip.label} · limpar`}
+              icon={categoryChip.icon}
+              active
+              onPress={() => {
+                setCategoryFilter(null);
+                onClearCategory?.();
+                emitQueryFilters({ category: null });
+              }}
+              activeColor={categoryChip.color}
+              inactiveColor={colors.card}
+              textColor="#ffffff"
+            />
+          )}
+
+          <HomeFilters
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              emitQueryFilters({ status: value });
+            }}
+          />
           <HomeMonthYearFilter
             products={products}
             month={selectedMonth}
@@ -165,12 +285,18 @@ export function ItemListScreen({
             onChange={(m, y) => {
               setSelectedMonth(m);
               setSelectedYear(y);
+              emitQueryFilters({ month: m, year: y });
             }}
           />
           <HomeUserFilter
             products={products}
             value={userFilter}
-            onChange={setUserFilter}
+            onChange={(value) => {
+              setUserFilter(value);
+              emitQueryFilters({
+                userId: value === ALL_USERS_VALUE ? ALL_USERS_VALUE : value,
+              });
+            }}
           />
 
           {filteredProducts.length === 0 ? (

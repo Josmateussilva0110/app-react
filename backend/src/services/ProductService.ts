@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../database/supabase/supabase"
 import {
     CreateProductInput,
     UpdateProductInput,
-    PaginationParams,
+    ProductListQuery,
     PaginatedResult,
     ProductResponse,
     StatsQuery,
@@ -224,16 +224,71 @@ class ProductService {
         }
     }
 
-    async getAll({ page, limit }: PaginationParams): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
+    async getAll(
+        query: ProductListQuery
+    ): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
         try {
+            const {
+                page,
+                limit,
+                category,
+                month,
+                year,
+                userId,
+                status = "todos",
+                monthList,
+            } = query
+
             const from = (page - 1) * limit
             const to = from + limit - 1
 
-            const { data: products, error, count } = await supabaseAdmin
+            let dbQuery = supabaseAdmin
                 .from("products")
                 .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`, { count: "exact" })
                 .order("date", { ascending: false })
-                .range(from, to)
+
+            if (category) {
+                dbQuery = dbQuery.eq("category", category)
+            }
+
+            if (userId) {
+                dbQuery = dbQuery.eq("user_id", userId)
+            }
+
+            if (status === "finalizado") {
+                dbQuery = dbQuery.eq("finished", true)
+            } else if (status === "pendente") {
+                dbQuery = dbQuery.eq("finished", false)
+            }
+
+            if (monthList === "true") {
+                dbQuery = dbQuery.eq("month_list", true)
+            } else if (monthList === "false") {
+                dbQuery = dbQuery.eq("month_list", false)
+            }
+
+            // Intervalo por mês/ano (coluna date em ISO YYYY-MM-DD).
+            if (year !== undefined && month !== undefined) {
+                const start = `${year}-${String(month).padStart(2, "0")}-01`
+                const endMonth = month === 12 ? 1 : month + 1
+                const endYear = month === 12 ? year + 1 : year
+                const end = `${endYear}-${String(endMonth).padStart(2, "0")}-01`
+                dbQuery = dbQuery.gte("date", start).lt("date", end)
+            } else if (year !== undefined) {
+                const start = `${year}-01-01`
+                const end = `${year + 1}-01-01`
+                dbQuery = dbQuery.gte("date", start).lt("date", end)
+            } else if (month !== undefined) {
+                // Só mês sem ano: restringe ao mês no ano corrente (evita full scan ambíguo).
+                const currentYear = new Date().getFullYear()
+                const start = `${currentYear}-${String(month).padStart(2, "0")}-01`
+                const endMonth = month === 12 ? 1 : month + 1
+                const endYear = month === 12 ? currentYear + 1 : currentYear
+                const end = `${endYear}-${String(endMonth).padStart(2, "0")}-01`
+                dbQuery = dbQuery.gte("date", start).lt("date", end)
+            }
+
+            const { data: products, error, count } = await dbQuery.range(from, to)
 
             if (error) {
                 console.error("[ProductService.getAll] Supabase error:", error)
@@ -285,105 +340,54 @@ class ProductService {
         try {
             const { month, year, userId, status = "todos" } = query
 
-            const { data: products, error } = await supabaseAdmin
-                .from("products")
-                .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`)
-                .limit(10000)
+            const rpcResult = await supabaseAdmin.rpc("get_product_stats", {
+                p_month: month,
+                p_year: year,
+                p_user_id: userId ?? null,
+                p_status: status,
+            })
 
-            if (error) {
-                console.error("[ProductService.getStats] Supabase error:", error)
+            if (!rpcResult.error && rpcResult.data) {
+                const data = rpcResult.data as DashboardStats
                 return {
-                    status: false,
-                    error: {
-                        code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                        message: "Não foi possível calcular as estatísticas.",
+                    status: true,
+                    data: {
+                        total: Number(data.total) || 0,
+                        monthListTotal: Number(data.monthListTotal) || 0,
+                        itemsCount: Number(data.itemsCount) || 0,
+                        pendingCount: Number(data.pendingCount) || 0,
+                        byCategory: Array.isArray(data.byCategory) ? data.byCategory : [],
+                        byPayment: Array.isArray(data.byPayment) ? data.byPayment : [],
+                        evolution: {
+                            months: data.evolution?.months ?? Array.from({ length: 12 }, (_, i) => i + 1),
+                            series: Array.isArray(data.evolution?.series)
+                                ? data.evolution.series.map((s) => ({
+                                      userId: String(s.userId),
+                                      userName: s.userName ?? "",
+                                      data: Array.isArray(s.data)
+                                          ? s.data.map((n) => Number(n) || 0)
+                                          : new Array(12).fill(0),
+                                  }))
+                                : [],
+                        },
+                        users: Array.isArray(data.users)
+                            ? data.users.map((u) => ({
+                                  id: String(u.id),
+                                  name: u.name ?? "",
+                              }))
+                            : [],
                     },
                 }
             }
 
-            const rows = (products ?? []) as any[]
-
-            // Usuários (para o filtro).
-            const usersMap = new Map<string, string>()
-            for (const p of rows) {
-                if (p.user_id) usersMap.set(p.user_id, p.users?.username ?? "")
+            if (rpcResult.error) {
+                console.warn(
+                    "[ProductService.getStats] RPC unavailable, using filtered fallback:",
+                    rpcResult.error.message
+                )
             }
 
-            // Métricas do mês/ano (e usuário, se filtrado).
-            let total = 0
-            let monthListTotal = 0
-            let itemsCount = 0
-            let pendingCount = 0
-            const categoryMap = new Map<string, { total: number; count: number }>()
-            const paymentMap = new Map<string, number>()
-
-            // Evolução do ano por usuário (ignora o filtro de usuário p/ comparar).
-            const evoByUser = new Map<string, number[]>()
-
-            for (const p of rows) {
-                const ym = parseYearMonth(p.date)
-                if (!ym) continue
-                const price = Number(p.price) || 0
-
-                const matchesUser = !userId || p.user_id === userId
-                const matchesFinished = matchesStatus(p.finished, status)
-
-                if (ym.year === year && matchesFinished) {
-                    if (!evoByUser.has(p.user_id)) evoByUser.set(p.user_id, new Array(12).fill(0))
-                    evoByUser.get(p.user_id)![ym.month - 1] += price
-                }
-
-                if (ym.year !== year || ym.month !== month || !matchesUser || !matchesFinished) continue
-
-                total += price
-                itemsCount += 1
-                if (isTruthyFlag(p.month_list)) monthListTotal += price
-                if (!isTruthyFlag(p.finished)) pendingCount += 1
-
-                const cat = p.category ?? "outros"
-                const prev = categoryMap.get(cat) ?? { total: 0, count: 0 }
-                categoryMap.set(cat, { total: prev.total + price, count: prev.count + 1 })
-
-                const pay = p.payment_type ?? "outros"
-                paymentMap.set(pay, (paymentMap.get(pay) ?? 0) + price)
-            }
-
-            const byCategory = Array.from(categoryMap.entries())
-                .map(([category, v]) => ({ category, total: v.total, count: v.count }))
-                .sort((a, b) => b.total - a.total)
-
-            const byPayment = Array.from(paymentMap.entries())
-                .map(([paymentType, t]) => ({ paymentType, total: t }))
-                .sort((a, b) => b.total - a.total)
-
-            const series = Array.from(evoByUser.entries())
-                .map(([id, data]) => ({
-                    userId: id,
-                    userName: usersMap.get(id) ?? "",
-                    data,
-                }))
-                .sort((a, b) => a.userName.localeCompare(b.userName))
-
-            const users = Array.from(usersMap.entries())
-                .map(([id, name]) => ({ id, name }))
-                .sort((a, b) => a.name.localeCompare(b.name))
-
-            return {
-                status: true,
-                data: {
-                    total,
-                    monthListTotal,
-                    itemsCount,
-                    pendingCount,
-                    byCategory,
-                    byPayment,
-                    evolution: {
-                        months: Array.from({ length: 12 }, (_, i) => i + 1),
-                        series,
-                    },
-                    users,
-                },
-            }
+            return await this.getStatsFallback({ month, year, userId, status })
         } catch (error) {
             console.error("[ProductService.getStats] error:", error)
             return {
@@ -393,6 +397,114 @@ class ProductService {
                     message: "Não foi possível calcular as estatísticas.",
                 },
             }
+        }
+    }
+
+    /** Fallback: busca só o ano selecionado (não a tabela inteira) e agrega em Node. */
+    private async getStatsFallback(
+        query: StatsQuery
+    ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
+        const { month, year, userId, status = "todos" } = query
+        const yearStart = `${year}-01-01`
+        const yearEnd = `${year + 1}-01-01`
+
+        const { data: products, error } = await supabaseAdmin
+            .from("products")
+            .select("user_id, price, category, payment_type, date, finished, month_list, users:user_id(username)")
+            .gte("date", yearStart)
+            .lt("date", yearEnd)
+            .limit(10000)
+
+        if (error) {
+            console.error("[ProductService.getStatsFallback] Supabase error:", error)
+            return {
+                status: false,
+                error: {
+                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                    message: "Não foi possível calcular as estatísticas.",
+                },
+            }
+        }
+
+        const rows = (products ?? []) as any[]
+
+        const usersMap = new Map<string, string>()
+        for (const p of rows) {
+            if (p.user_id) usersMap.set(p.user_id, p.users?.username ?? "")
+        }
+
+        let total = 0
+        let monthListTotal = 0
+        let itemsCount = 0
+        let pendingCount = 0
+        const categoryMap = new Map<string, { total: number; count: number }>()
+        const paymentMap = new Map<string, number>()
+        const evoByUser = new Map<string, number[]>()
+
+        for (const p of rows) {
+            const ym = parseYearMonth(p.date)
+            if (!ym) continue
+            const price = Number(p.price) || 0
+
+            const matchesUser = !userId || p.user_id === userId
+            const matchesFinished = matchesStatus(p.finished, status)
+
+            if (ym.year === year && matchesFinished) {
+                if (!evoByUser.has(p.user_id)) evoByUser.set(p.user_id, new Array(12).fill(0))
+                evoByUser.get(p.user_id)![ym.month - 1] += price
+            }
+
+            if (ym.year !== year || ym.month !== month || !matchesUser || !matchesFinished) continue
+
+            total += price
+            itemsCount += 1
+            if (isTruthyFlag(p.month_list)) monthListTotal += price
+            if (!isTruthyFlag(p.finished)) pendingCount += 1
+
+            const cat = p.category ?? "outros"
+            const prev = categoryMap.get(cat) ?? { total: 0, count: 0 }
+            categoryMap.set(cat, { total: prev.total + price, count: prev.count + 1 })
+
+            const pay = p.payment_type ?? "outros"
+            paymentMap.set(pay, (paymentMap.get(pay) ?? 0) + price)
+        }
+
+        // Dropdown de usuários: complementa com nomes já no ano; OK no fallback.
+        const byCategory = Array.from(categoryMap.entries())
+            .map(([category, v]) => ({ category, total: v.total, count: v.count }))
+            .sort((a, b) => b.total - a.total)
+
+        const byPayment = Array.from(paymentMap.entries())
+            .map(([paymentType, t]) => ({ paymentType, total: t }))
+            .sort((a, b) => b.total - a.total)
+
+        const series = Array.from(evoByUser.entries())
+            .map(([id, data]) => ({
+                userId: id,
+                userName: usersMap.get(id) ?? "",
+                data,
+            }))
+            .sort((a, b) => a.userName.localeCompare(b.userName))
+
+        const users = Array.from(usersMap.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+
+        return {
+            status: true,
+            data: {
+                total,
+                monthListTotal,
+                itemsCount,
+                pendingCount,
+                byCategory,
+                byPayment,
+                evolution: {
+                    months: Array.from({ length: 12 }, (_, i) => i + 1),
+                    series,
+                },
+                users,
+            },
         }
     }
 }

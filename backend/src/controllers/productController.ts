@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
-import { paginationSchema, statsQuerySchema } from "@app/shared"
+import { productListQuerySchema, statsQuerySchema } from "@app/shared"
 import { ProductIdParam } from "../types/product/product-id-param"
 
 
@@ -30,19 +30,17 @@ class ProductController {
   }
 
   async getAll(request: Request, response: Response) {
-    const parsedQuery = paginationSchema.safeParse(request.query);
+    const parsedQuery = productListQuerySchema.safeParse(request.query);
 
     if (!parsedQuery.success) {
       return response.status(422).json({
         success: false,
-        message: "Parâmetros de paginação inválidos.",
+        message: "Parâmetros de listagem inválidos.",
         errors: parsedQuery.error.issues,
       });
     }
 
-    const { page, limit } = parsedQuery.data;
-
-    const result = await ProductService.getAll({ page, limit,});
+    const result = await ProductService.getAll(parsedQuery.data);
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(

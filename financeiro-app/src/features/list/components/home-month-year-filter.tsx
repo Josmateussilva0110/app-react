@@ -33,22 +33,22 @@ export function HomeMonthYearFilter({ products, month, year, onChange }: Props) 
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
 
   const years = useMemo(() => {
-    const set = new Set<number>();
+    const current = new Date().getFullYear();
+    const fromProducts = new Set<number>();
     for (const p of products) {
       const my = getProductMonthYear(p.date);
-      if (my) set.add(my.year);
+      if (my) fromProducts.add(my.year);
     }
-    return Array.from(set).sort((a, b) => b - a);
-  }, [products]);
+    // Sempre inclui janela recente para o seletor funcionar com listagem filtrada no servidor.
+    for (let y = current - 3; y <= current; y += 1) fromProducts.add(y);
+    if (year !== null) fromProducts.add(year);
+    return Array.from(fromProducts).sort((a, b) => b - a);
+  }, [products, year]);
 
   const months = useMemo(() => {
-    const set = new Set<number>();
-    for (const p of products) {
-      const my = getProductMonthYear(p.date);
-      if (my) set.add(my.month);
-    }
-    return Array.from(set).sort((a, b) => a - b);
-  }, [products]);
+    // Sempre 0–11 para não perder opções quando a API já filtrou por um mês.
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  }, []);
 
   return (
     <View style={styles.wrapper}>

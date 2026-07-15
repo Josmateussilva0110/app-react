@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { requestData } from "@/services/request";
 import type { DashboardStats } from "@app/shared";
 import type { StatusFilter } from "@/features/list/constants/home.constants";
@@ -33,6 +33,7 @@ export function useProductStats({
       return res.data as DashboardStats;
     },
     enabled,
+    placeholderData: keepPreviousData,
     retry: (failureCount) => failureCount < 4,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     staleTime: 60 * 1000,
