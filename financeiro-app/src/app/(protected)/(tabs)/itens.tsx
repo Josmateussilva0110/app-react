@@ -12,6 +12,7 @@ export default function HomeScreen() {
       loading={isLoading}
       error={error?.message ?? null}
       onRefresh={refetch}
+      showDashboard
     />
   );
 }

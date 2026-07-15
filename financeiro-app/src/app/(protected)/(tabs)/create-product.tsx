@@ -6,6 +6,7 @@ export default function CreateProductScreen() {
     <AppShell
       title="Novo Produto"
       subtitle="Adicione um item à sua lista"
+      showBack
     >
       <ProductForm />
     </AppShell>

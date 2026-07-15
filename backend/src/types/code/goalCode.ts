@@ -1,0 +1,4 @@
+export enum GoalErrorCode {
+  GOAL_FETCH_FAILED = "GOAL_FETCH_FAILED",
+  GOAL_UPDATE_FAILED = "GOAL_UPDATE_FAILED",
+}

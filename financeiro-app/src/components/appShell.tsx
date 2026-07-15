@@ -11,8 +11,8 @@ import {
 
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Settings } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { Settings, ArrowLeft, ChartColumn } from "lucide-react-native";
+import { useRouter, type Href } from "expo-router";
 import { useTheme } from "@/context/theme.context";
 
 type AppShellProps = {
@@ -21,6 +21,8 @@ type AppShellProps = {
   children: ReactNode;
   rightElement?: ReactNode;
   showSettings?: boolean;
+  showDashboard?: boolean;
+  showBack?: boolean;
 };
 
 export function AppShell({
@@ -29,22 +31,40 @@ export function AppShell({
   children,
   rightElement,
   showSettings = true,
+  showDashboard = false,
+  showBack = false,
 }: AppShellProps): React.JSX.Element {
   const { colors: theme } = useTheme();
   const router = useRouter();
 
-  const headerRight = rightElement ?? (
-    showSettings ? (
-      <TouchableOpacity
-        onPress={() => router.push("/profile")}
-        activeOpacity={0.7}
-        style={[styles.settingsButton, { backgroundColor: theme.backgroundElement }]}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <Settings size={18} color={theme.textSecondary} />
-      </TouchableOpacity>
-    ) : null
-  );
+  const defaultActions =
+    showDashboard || showSettings ? (
+      <View style={styles.headerActions}>
+        {showDashboard ? (
+          <TouchableOpacity
+            onPress={() => router.push("/dashboard" as Href)}
+            activeOpacity={0.7}
+            style={[styles.settingsButton, { backgroundColor: theme.backgroundElement }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ChartColumn size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+        ) : null}
+
+        {showSettings ? (
+          <TouchableOpacity
+            onPress={() => router.push("/profile")}
+            activeOpacity={0.7}
+            style={[styles.settingsButton, { backgroundColor: theme.backgroundElement }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Settings size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    ) : null;
+
+  const headerRight = rightElement ?? defaultActions;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.shellBackground }]}>
@@ -58,13 +78,26 @@ export function AppShell({
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
-            {subtitle ? (
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                {subtitle}
-              </Text>
+          <View style={styles.headerLeftRow}>
+            {showBack ? (
+              <TouchableOpacity
+                onPress={() => router.back()}
+                activeOpacity={0.75}
+                style={[styles.backButton, { backgroundColor: theme.backgroundElement }]}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ArrowLeft size={18} color={theme.text} />
+              </TouchableOpacity>
             ) : null}
+
+            <View style={styles.headerLeft}>
+              <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+              {subtitle ? (
+                <Text style={[styles.subtitle, { color: theme.textSecondary }]}> 
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
           </View>
 
           {headerRight ? (
@@ -102,9 +135,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  headerLeftRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
   headerRight: {
     marginLeft: 12,
     paddingTop: 4,
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
 
   settingsButton: {

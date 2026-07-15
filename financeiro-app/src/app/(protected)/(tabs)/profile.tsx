@@ -11,7 +11,7 @@ export default function ProfileScreen() {
   const isTablet = width >= 768;
 
   return (
-    <AppShell title="Perfil" subtitle="Gerencie suas preferências">
+    <AppShell title="Perfil" subtitle="Gerencie suas preferências" showBack>
       <ScreenWrapper
         style={{
           paddingHorizontal: width < 380 ? 16 : 24,

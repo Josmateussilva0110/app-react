@@ -2,7 +2,7 @@ import { Request, Response } from "express"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
-import { paginationSchema } from "@app/shared"
+import { paginationSchema, statsQuerySchema } from "@app/shared"
 import { ProductIdParam } from "../types/product/product-id-param"
 
 
@@ -43,6 +43,37 @@ class ProductController {
     const { page, limit } = parsedQuery.data;
 
     const result = await ProductService.getAll({ page, limit,});
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        productErrorHttpStatusMap
+      );
+
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  }
+
+  async getStats(request: Request, response: Response) {
+    const parsedQuery = statsQuerySchema.safeParse(request.query);
+
+    if (!parsedQuery.success) {
+      return response.status(422).json({
+        success: false,
+        message: "Parâmetros de estatísticas inválidos.",
+        errors: parsedQuery.error.issues,
+      });
+    }
+
+    const result = await ProductService.getStats(parsedQuery.data);
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
