@@ -1,10 +1,15 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { queryClient } from "@/lib/query-client";
+import { asyncStoragePersister } from "@/lib/query-persister";
 import { ToastProvider } from "@/context/toast.context";
 import { AuthProvider } from "@/context/auth.context";
 import { ThemeProvider, useTheme } from "@/context/theme.context";
 import { ServerWakeOverlay } from "@/components/ui/server-wake-overlay";
+import { warmupServer } from "@/services/server-warmup";
+
+const PERSIST_MAX_AGE = 1000 * 60 * 60 * 24; // 24h
 
 function AppNavigator() {
   const { colors } = useTheme();
@@ -24,8 +29,18 @@ function AppNavigator() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    warmupServer();
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        maxAge: PERSIST_MAX_AGE,
+      }}
+    >
       <AuthProvider>
         <ThemeProvider>
           <ToastProvider>
@@ -34,6 +49,6 @@ export default function RootLayout() {
           </ToastProvider>
         </ThemeProvider>
       </AuthProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
