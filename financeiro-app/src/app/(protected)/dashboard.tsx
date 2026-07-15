@@ -9,6 +9,8 @@ import { useTheme } from "@/context/theme.context";
 
 import { useProductStats } from "@/hooks/use-product-stats";
 import { useGoal, useUpdateGoal } from "@/hooks/use-goal";
+import { HomeFilters } from "@/features/list/components/home-filters";
+import type { StatusFilter } from "@/features/list/constants/home.constants";
 
 import { DashboardSelect } from "@/features/dashboard/components/dashboard-select";
 import { HorizontalBarChart } from "@/features/dashboard/components/horizontal-bar-chart";
@@ -19,20 +21,13 @@ import { CategoryTable } from "@/features/dashboard/components/category-table";
 import {
   categoryMeta,
   paymentLabel,
+  paymentColor,
   formatBRL,
   MONTHS_FULL,
   USER_SERIES_COLORS,
 } from "@/features/dashboard/constants";
 
 const ALL_USERS = "all";
-
-const PAYMENT_COLORS: Record<string, string> = {
-  credito: "#3B82F6",
-  pix: "#22C55E",
-  debito: "#F59E0B",
-  dinheiro: "#A855F7",
-  nao_comprado: "#71717A",
-};
 
 function StatCard({
   label,
@@ -73,6 +68,7 @@ export default function DashboardScreen() {
   const [month, setMonth] = useState(() => new Date().getMonth() + 1); // 1-12
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [userId, setUserId] = useState<string>(ALL_USERS);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
 
   const {
     data: stats,
@@ -84,6 +80,7 @@ export default function DashboardScreen() {
     month,
     year,
     userId: userId === ALL_USERS ? undefined : userId,
+    status: statusFilter,
   });
 
   const { data: goal } = useGoal();
@@ -119,55 +116,77 @@ export default function DashboardScreen() {
 
   const paymentItems = useMemo(
     () =>
-      (stats?.byPayment ?? []).map((p) => ({
-        label: paymentLabel(p.paymentType),
-        value: p.total,
-        color: PAYMENT_COLORS[p.paymentType] ?? colors.primary,
-      })),
+      (stats?.byPayment ?? [])
+        .filter((p) => p.paymentType !== "nao_comprado")
+        .map((p) => ({
+          label: paymentLabel(p.paymentType),
+          value: p.total,
+          color: paymentColor(p.paymentType, colors.primary),
+        })),
     [stats?.byPayment, colors.primary]
   );
 
-  const evolutionSeries = useMemo(
-    () =>
-      (stats?.evolution.series ?? []).map((s, i) => ({
-        userName: s.userName || "Sem nome",
-        color: USER_SERIES_COLORS[i % USER_SERIES_COLORS.length],
-        data: s.data,
-      })),
-    [stats?.evolution.series]
-  );
+  const { evolutionMonths, evolutionSeries, evolutionAverage } = useMemo(() => {
+    const rawMonths = stats?.evolution.months ?? [];
+    const rawSeries = stats?.evolution.series ?? [];
+
+    const activeIndices = rawMonths
+      .map((_, i) => i)
+      .filter((i) => rawSeries.some((s) => s.data[i] > 0));
+
+    const months = activeIndices.map((i) => rawMonths[i]);
+    const series = rawSeries.map((s, i) => ({
+      userName: s.userName || "Sem nome",
+      color: USER_SERIES_COLORS[i % USER_SERIES_COLORS.length],
+      data: activeIndices.map((idx) => s.data[idx]),
+    }));
+
+    const monthlyTotals = months.map((_, mi) =>
+      series.reduce((sum, s) => sum + s.data[mi], 0)
+    );
+    const average =
+      monthlyTotals.length > 0
+        ? monthlyTotals.reduce((acc, v) => acc + v, 0) / monthlyTotals.length
+        : 0;
+
+    return { evolutionMonths: months, evolutionSeries: series, evolutionAverage: average };
+  }, [stats?.evolution.months, stats?.evolution.series]);
 
   const filters = (
-    <View style={styles.filters}>
-      <DashboardSelect
-        label="Mês"
-        value={String(month)}
-        options={monthOptions}
-        onChange={(v) => setMonth(Number(v))}
-        style={styles.filterItem}
-      />
-      <DashboardSelect
-        label="Ano"
-        value={String(year)}
-        options={yearOptions}
-        onChange={(v) => setYear(Number(v))}
-        style={styles.filterItem}
-      />
-      <DashboardSelect
-        label="Usuário"
-        value={userId}
-        options={userOptions}
-        onChange={setUserId}
-        style={styles.filterItem}
-      />
+    <View style={styles.filtersBlock}>
+      <View style={styles.filters}>
+        <DashboardSelect
+          label="Mês"
+          value={String(month)}
+          options={monthOptions}
+          onChange={(v) => setMonth(Number(v))}
+          style={styles.filterItem}
+        />
+        <DashboardSelect
+          label="Ano"
+          value={String(year)}
+          options={yearOptions}
+          onChange={(v) => setYear(Number(v))}
+          style={styles.filterItem}
+        />
+        <DashboardSelect
+          label="Usuário"
+          value={userId}
+          options={userOptions}
+          onChange={setUserId}
+          style={styles.filterItem}
+        />
+      </View>
+      <HomeFilters value={statusFilter} onChange={setStatusFilter} />
     </View>
   );
 
-  if (isLoading && !stats) {
+  const isLoadingReports = isLoading || (isFetching && !stats);
+
+  if (isLoadingReports) {
     return (
       <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
-        <View style={styles.padded}>{filters}</View>
-        <LoadingState message="Calculando estatísticas…" />
+        <LoadingState message="Carregando relatórios…" />
       </AppShell>
     );
   }
@@ -175,7 +194,6 @@ export default function DashboardScreen() {
   if (error && !stats) {
     return (
       <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
-        <View style={styles.padded}>{filters}</View>
         <ErrorState error={error.message} onRetry={refetch} />
       </AppShell>
     );
@@ -230,9 +248,9 @@ export default function DashboardScreen() {
 
           <SectionCard title="Evolução por usuário">
             <EvolutionLineChart
-              months={stats?.evolution.months ?? []}
+              months={evolutionMonths}
               series={evolutionSeries}
-              meta={meta}
+              average={evolutionAverage}
             />
           </SectionCard>
 
@@ -259,6 +277,9 @@ const styles = StyleSheet.create({
   },
   padded: {
     padding: 20,
+  },
+  filtersBlock: {
+    gap: 14,
   },
   filters: {
     flexDirection: "row",

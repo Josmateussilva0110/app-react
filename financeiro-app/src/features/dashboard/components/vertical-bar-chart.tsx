@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
 import { useTheme } from "@/context/theme.context";
-import { formatBRLCompact } from "../constants";
+import { formatBRLChart } from "../constants";
 
 export type VBarItem = {
   label: string;
@@ -25,7 +25,7 @@ export function VerticalBarChart({ items }: { items: VBarItem[] }) {
         return (
           <View key={item.label} style={styles.col}>
             <Text style={[styles.value, { color: colors.textSecondary }]} numberOfLines={1}>
-              {formatBRLCompact(item.value)}
+              {formatBRLChart(item.value)}
             </Text>
             <View style={[styles.barArea, { height: CHART_HEIGHT }]}>
               <View

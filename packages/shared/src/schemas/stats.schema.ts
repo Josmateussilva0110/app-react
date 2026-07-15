@@ -1,9 +1,12 @@
 import { z } from "zod";
 
+export const statsStatusEnum = z.enum(["todos", "pendente", "finalizado"]);
+
 export const statsQuerySchema = z.object({
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000).max(2100),
   userId: z.string().min(1).optional(),
+  status: statsStatusEnum.default("todos"),
 });
 
 export type StatsQuery = z.infer<typeof statsQuerySchema>;
