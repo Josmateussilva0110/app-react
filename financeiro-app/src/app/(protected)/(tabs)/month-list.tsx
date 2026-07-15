@@ -22,6 +22,7 @@ export default function MonthListScreen() {
       onRefresh={refetch}
       showSummary
       showFab={false}
+      showDashboard
     />
   );
 }

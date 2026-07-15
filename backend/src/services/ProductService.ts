@@ -6,9 +6,27 @@ import {
     PaginationParams,
     PaginatedResult,
     ProductResponse,
+    StatsQuery,
+    DashboardStats,
 } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
 import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
+
+/** Extrai ano e mês (1-12) de uma data ISO (YYYY-MM-DD) ou DD/MM/YYYY. */
+function parseYearMonth(date: string): { year: number; month: number } | null {
+    if (!date) return null
+    const iso = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (iso) return { year: Number(iso[1]), month: Number(iso[2]) }
+    const br = date.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
+    if (br) return { year: Number(br[3]), month: Number(br[2]) }
+    const d = new Date(date)
+    if (!isNaN(d.getTime())) return { year: d.getFullYear(), month: d.getMonth() + 1 }
+    return null
+}
+
+function isTruthyFlag(value: unknown): boolean {
+    return value === true || value === "true" || value === 1 || value === "t"
+}
 
 class ProductService {
     private toIsoDate(date: string): string {
@@ -247,6 +265,121 @@ class ProductService {
                 error: {
                     code: ProductErrorCode.PRODUCT_FETCH_FAILED,
                     message: "Não foi possível buscar os produtos.",
+                },
+            }
+        }
+    }
+
+    async getStats(
+        query: StatsQuery
+    ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
+        try {
+            const { month, year, userId } = query
+
+            const { data: products, error } = await supabaseAdmin
+                .from("products")
+                .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`)
+                .limit(10000)
+
+            if (error) {
+                console.error("[ProductService.getStats] Supabase error:", error)
+                return {
+                    status: false,
+                    error: {
+                        code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                        message: "Não foi possível calcular as estatísticas.",
+                    },
+                }
+            }
+
+            const rows = (products ?? []) as any[]
+
+            // Usuários (para o filtro).
+            const usersMap = new Map<string, string>()
+            for (const p of rows) {
+                if (p.user_id) usersMap.set(p.user_id, p.users?.username ?? "")
+            }
+
+            // Métricas do mês/ano (e usuário, se filtrado).
+            let total = 0
+            let monthListTotal = 0
+            let itemsCount = 0
+            let pendingCount = 0
+            const categoryMap = new Map<string, { total: number; count: number }>()
+            const paymentMap = new Map<string, number>()
+
+            // Evolução do ano por usuário (ignora o filtro de usuário p/ comparar).
+            const evoByUser = new Map<string, number[]>()
+
+            for (const p of rows) {
+                const ym = parseYearMonth(p.date)
+                if (!ym) continue
+                const price = Number(p.price) || 0
+
+                if (ym.year === year) {
+                    if (!evoByUser.has(p.user_id)) evoByUser.set(p.user_id, new Array(12).fill(0))
+                    evoByUser.get(p.user_id)![ym.month - 1] += price
+                }
+
+                const matchesUser = !userId || p.user_id === userId
+                if (ym.year !== year || ym.month !== month || !matchesUser) continue
+
+                total += price
+                itemsCount += 1
+                if (isTruthyFlag(p.month_list)) monthListTotal += price
+                if (!isTruthyFlag(p.finished)) pendingCount += 1
+
+                const cat = p.category ?? "outros"
+                const prev = categoryMap.get(cat) ?? { total: 0, count: 0 }
+                categoryMap.set(cat, { total: prev.total + price, count: prev.count + 1 })
+
+                const pay = p.payment_type ?? "outros"
+                paymentMap.set(pay, (paymentMap.get(pay) ?? 0) + price)
+            }
+
+            const byCategory = Array.from(categoryMap.entries())
+                .map(([category, v]) => ({ category, total: v.total, count: v.count }))
+                .sort((a, b) => b.total - a.total)
+
+            const byPayment = Array.from(paymentMap.entries())
+                .map(([paymentType, t]) => ({ paymentType, total: t }))
+                .sort((a, b) => b.total - a.total)
+
+            const series = Array.from(evoByUser.entries())
+                .map(([id, data]) => ({
+                    userId: id,
+                    userName: usersMap.get(id) ?? "",
+                    data,
+                }))
+                .sort((a, b) => a.userName.localeCompare(b.userName))
+
+            const users = Array.from(usersMap.entries())
+                .map(([id, name]) => ({ id, name }))
+                .sort((a, b) => a.name.localeCompare(b.name))
+
+            return {
+                status: true,
+                data: {
+                    total,
+                    monthListTotal,
+                    itemsCount,
+                    pendingCount,
+                    byCategory,
+                    byPayment,
+                    evolution: {
+                        months: Array.from({ length: 12 }, (_, i) => i + 1),
+                        series,
+                    },
+                    users,
+                },
+            }
+        } catch (error) {
+            console.error("[ProductService.getStats] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                    message: "Não foi possível calcular as estatísticas.",
                 },
             }
         }

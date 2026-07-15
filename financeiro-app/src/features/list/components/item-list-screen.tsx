@@ -29,6 +29,7 @@ type ItemListScreenProps = {
   onRefresh?: () => void;
   showSummary?: boolean;
   showFab?: boolean;
+  showDashboard?: boolean;
 };
 
 export function ItemListScreen({
@@ -40,6 +41,7 @@ export function ItemListScreen({
   onRefresh,
   showSummary = true,
   showFab = true,
+  showDashboard = false,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
@@ -115,7 +117,7 @@ export function ItemListScreen({
 
   if (loading && products.length === 0) {
     return (
-      <AppShell title={title} subtitle={subtitle}>
+      <AppShell title={title} subtitle={subtitle} showDashboard={showDashboard}>
         <LoadingState message="Carregando produtos…" />
       </AppShell>
     );
@@ -123,14 +125,14 @@ export function ItemListScreen({
 
   if (error && products.length === 0) {
     return (
-      <AppShell title={title} subtitle={subtitle}>
+      <AppShell title={title} subtitle={subtitle} showDashboard={showDashboard}>
         <ErrorState error={error} onRetry={onRefresh} />
       </AppShell>
     );
   }
 
   return (
-    <AppShell title={title} subtitle={subtitle}>
+    <AppShell title={title} subtitle={subtitle} showDashboard={showDashboard}>
       <SafeAreaView style={styles.container} edges={["bottom"]}>
         <ScrollView
           contentContainerStyle={styles.content}
