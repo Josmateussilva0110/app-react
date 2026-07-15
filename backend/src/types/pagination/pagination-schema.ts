@@ -1,6 +1,8 @@
 export {
   paginationSchema,
+  productListQuerySchema,
   type PaginationParams,
+  type ProductListQuery,
   type PaginationMeta,
   type PaginatedResult,
 } from "@app/shared";

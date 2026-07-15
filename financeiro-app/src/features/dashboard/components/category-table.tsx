@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useTheme } from "@/context/theme.context";
 import { categoryMeta, formatBRL } from "../constants";
 import type { CategoryStat } from "@app/shared";
@@ -6,9 +7,10 @@ import type { CategoryStat } from "@app/shared";
 type CategoryTableProps = {
   rows: CategoryStat[];
   total: number;
+  onCategoryPress?: (category: string) => void;
 };
 
-export function CategoryTable({ rows, total }: CategoryTableProps) {
+export function CategoryTable({ rows, total, onCategoryPress }: CategoryTableProps) {
   const { colors } = useTheme();
 
   if (rows.length === 0) {
@@ -32,14 +34,8 @@ export function CategoryTable({ rows, total }: CategoryTableProps) {
         const meta = categoryMeta(row.category);
         const Icon = meta.icon;
         const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
-        return (
-          <View
-            key={row.category}
-            style={[
-              styles.row,
-              idx < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-            ]}
-          >
+        const content = (
+          <>
             <View style={[styles.catCol, styles.catCell]}>
               <View style={[styles.iconWrap, { backgroundColor: `${meta.color}22` }]}>
                 <Icon size={15} color={meta.color} />
@@ -47,6 +43,9 @@ export function CategoryTable({ rows, total }: CategoryTableProps) {
               <Text style={[styles.catText, { color: colors.text }]} numberOfLines={1}>
                 {meta.label}
               </Text>
+              {onCategoryPress && (
+                <ChevronRight size={16} color={colors.textSecondary} style={styles.chevron} />
+              )}
             </View>
             <Text style={[styles.cell, styles.numCol, { color: colors.textSecondary }]}>
               {row.count}
@@ -57,7 +56,37 @@ export function CategoryTable({ rows, total }: CategoryTableProps) {
             <Text style={[styles.cell, styles.pctCol, { color: colors.textSecondary }]}>
               {pct}%
             </Text>
-          </View>
+          </>
+        );
+
+        if (!onCategoryPress) {
+          return (
+            <View
+              key={row.category}
+              style={[
+                styles.row,
+                idx < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+              ]}
+            >
+              {content}
+            </View>
+          );
+        }
+
+        return (
+          <Pressable
+            key={row.category}
+            onPress={() => onCategoryPress(row.category)}
+            style={({ pressed }) => [
+              styles.row,
+              pressed && { backgroundColor: colors.backgroundElement },
+              idx < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Ver itens de ${meta.label}`}
+          >
+            {content}
+          </Pressable>
         );
       })}
     </View>
@@ -109,6 +138,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
+  },
+  chevron: {
+    flexShrink: 0,
   },
   cell: {
     fontSize: 13,

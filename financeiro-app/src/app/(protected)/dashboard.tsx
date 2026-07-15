@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { AppShell } from "@/components/appShell";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -63,6 +65,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 export default function DashboardScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
 
   const [currentYear] = useState(() => new Date().getFullYear());
   const [month, setMonth] = useState(() => new Date().getMonth() + 1); // 1-12
@@ -74,6 +77,7 @@ export default function DashboardScreen() {
     data: stats,
     isLoading,
     isFetching,
+    isStale,
     error,
     refetch,
   } = useProductStats({
@@ -82,6 +86,15 @@ export default function DashboardScreen() {
     userId: userId === ALL_USERS ? undefined : userId,
     status: statusFilter,
   });
+
+  // Só refetch no focus se os dados estiverem stale — evita tela de loading na 2ª visita.
+  useFocusEffect(
+    useCallback(() => {
+      if (isStale) {
+        void refetch();
+      }
+    }, [isStale, refetch])
+  );
 
   const { data: goal } = useGoal();
   const updateGoal = useUpdateGoal();
@@ -152,6 +165,24 @@ export default function DashboardScreen() {
     return { evolutionMonths: months, evolutionSeries: series, evolutionAverage: average };
   }, [stats?.evolution.months, stats?.evolution.series]);
 
+  const handleCategoryPress = useCallback(
+    (category: string) => {
+      // navigate (não push) garante atualização dos params na tab já montada.
+      // userId "" limpa filtro sticky de usuário anterior.
+      router.navigate({
+        pathname: "/(protected)/(tabs)/itens",
+        params: {
+          category,
+          month: String(month),
+          year: String(year),
+          status: statusFilter,
+          userId: userId !== ALL_USERS ? userId : "",
+        },
+      });
+    },
+    [router, month, year, statusFilter, userId]
+  );
+
   const filters = (
     <View style={styles.filtersBlock}>
       <View style={styles.filters}>
@@ -181,9 +212,7 @@ export default function DashboardScreen() {
     </View>
   );
 
-  const isLoadingReports = isLoading || (isFetching && !stats);
-
-  if (isLoadingReports) {
+  if (isLoading && !stats) {
     return (
       <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
         <LoadingState message="Carregando relatórios…" />
@@ -206,7 +235,11 @@ export default function DashboardScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
+            <RefreshControl
+              refreshing={isFetching && !isLoading}
+              onRefresh={refetch}
+              tintColor={colors.primary}
+            />
           }
         >
           {filters}
@@ -258,7 +291,11 @@ export default function DashboardScreen() {
             <Text style={[styles.detailTitle, { color: colors.text }]}>
               Detalhe por categoria — {MONTHS_FULL[month - 1]}/{year}
             </Text>
-            <CategoryTable rows={stats?.byCategory ?? []} total={stats?.total ?? 0} />
+            <CategoryTable
+              rows={stats?.byCategory ?? []}
+              total={stats?.total ?? 0}
+              onCategoryPress={handleCategoryPress}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

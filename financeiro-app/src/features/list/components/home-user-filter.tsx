@@ -27,7 +27,7 @@ export function HomeUserFilter({ products, value, onChange }: Props) {
     return Array.from(map, ([id, name]) => ({ id, name }));
   }, [products]);
 
-  if (users.length <= 1) return null;
+  if (users.length <= 1 && value === ALL_USERS_VALUE) return null;
 
   return (
     <ScrollView

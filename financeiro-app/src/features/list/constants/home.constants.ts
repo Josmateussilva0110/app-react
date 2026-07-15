@@ -3,6 +3,15 @@ import type { Priority } from "@/lib/storage";
 
 export type StatusFilter = "todos" | "pendente" | "finalizado";
 
+export type InitialListFilters = {
+  category?: string;
+  /** Mês 0-indexado (jan = 0). */
+  month?: number | null;
+  year?: number | null;
+  userId?: string;
+  status?: StatusFilter;
+};
+
 export type Group = {
   key: Priority;
   label: string;

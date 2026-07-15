@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import type { ProductResponse } from "@app/shared";
+import { PRODUCT_STATS_KEY } from "@/hooks/use-product-stats";
 import { PRODUCTS_KEY } from "@/hooks/use-products";
 
 import { requestData } from "@/services/request";
@@ -67,6 +68,7 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
 
     show("success", response.message);
     queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
+    queryClient.invalidateQueries({ queryKey: PRODUCT_STATS_KEY });
     onDeleted?.();
     router.back();
   }
