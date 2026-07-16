@@ -1,14 +1,24 @@
 import { Modal, View, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { useEffect } from "react";
 import { useTheme } from "@/context/theme.context";
 import { Spacing } from "@/constants/theme";
 import { useServerStatus } from "@/hooks/use-server-status";
 import { useProducts } from "@/hooks/use-products";
+import { queryClient } from "@/lib/query-client";
+import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
+import { prefetchGoal } from "@/hooks/use-goal";
 
 export function ServerWakeOverlay() {
   const { status, attempt, maxAttempts } = useServerStatus();
   const { colors } = useTheme();
   const shouldWaitForProducts = status === "waking" || status === "retrying";
   const { isSuccess } = useProducts({ enabled: shouldWaitForProducts });
+
+  useEffect(() => {
+    if (!shouldWaitForProducts) return;
+    void prefetchCurrentProductStats(queryClient);
+    void prefetchGoal(queryClient);
+  }, [shouldWaitForProducts]);
 
   if (!shouldWaitForProducts || isSuccess) return null;
 

@@ -10,37 +10,36 @@ import {
     DashboardStats,
 } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
-import { PRODUCT_SELECT_FIELDS } from "../constants/product-select-fields"
-
-/** Extrai ano e mês (1-12) de uma data ISO (YYYY-MM-DD) ou DD/MM/YYYY. */
-function parseYearMonth(date: string): { year: number; month: number } | null {
-    if (!date) return null
-    const iso = date.match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (iso) return { year: Number(iso[1]), month: Number(iso[2]) }
-    const br = date.match(/^(\d{2})\/(\d{2})\/(\d{4})/)
-    if (br) return { year: Number(br[3]), month: Number(br[2]) }
-    const d = new Date(date)
-    if (!isNaN(d.getTime())) return { year: d.getFullYear(), month: d.getMonth() + 1 }
-    return null
-}
-
-function isTruthyFlag(value: unknown): boolean {
-    return value === true || value === "true" || value === 1 || value === "t"
-}
-
-function matchesStatus(
-    finished: unknown,
-    status: "todos" | "pendente" | "finalizado"
-): boolean {
-    if (status === "todos") return true
-    if (status === "finalizado") return isTruthyFlag(finished)
-    return !isTruthyFlag(finished)
-}
+import {
+    buildPaginationMeta,
+    getPaginationRange,
+    mapProductRow,
+    ProductRowWithUser,
+} from "../utils/productUtils"
+import { buildProductListQuery } from "./product/productQuery"
+import {
+    aggregateDashboardStats,
+    fetchProductsForYearStats,
+    normalizeDashboardStats,
+    ProductStatsRow,
+} from "./product/productStats"
 
 class ProductService {
     private toIsoDate(date: string): string {
         const [day, month, year] = date.split("/")
         return `${year}-${month}-${day}`
+    }
+
+    private productFetchError(
+        message = "Não foi possível buscar os produtos."
+    ): ServiceResult<never, ProductErrorCode> {
+        return {
+            status: false,
+            error: {
+                code: ProductErrorCode.PRODUCT_FETCH_FAILED,
+                message,
+            },
+        }
     }
 
     private async assertProductOwner(
@@ -228,109 +227,26 @@ class ProductService {
         query: ProductListQuery
     ): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
         try {
-            const {
-                page,
-                limit,
-                category,
-                month,
-                year,
-                userId,
-                status = "todos",
-                monthList,
-            } = query
+            const { page, limit } = query
+            const { from, to } = getPaginationRange(page, limit)
 
-            const from = (page - 1) * limit
-            const to = from + limit - 1
-
-            let dbQuery = supabaseAdmin
-                .from("products")
-                .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`, { count: "exact" })
-                .order("date", { ascending: false })
-
-            if (category) {
-                dbQuery = dbQuery.eq("category", category)
-            }
-
-            if (userId) {
-                dbQuery = dbQuery.eq("user_id", userId)
-            }
-
-            if (status === "finalizado") {
-                dbQuery = dbQuery.eq("finished", true)
-            } else if (status === "pendente") {
-                dbQuery = dbQuery.eq("finished", false)
-            }
-
-            if (monthList === "true") {
-                dbQuery = dbQuery.eq("month_list", true)
-            } else if (monthList === "false") {
-                dbQuery = dbQuery.eq("month_list", false)
-            }
-
-            // Intervalo por mês/ano (coluna date em ISO YYYY-MM-DD).
-            if (year !== undefined && month !== undefined) {
-                const start = `${year}-${String(month).padStart(2, "0")}-01`
-                const endMonth = month === 12 ? 1 : month + 1
-                const endYear = month === 12 ? year + 1 : year
-                const end = `${endYear}-${String(endMonth).padStart(2, "0")}-01`
-                dbQuery = dbQuery.gte("date", start).lt("date", end)
-            } else if (year !== undefined) {
-                const start = `${year}-01-01`
-                const end = `${year + 1}-01-01`
-                dbQuery = dbQuery.gte("date", start).lt("date", end)
-            } else if (month !== undefined) {
-                // Só mês sem ano: restringe ao mês no ano corrente (evita full scan ambíguo).
-                const currentYear = new Date().getFullYear()
-                const start = `${currentYear}-${String(month).padStart(2, "0")}-01`
-                const endMonth = month === 12 ? 1 : month + 1
-                const endYear = month === 12 ? currentYear + 1 : currentYear
-                const end = `${endYear}-${String(endMonth).padStart(2, "0")}-01`
-                dbQuery = dbQuery.gte("date", start).lt("date", end)
-            }
-
-            const { data: products, error, count } = await dbQuery.range(from, to)
+            const { data, error, count } = await buildProductListQuery(query).range(from, to)
 
             if (error) {
                 console.error("[ProductService.getAll] Supabase error:", error)
-                return {
-                    status: false,
-                    error: {
-                        code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                        message: "Não foi possível buscar os produtos.",
-                    },
-                }
+                return this.productFetchError()
             }
-
-            const rows = products ?? []
-
-            const items: ProductResponse[] = rows.map((p: any) => {
-                const { users, user_id, ...rest } = p
-                return { ...rest, user_id, user_name: users?.username ?? "" }
-            })
-
-            const total = count ?? 0
 
             return {
                 status: true,
                 data: {
-                    items,
-                    meta: {
-                        total,
-                        page,
-                        limit,
-                        totalPages: Math.ceil(total / limit),
-                    },
+                    items: ((data ?? []) as ProductRowWithUser[]).map(mapProductRow),
+                    meta: buildPaginationMeta(count ?? 0, page, limit),
                 },
             }
         } catch (error) {
             console.error("[ProductService.getAll] error:", error)
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                    message: "Não foi possível buscar os produtos.",
-                },
-            }
+            return this.productFetchError()
         }
     }
 
@@ -338,65 +254,28 @@ class ProductService {
         query: StatsQuery
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
         try {
-            const { month, year, userId, status = "todos" } = query
-
-            const rpcResult = await supabaseAdmin.rpc("get_product_stats", {
-                p_month: month,
-                p_year: year,
-                p_user_id: userId ?? null,
-                p_status: status,
+            const { data, error } = await supabaseAdmin.rpc("get_product_stats", {
+                p_month: query.month,
+                p_year: query.year,
+                p_user_id: query.userId ?? null,
+                p_status: query.status ?? "todos",
             })
 
-            if (!rpcResult.error && rpcResult.data) {
-                const data = rpcResult.data as DashboardStats
-                return {
-                    status: true,
-                    data: {
-                        total: Number(data.total) || 0,
-                        monthListTotal: Number(data.monthListTotal) || 0,
-                        itemsCount: Number(data.itemsCount) || 0,
-                        pendingCount: Number(data.pendingCount) || 0,
-                        byCategory: Array.isArray(data.byCategory) ? data.byCategory : [],
-                        byPayment: Array.isArray(data.byPayment) ? data.byPayment : [],
-                        evolution: {
-                            months: data.evolution?.months ?? Array.from({ length: 12 }, (_, i) => i + 1),
-                            series: Array.isArray(data.evolution?.series)
-                                ? data.evolution.series.map((s) => ({
-                                      userId: String(s.userId),
-                                      userName: s.userName ?? "",
-                                      data: Array.isArray(s.data)
-                                          ? s.data.map((n) => Number(n) || 0)
-                                          : new Array(12).fill(0),
-                                  }))
-                                : [],
-                        },
-                        users: Array.isArray(data.users)
-                            ? data.users.map((u) => ({
-                                  id: String(u.id),
-                                  name: u.name ?? "",
-                              }))
-                            : [],
-                    },
-                }
+            if (!error && data) {
+                return { status: true, data: normalizeDashboardStats(data) }
             }
 
-            if (rpcResult.error) {
+            if (error) {
                 console.warn(
                     "[ProductService.getStats] RPC unavailable, using filtered fallback:",
-                    rpcResult.error.message
+                    error.message
                 )
             }
 
-            return await this.getStatsFallback({ month, year, userId, status })
+            return await this.getStatsFallback(query)
         } catch (error) {
             console.error("[ProductService.getStats] error:", error)
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                    message: "Não foi possível calcular as estatísticas.",
-                },
-            }
+            return this.productFetchError("Não foi possível calcular as estatísticas.")
         }
     }
 
@@ -404,107 +283,16 @@ class ProductService {
     private async getStatsFallback(
         query: StatsQuery
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
-        const { month, year, userId, status = "todos" } = query
-        const yearStart = `${year}-01-01`
-        const yearEnd = `${year + 1}-01-01`
-
-        const { data: products, error } = await supabaseAdmin
-            .from("products")
-            .select("user_id, price, category, payment_type, date, finished, month_list, users:user_id(username)")
-            .gte("date", yearStart)
-            .lt("date", yearEnd)
-            .limit(10000)
+        const { data, error } = await fetchProductsForYearStats(query.year)
 
         if (error) {
             console.error("[ProductService.getStatsFallback] Supabase error:", error)
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                    message: "Não foi possível calcular as estatísticas.",
-                },
-            }
+            return this.productFetchError("Não foi possível calcular as estatísticas.")
         }
-
-        const rows = (products ?? []) as any[]
-
-        const usersMap = new Map<string, string>()
-        for (const p of rows) {
-            if (p.user_id) usersMap.set(p.user_id, p.users?.username ?? "")
-        }
-
-        let total = 0
-        let monthListTotal = 0
-        let itemsCount = 0
-        let pendingCount = 0
-        const categoryMap = new Map<string, { total: number; count: number }>()
-        const paymentMap = new Map<string, number>()
-        const evoByUser = new Map<string, number[]>()
-
-        for (const p of rows) {
-            const ym = parseYearMonth(p.date)
-            if (!ym) continue
-            const price = Number(p.price) || 0
-
-            const matchesUser = !userId || p.user_id === userId
-            const matchesFinished = matchesStatus(p.finished, status)
-
-            if (ym.year === year && matchesFinished) {
-                if (!evoByUser.has(p.user_id)) evoByUser.set(p.user_id, new Array(12).fill(0))
-                evoByUser.get(p.user_id)![ym.month - 1] += price
-            }
-
-            if (ym.year !== year || ym.month !== month || !matchesUser || !matchesFinished) continue
-
-            total += price
-            itemsCount += 1
-            if (isTruthyFlag(p.month_list)) monthListTotal += price
-            if (!isTruthyFlag(p.finished)) pendingCount += 1
-
-            const cat = p.category ?? "outros"
-            const prev = categoryMap.get(cat) ?? { total: 0, count: 0 }
-            categoryMap.set(cat, { total: prev.total + price, count: prev.count + 1 })
-
-            const pay = p.payment_type ?? "outros"
-            paymentMap.set(pay, (paymentMap.get(pay) ?? 0) + price)
-        }
-
-        // Dropdown de usuários: complementa com nomes já no ano; OK no fallback.
-        const byCategory = Array.from(categoryMap.entries())
-            .map(([category, v]) => ({ category, total: v.total, count: v.count }))
-            .sort((a, b) => b.total - a.total)
-
-        const byPayment = Array.from(paymentMap.entries())
-            .map(([paymentType, t]) => ({ paymentType, total: t }))
-            .sort((a, b) => b.total - a.total)
-
-        const series = Array.from(evoByUser.entries())
-            .map(([id, data]) => ({
-                userId: id,
-                userName: usersMap.get(id) ?? "",
-                data,
-            }))
-            .sort((a, b) => a.userName.localeCompare(b.userName))
-
-        const users = Array.from(usersMap.entries())
-            .map(([id, name]) => ({ id, name }))
-            .sort((a, b) => a.name.localeCompare(b.name))
 
         return {
             status: true,
-            data: {
-                total,
-                monthListTotal,
-                itemsCount,
-                pendingCount,
-                byCategory,
-                byPayment,
-                evolution: {
-                    months: Array.from({ length: 12 }, (_, i) => i + 1),
-                    series,
-                },
-                users,
-            },
+            data: aggregateDashboardStats((data ?? []) as ProductStatsRow[], query),
         }
     }
 }

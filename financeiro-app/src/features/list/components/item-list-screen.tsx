@@ -11,9 +11,6 @@ import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
 import type { ProductResponse } from "@app/shared";
 
-import { FilterChip } from "@/components/ui/filter-chips";
-import { categoryMeta } from "@/features/dashboard/constants";
-
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
 import { HomeMonthYearFilter } from "./home-month-year-filter";
@@ -34,12 +31,10 @@ type ItemListScreenProps = {
   showFab?: boolean;
   showDashboard?: boolean;
   initialFilters?: InitialListFilters;
-  /** Limpa o filtro de categoria também na rota (params sticky). */
-  onClearCategory?: () => void;
   /** Notifica o pai para refetch com filtros no GET /products. */
   onQueryFiltersChange?: (filters: InitialListFilters) => void;
   /**
-   * Quando true, category/month/year/status/user já vieram filtrados da API;
+   * Quando true, month/year/status/user já vieram filtrados da API;
    * a lista só aplica busca local e mantém os chips em sync.
    */
   serverFiltered?: boolean;
@@ -56,14 +51,10 @@ export function ItemListScreen({
   showFab = true,
   showDashboard = false,
   initialFilters,
-  onClearCategory,
   onQueryFiltersChange,
   serverFiltered = false,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(
-    initialFilters?.category ?? null
-  );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     initialFilters?.status ?? "todos"
   );
@@ -83,7 +74,6 @@ export function ItemListScreen({
   useEffect(() => {
     if (!initialFilters) return;
 
-    setCategoryFilter(initialFilters.category ?? null);
     setStatusFilter(initialFilters.status ?? "todos");
     setUserFilter(initialFilters.userId ?? ALL_USERS_VALUE);
     setSelectedMonth(
@@ -94,7 +84,6 @@ export function ItemListScreen({
     );
   }, [
     initialFilters,
-    initialFilters?.category,
     initialFilters?.status,
     initialFilters?.userId,
     initialFilters?.month,
@@ -130,7 +119,6 @@ export function ItemListScreen({
   ]);
 
   const emitQueryFilters = (next: {
-    category?: string | null;
     status?: StatusFilter;
     userId?: string;
     month?: number | null;
@@ -138,14 +126,12 @@ export function ItemListScreen({
   }) => {
     if (!onQueryFiltersChange) return;
 
-    const nextCategory = next.category !== undefined ? next.category : categoryFilter;
     const nextStatus = next.status ?? statusFilter;
     const nextUser = next.userId !== undefined ? next.userId : userFilter;
     const nextMonth = next.month !== undefined ? next.month : selectedMonth;
     const nextYear = next.year !== undefined ? next.year : selectedYear;
 
     onQueryFiltersChange({
-      category: nextCategory || undefined,
       status: nextStatus,
       userId: nextUser === ALL_USERS_VALUE ? undefined : nextUser,
       month: nextMonth,
@@ -156,9 +142,6 @@ export function ItemListScreen({
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       if (!serverFiltered) {
-        if (categoryFilter && product.category !== categoryFilter) {
-          return false;
-        }
         if (
           statusFilter !== "todos" &&
           product.finished !== (statusFilter === "finalizado")
@@ -192,7 +175,6 @@ export function ItemListScreen({
     });
   }, [
     products,
-    categoryFilter,
     statusFilter,
     userFilter,
     search,
@@ -200,8 +182,6 @@ export function ItemListScreen({
     selectedYear,
     serverFiltered,
   ]);
-
-  const categoryChip = categoryFilter ? categoryMeta(categoryFilter) : null;
 
   const total = useMemo(
     () => filteredProducts.reduce((sum, p) => sum + p.price, 0),
@@ -254,22 +234,6 @@ export function ItemListScreen({
           )}
 
           <HomeSearchInput value={searchInput} onChange={setSearchInput} />
-
-          {categoryChip && (
-            <FilterChip
-              label={`${categoryChip.label} · limpar`}
-              icon={categoryChip.icon}
-              active
-              onPress={() => {
-                setCategoryFilter(null);
-                onClearCategory?.();
-                emitQueryFilters({ category: null });
-              }}
-              activeColor={categoryChip.color}
-              inactiveColor={colors.card}
-              textColor="#ffffff"
-            />
-          )}
 
           <HomeFilters
             value={statusFilter}

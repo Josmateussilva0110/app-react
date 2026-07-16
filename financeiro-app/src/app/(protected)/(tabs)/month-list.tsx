@@ -2,7 +2,7 @@ import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import { useProducts } from "@/hooks/use-products";
 
 export default function MonthListScreen() {
-  // Filtro principal no servidor; demais filtros (mês/ano/categoria) ficam no client.
+  // Filtro principal no servidor; demais filtros (mês/ano) ficam no client.
   const { data: products = [], isLoading, error, refetch } = useProducts({
     limit: 100,
     monthList: true,
