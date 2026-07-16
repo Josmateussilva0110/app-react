@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { CategoryProductsScreen } from "@/features/dashboard/components/category-products-screen";
+import { parseMonthListParam } from "@/features/dashboard/constants/dashboard-filters";
 import type { StatusFilter } from "@/features/list/constants/home.constants";
 import { useProducts } from "@/hooks/use-products";
 import { categoryEnum } from "@app/shared";
@@ -38,6 +39,10 @@ export default function DashboardCategoryRoute() {
       : "todos";
 
   const userId = paramString(params.userId);
+  const monthListRaw = paramString(params.monthList);
+  const monthListFilter = parseMonthListParam(monthListRaw);
+  const monthList =
+    monthListFilter === "sim" ? true : monthListFilter === "nao" ? false : undefined;
 
   const query = useMemo(
     () => ({
@@ -47,8 +52,9 @@ export default function DashboardCategoryRoute() {
       year,
       status,
       userId,
+      monthList,
     }),
-    [category, month, year, status, userId]
+    [category, month, year, status, userId, monthList]
   );
 
   const { data: products = [], isLoading, error, refetch } = useProducts({

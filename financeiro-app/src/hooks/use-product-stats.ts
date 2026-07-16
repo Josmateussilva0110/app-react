@@ -12,6 +12,7 @@ export type UseProductStatsParams = {
   year: number;
   userId?: string;
   status?: StatusFilter;
+  monthList?: "true" | "false";
   enabled?: boolean;
 };
 
@@ -22,14 +23,21 @@ export function productStatsQueryOptions({
   year,
   userId,
   status = "todos",
+  monthList,
 }: Omit<UseProductStatsParams, "enabled">) {
   return {
-    queryKey: [...PRODUCT_STATS_KEY, year, month, userId ?? "all", status],
+    queryKey: [...PRODUCT_STATS_KEY, year, month, userId ?? "all", status, monthList ?? "all"],
     queryFn: async () => {
       const res = await requestData<DashboardStats>({
         endpoint: "/products/stats",
         method: "GET",
-        data: { month, year, status, ...(userId ? { userId } : {}) },
+        data: {
+          month,
+          year,
+          status,
+          ...(userId ? { userId } : {}),
+          ...(monthList ? { monthList } : {}),
+        },
         withAuth: true,
       });
       if (!res.success) throw new Error(res.message);
@@ -44,10 +52,11 @@ export function useProductStats({
   year,
   userId,
   status = "todos",
+  monthList,
   enabled = true,
 }: UseProductStatsParams) {
   return useQuery({
-    ...productStatsQueryOptions({ month, year, userId, status }),
+    ...productStatsQueryOptions({ month, year, userId, status, monthList }),
     enabled,
     placeholderData: keepPreviousData,
     retry: (failureCount) => failureCount < 4,

@@ -10,147 +10,206 @@ type CategoryTableProps = {
   onCategoryPress?: (category: string) => void;
 };
 
+type CategoryRowProps = {
+  row: CategoryStat;
+  total: number;
+  onPress?: () => void;
+};
+
+function CategoryRow({ row, total, onPress }: CategoryRowProps) {
+  const { colors } = useTheme();
+  const meta = categoryMeta(row.category);
+  const Icon = meta.icon;
+  const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
+  const share = total > 0 ? Math.max(0.04, row.total / total) : 0;
+
+  const content = (
+    <>
+      <View style={[styles.iconWrap, { backgroundColor: `${meta.color}18` }]}>
+        <Icon size={18} color={meta.color} />
+      </View>
+
+      <View style={styles.body}>
+        <View style={styles.topLine}>
+          <Text style={[styles.catText, { color: colors.text }]} numberOfLines={1}>
+            {meta.label}
+          </Text>
+          <Text style={[styles.value, { color: colors.text }]} numberOfLines={1}>
+            {formatBRL(row.total)}
+          </Text>
+        </View>
+
+        <View style={[styles.track, { backgroundColor: colors.backgroundElement }]}>
+          <View
+            style={[
+              styles.fill,
+              { width: `${share * 100}%`, backgroundColor: meta.color },
+            ]}
+          />
+        </View>
+
+        <View style={styles.metaLine}>
+          <View style={[styles.pctBadge, { backgroundColor: `${meta.color}20` }]}>
+            <Text style={[styles.pctText, { color: meta.color }]}>{pct}%</Text>
+          </View>
+          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+            {row.count} {row.count === 1 ? "item" : "itens"}
+          </Text>
+        </View>
+      </View>
+
+      {onPress && (
+        <View style={[styles.chevronWrap, { backgroundColor: colors.backgroundElement }]}>
+          <ChevronRight size={16} color={colors.textSecondary} />
+        </View>
+      )}
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View
+        style={[
+          styles.row,
+          { backgroundColor: colors.backgroundElement, borderColor: colors.border },
+        ]}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          backgroundColor: pressed ? `${colors.primary}10` : colors.backgroundElement,
+          borderColor: pressed ? `${colors.primary}40` : colors.border,
+        },
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={`Ver itens de ${meta.label}`}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
 export function CategoryTable({ rows, total, onCategoryPress }: CategoryTableProps) {
   const { colors } = useTheme();
 
   if (rows.length === 0) {
     return (
-      <Text style={[styles.empty, { color: colors.textSecondary }]}>
-        Nenhum gasto registrado neste período.
-      </Text>
+      <View style={[styles.emptyWrap, { backgroundColor: colors.backgroundElement }]}>
+        <Text style={[styles.empty, { color: colors.textSecondary }]}>
+          Nenhum gasto registrado neste período.
+        </Text>
+      </View>
     );
   }
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.headerRow, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.hCell, styles.catCol, { color: colors.textSecondary }]}>Categoria</Text>
-        <Text style={[styles.hCell, styles.numCol, { color: colors.textSecondary }]}>Itens</Text>
-        <Text style={[styles.hCell, styles.valCol, { color: colors.textSecondary }]}>Valor</Text>
-        <Text style={[styles.hCell, styles.pctCol, { color: colors.textSecondary }]}>%</Text>
-      </View>
-
-      {rows.map((row, idx) => {
-        const meta = categoryMeta(row.category);
-        const Icon = meta.icon;
-        const pct = total > 0 ? Math.round((row.total / total) * 100) : 0;
-        const content = (
-          <>
-            <View style={[styles.catCol, styles.catCell]}>
-              <View style={[styles.iconWrap, { backgroundColor: `${meta.color}22` }]}>
-                <Icon size={15} color={meta.color} />
-              </View>
-              <Text style={[styles.catText, { color: colors.text }]} numberOfLines={1}>
-                {meta.label}
-              </Text>
-              {onCategoryPress && (
-                <ChevronRight size={16} color={colors.textSecondary} style={styles.chevron} />
-              )}
-            </View>
-            <Text style={[styles.cell, styles.numCol, { color: colors.textSecondary }]}>
-              {row.count}
-            </Text>
-            <Text style={[styles.cell, styles.valCol, styles.valText, { color: colors.text }]}>
-              {formatBRL(row.total)}
-            </Text>
-            <Text style={[styles.cell, styles.pctCol, { color: colors.textSecondary }]}>
-              {pct}%
-            </Text>
-          </>
-        );
-
-        if (!onCategoryPress) {
-          return (
-            <View
-              key={row.category}
-              style={[
-                styles.row,
-                idx < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-              ]}
-            >
-              {content}
-            </View>
-          );
-        }
-
-        return (
-          <Pressable
-            key={row.category}
-            onPress={() => onCategoryPress(row.category)}
-            style={({ pressed }) => [
-              styles.row,
-              pressed && { backgroundColor: colors.backgroundElement },
-              idx < rows.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Ver itens de ${meta.label}`}
-          >
-            {content}
-          </Pressable>
-        );
-      })}
+    <View style={styles.list}>
+      {rows.map((row) => (
+        <CategoryRow
+          key={row.category}
+          row={row}
+          total={total}
+          onPress={onCategoryPress ? () => onCategoryPress(row.category) : undefined}
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  hCell: {
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
+  list: {
+    gap: 10,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  catCol: { flex: 1 },
-  numCol: { width: 48, textAlign: "right" },
-  valCol: { width: 96, textAlign: "right" },
-  pctCol: { width: 44, textAlign: "right" },
-  catCell: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
   iconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  },
+  body: {
+    flex: 1,
+    minWidth: 0,
+    gap: 8,
+  },
+  topLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
   },
   catText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
-  chevron: {
+  value: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: -0.3,
     flexShrink: 0,
   },
-  cell: {
-    fontSize: 13,
+  track: {
+    height: 6,
+    borderRadius: 999,
+    overflow: "hidden",
   },
-  valText: {
-    fontWeight: "700",
+  fill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  metaLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pctBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  pctText: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  chevronWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  emptyWrap: {
+    borderRadius: 14,
+    paddingVertical: 28,
+    paddingHorizontal: 16,
   },
   empty: {
     fontSize: 13,
     textAlign: "center",
-    paddingVertical: 20,
+    fontWeight: "500",
   },
 });

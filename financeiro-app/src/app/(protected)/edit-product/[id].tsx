@@ -2,7 +2,6 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "rea
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, PackageX } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 import { AppShell } from "@/components/appShell";
 import { useTheme } from "@/context/theme.context";
 import { useProducts } from "@/hooks/use-products";

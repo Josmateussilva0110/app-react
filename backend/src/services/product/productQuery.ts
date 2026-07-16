@@ -3,14 +3,23 @@ import { supabaseAdmin } from "../../database/supabase/supabase"
 import { PRODUCT_SELECT_FIELDS } from "../../constants/product-select-fields"
 import { getDateRange } from "../../utils/productUtils"
 
-// Supabase filter builders widen/narrow types per chained call; keep loose for composable filters.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ProductListDbQuery = any
+type StatusFilter = "todos" | "pendente" | "finalizado"
+type MonthListFilter = "true" | "false" | undefined
 
-function applyStatusFilter(
-    dbQuery: ProductListDbQuery,
-    status: ProductListQuery["status"]
-): ProductListDbQuery {
+type ProductListRangeResult = {
+    data: unknown[] | null
+    error: { message: string } | null
+    count: number | null
+}
+
+type ProductListDbQuery = {
+    eq: (column: string, value: unknown) => ProductListDbQuery
+    gte: (column: string, value: unknown) => ProductListDbQuery
+    lt: (column: string, value: unknown) => ProductListDbQuery
+    range: (from: number, to: number) => Promise<ProductListRangeResult>
+}
+
+function applyStatusFilter(dbQuery: ProductListDbQuery, status: StatusFilter): ProductListDbQuery {
     if (status === "finalizado") return dbQuery.eq("finished", true)
     if (status === "pendente") return dbQuery.eq("finished", false)
     return dbQuery
@@ -18,7 +27,7 @@ function applyStatusFilter(
 
 function applyMonthListFilter(
     dbQuery: ProductListDbQuery,
-    monthList: ProductListQuery["monthList"]
+    monthList: MonthListFilter
 ): ProductListDbQuery {
     if (monthList === "true") return dbQuery.eq("month_list", true)
     if (monthList === "false") return dbQuery.eq("month_list", false)
@@ -41,7 +50,7 @@ export function buildProductListQuery(query: ProductListQuery): ProductListDbQue
     let dbQuery = supabaseAdmin
         .from("products")
         .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`, { count: "exact" })
-        .order("date", { ascending: false })
+        .order("date", { ascending: false }) as unknown as ProductListDbQuery
 
     if (category) dbQuery = dbQuery.eq("category", category)
     if (userId) dbQuery = dbQuery.eq("user_id", userId)
