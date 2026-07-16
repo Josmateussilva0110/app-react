@@ -1,9 +1,18 @@
+import { useEffect } from "react";
 import { Tabs } from "expo-router";
 import { useTheme } from "@/context/theme.context";
 import { CustomTabBar } from "@/components/navigation/custom-tab-bar";
+import { queryClient } from "@/lib/query-client";
+import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
+import { prefetchGoal } from "@/hooks/use-goal";
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+
+  useEffect(() => {
+    void prefetchCurrentProductStats(queryClient);
+    void prefetchGoal(queryClient);
+  }, []);
 
   return (
     <Tabs

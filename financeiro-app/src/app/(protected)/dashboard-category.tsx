@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { useLocalSearchParams } from "expo-router";
-
 import { CategoryProductsScreen } from "@/features/dashboard/components/category-products-screen";
 import type { StatusFilter } from "@/features/list/constants/home.constants";
 import { useProducts } from "@/hooks/use-products";

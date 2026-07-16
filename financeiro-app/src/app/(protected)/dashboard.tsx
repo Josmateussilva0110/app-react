@@ -1,11 +1,9 @@
 import { useMemo, useState, useCallback } from "react";
-import { View, Text, ScrollView, RefreshControl, StyleSheet } from "react-native";
+import { View, Text, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
 
 import { AppShell } from "@/components/appShell";
-import { LoadingState } from "@/components/ui/loading-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { useTheme } from "@/context/theme.context";
 
@@ -35,17 +33,23 @@ function StatCard({
   label,
   value,
   color,
+  loading = false,
 }: {
   label: string;
   value: string;
   color?: string;
+  loading?: boolean;
 }) {
   const { colors } = useTheme();
   return (
     <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.statValue, { color: color ?? colors.text }]} numberOfLines={1}>
-        {value}
-      </Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.primary} style={styles.statLoader} />
+      ) : (
+        <Text style={[styles.statValue, { color: color ?? colors.text }]} numberOfLines={1}>
+          {value}
+        </Text>
+      )}
       <Text style={[styles.statLabel, { color: colors.textSecondary }]} numberOfLines={2}>
         {label}
       </Text>
@@ -75,9 +79,7 @@ export default function DashboardScreen() {
 
   const {
     data: stats,
-    isLoading,
     isFetching,
-    isStale,
     error,
     refetch,
   } = useProductStats({
@@ -87,14 +89,7 @@ export default function DashboardScreen() {
     status: statusFilter,
   });
 
-  // Só refetch no focus se os dados estiverem stale — evita tela de loading na 2ª visita.
-  useFocusEffect(
-    useCallback(() => {
-      if (isStale) {
-        void refetch();
-      }
-    }, [isStale, refetch])
-  );
+  const showSkeleton = !stats;
 
   const { data: goal } = useGoal();
   const updateGoal = useUpdateGoal();
@@ -210,22 +205,6 @@ export default function DashboardScreen() {
     </View>
   );
 
-  if (isLoading && !stats) {
-    return (
-      <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
-        <LoadingState message="Carregando relatórios…" />
-      </AppShell>
-    );
-  }
-
-  if (error && !stats) {
-    return (
-      <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
-        <ErrorState error={error.message} onRetry={refetch} />
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
       <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -234,7 +213,7 @@ export default function DashboardScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={isFetching && !isLoading}
+              refreshing={isFetching && !!stats}
               onRefresh={refetch}
               tintColor={colors.primary}
             />
@@ -242,59 +221,88 @@ export default function DashboardScreen() {
         >
           {filters}
 
-          <View style={styles.statsGrid}>
-            <StatCard
-              label={`Total de ${MONTHS_FULL[month - 1]}`}
-              value={formatBRL(stats?.total ?? 0)}
-              color={meta > 0 && (stats?.total ?? 0) > meta ? colors.danger : colors.success}
-            />
-            <StatCard
-              label="Total da lista do mês"
-              value={formatBRL(stats?.monthListTotal ?? 0)}
-              color={colors.info}
-            />
-            <StatCard label="Itens registrados" value={String(stats?.itemsCount ?? 0)} />
-            <StatCard
-              label="Pendentes"
-              value={String(stats?.pendingCount ?? 0)}
-              color={(stats?.pendingCount ?? 0) > 0 ? colors.warning : undefined}
-            />
-          </View>
+          {error && !stats ? (
+            <ErrorState error={error.message} onRetry={refetch} />
+          ) : (
+            <>
+              <View style={styles.statsGrid}>
+                <StatCard
+                  label={`Total de ${MONTHS_FULL[month - 1]}`}
+                  value={formatBRL(stats?.total ?? 0)}
+                  color={meta > 0 && (stats?.total ?? 0) > meta ? colors.danger : colors.success}
+                  loading={showSkeleton}
+                />
+                <StatCard
+                  label="Total da lista do mês"
+                  value={formatBRL(stats?.monthListTotal ?? 0)}
+                  color={colors.info}
+                  loading={showSkeleton}
+                />
+                <StatCard
+                  label="Itens registrados"
+                  value={String(stats?.itemsCount ?? 0)}
+                  loading={showSkeleton}
+                />
+                <StatCard
+                  label="Pendentes"
+                  value={String(stats?.pendingCount ?? 0)}
+                  color={(stats?.pendingCount ?? 0) > 0 ? colors.warning : undefined}
+                  loading={showSkeleton}
+                />
+              </View>
 
-          <MetaCard
-            total={stats?.total ?? 0}
-            meta={meta}
-            segments={categoryItems}
-            onSaveMeta={(v) => updateGoal.mutate(v)}
-            saving={updateGoal.isPending}
-          />
+              <MetaCard
+                total={stats?.total ?? 0}
+                meta={meta}
+                segments={categoryItems}
+                onSaveMeta={(v) => updateGoal.mutate(v)}
+                saving={updateGoal.isPending}
+              />
 
-          <SectionCard title="Gastos por categoria">
-            <HorizontalBarChart items={categoryItems} />
-          </SectionCard>
+              <SectionCard title="Gastos por categoria">
+                {showSkeleton ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <HorizontalBarChart items={categoryItems} />
+                )}
+              </SectionCard>
 
-          <SectionCard title="Gastos por forma de pagamento">
-            <VerticalBarChart items={paymentItems} />
-          </SectionCard>
+              <SectionCard title="Gastos por forma de pagamento">
+                {showSkeleton ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <VerticalBarChart items={paymentItems} />
+                )}
+              </SectionCard>
 
-          <SectionCard title="Evolução por usuário">
-            <EvolutionLineChart
-              months={evolutionMonths}
-              series={evolutionSeries}
-              average={evolutionAverage}
-            />
-          </SectionCard>
+              <SectionCard title="Evolução por usuário">
+                {showSkeleton ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <EvolutionLineChart
+                    months={evolutionMonths}
+                    series={evolutionSeries}
+                    average={evolutionAverage}
+                  />
+                )}
+              </SectionCard>
 
-          <View style={styles.sectionSpace}>
-            <Text style={[styles.detailTitle, { color: colors.text }]}>
-              Detalhe por categoria — {MONTHS_FULL[month - 1]}/{year}
-            </Text>
-            <CategoryTable
-              rows={stats?.byCategory ?? []}
-              total={stats?.total ?? 0}
-              onCategoryPress={handleCategoryPress}
-            />
-          </View>
+              <View style={styles.sectionSpace}>
+                <Text style={[styles.detailTitle, { color: colors.text }]}>
+                  Detalhe por categoria — {MONTHS_FULL[month - 1]}/{year}
+                </Text>
+                {showSkeleton ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <CategoryTable
+                    rows={stats?.byCategory ?? []}
+                    total={stats?.total ?? 0}
+                    onCategoryPress={handleCategoryPress}
+                  />
+                )}
+              </View>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </AppShell>
@@ -340,6 +348,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     letterSpacing: -0.5,
+  },
+  statLoader: {
+    alignSelf: "flex-start",
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,

@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import type { InitialListFilters } from "@/features/list/constants/home.constants";
 import { useProducts, type UseProductsParams } from "@/hooks/use-products";
@@ -16,7 +15,6 @@ function defaultQueryFilters(): UseProductsParams {
 
 function queryToInitialFilters(query: UseProductsParams): InitialListFilters {
   return {
-    category: query.category,
     month: query.month !== undefined ? query.month - 1 : null,
     year: query.year ?? null,
     userId: query.userId,
@@ -37,7 +35,6 @@ export default function HomeScreen() {
   const handleQueryFiltersChange = useCallback((next: InitialListFilters) => {
     setQueryFilters({
       limit: 100,
-      category: next.category || undefined,
       month: next.month !== undefined && next.month !== null ? next.month + 1 : undefined,
       year: next.year !== undefined && next.year !== null ? next.year : undefined,
       userId: next.userId,
