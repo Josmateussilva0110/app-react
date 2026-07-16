@@ -89,14 +89,31 @@ function buildUsersMap(rows: ProductStatsRow[]): Map<string, string> {
     return usersMap
 }
 
+function matchesMonthList(
+    row: ProductStatsRow,
+    monthList: StatsQuery["monthList"]
+): boolean {
+    if (!monthList) return true
+    const flag = isTruthyFlag(row.month_list)
+    return monthList === "true" ? flag : !flag
+}
+
 function accumulateEvolution(
     acc: StatsAccumulator,
     row: ProductStatsRow,
     year: number,
-    status: StatsQuery["status"]
+    status: StatsQuery["status"],
+    monthList: StatsQuery["monthList"]
 ): void {
     const ym = parseYearMonth(row.date)
-    if (!ym || ym.year !== year || !matchesStatus(row.finished, status ?? "todos")) return
+    if (
+        !ym ||
+        ym.year !== year ||
+        !matchesStatus(row.finished, status ?? "todos") ||
+        !matchesMonthList(row, monthList)
+    ) {
+        return
+    }
 
     const price = Number(row.price) || 0
     if (!acc.evoByUser.has(row.user_id)) {
@@ -161,7 +178,7 @@ export function aggregateDashboardStats(
     rows: ProductStatsRow[],
     query: StatsQuery
 ): DashboardStats {
-    const { month, year, userId, status = "todos" } = query
+    const { month, year, userId, status = "todos", monthList } = query
     const acc = createEmptyAccumulator()
     const usersMap = buildUsersMap(rows)
 
@@ -169,11 +186,19 @@ export function aggregateDashboardStats(
         const ym = parseYearMonth(row.date)
         if (!ym) continue
 
-        accumulateEvolution(acc, row, year, status)
+        accumulateEvolution(acc, row, year, status, monthList)
 
         const matchesUser = !userId || row.user_id === userId
         const matchesFinished = matchesStatus(row.finished, status)
-        if (ym.year !== year || ym.month !== month || !matchesUser || !matchesFinished) continue
+        if (
+            ym.year !== year ||
+            ym.month !== month ||
+            !matchesUser ||
+            !matchesFinished ||
+            !matchesMonthList(row, monthList)
+        ) {
+            continue
+        }
 
         accumulateMonthStats(acc, row)
     }

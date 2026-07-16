@@ -259,6 +259,12 @@ class ProductService {
                 p_year: query.year,
                 p_user_id: query.userId ?? null,
                 p_status: query.status ?? "todos",
+                p_month_list:
+                    query.monthList === "true"
+                        ? true
+                        : query.monthList === "false"
+                          ? false
+                          : null,
             })
 
             if (!error && data) {

@@ -1,22 +1,21 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { View, Text, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
-
 import { AppShell } from "@/components/appShell";
 import { ErrorState } from "@/components/ui/error-state";
 import { useTheme } from "@/context/theme.context";
-
 import { useProductStats } from "@/hooks/use-product-stats";
 import { useGoal, useUpdateGoal } from "@/hooks/use-goal";
 import { HomeFilters } from "@/features/list/components/home-filters";
-import type { StatusFilter } from "@/features/list/constants/home.constants";
-
+import { MonthListFilters } from "@/features/dashboard/components/month-list-filters";
 import { DashboardSelect } from "@/features/dashboard/components/dashboard-select";
+import { ALL_USERS, useDashboardFilters } from "@/features/dashboard/hooks/use-dashboard-filters";
 import { HorizontalBarChart } from "@/features/dashboard/components/horizontal-bar-chart";
 import { VerticalBarChart } from "@/features/dashboard/components/vertical-bar-chart";
 import { EvolutionLineChart } from "@/features/dashboard/components/evolution-line-chart";
 import { MetaCard } from "@/features/dashboard/components/meta-card";
+import { StatCard, SectionCard } from "@/features/dashboard/components/dashboard-cards";
 import { CategoryTable } from "@/features/dashboard/components/category-table";
 import {
   categoryMeta,
@@ -27,55 +26,25 @@ import {
   USER_SERIES_COLORS,
 } from "@/features/dashboard/constants";
 
-const ALL_USERS = "all";
-
-function StatCard({
-  label,
-  value,
-  color,
-  loading = false,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-  loading?: boolean;
-}) {
-  const { colors } = useTheme();
-  return (
-    <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      {loading ? (
-        <ActivityIndicator size="small" color={colors.primary} style={styles.statLoader} />
-      ) : (
-        <Text style={[styles.statValue, { color: color ?? colors.text }]} numberOfLines={1}>
-          {value}
-        </Text>
-      )}
-      <Text style={[styles.statLabel, { color: colors.textSecondary }]} numberOfLines={2}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  const { colors } = useTheme();
-  return (
-    <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-      {children}
-    </View>
-  );
-}
-
 export default function DashboardScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
-  const [currentYear] = useState(() => new Date().getFullYear());
-  const [month, setMonth] = useState(() => new Date().getMonth() + 1); // 1-12
-  const [year, setYear] = useState(() => new Date().getFullYear());
-  const [userId, setUserId] = useState<string>(ALL_USERS);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todos");
+  const {
+    month,
+    year,
+    userId,
+    statusFilter,
+    monthListFilter,
+    apiUserId,
+    apiMonthList,
+    yearOptions,
+    setMonth,
+    setYear,
+    setUserId,
+    setStatusFilter,
+    setMonthListFilter,
+  } = useDashboardFilters();
 
   const {
     data: stats,
@@ -85,8 +54,9 @@ export default function DashboardScreen() {
   } = useProductStats({
     month,
     year,
-    userId: userId === ALL_USERS ? undefined : userId,
+    userId: apiUserId,
     status: statusFilter,
+    monthList: apiMonthList,
   });
 
   const showSkeleton = !stats;
@@ -97,12 +67,6 @@ export default function DashboardScreen() {
   const meta = goal?.monthlyGoal ?? 0;
 
   const monthOptions = MONTHS_FULL.map((m, i) => ({ value: String(i + 1), label: m }));
-  const yearOptions = useMemo(() => {
-    return [currentYear - 2, currentYear - 1, currentYear, year]
-      .filter((v, i, arr) => arr.indexOf(v) === i)
-      .sort((a, b) => b - a)
-      .map((v) => ({ value: String(v), label: String(v) }));
-  }, [year, currentYear]);
 
   const userOptions = useMemo(() => {
     const base = [{ value: ALL_USERS, label: "Todos" }];
@@ -169,11 +133,12 @@ export default function DashboardScreen() {
           month: String(month),
           year: String(year),
           status: statusFilter,
+          ...(apiMonthList ? { monthList: apiMonthList } : {}),
           ...(userId !== ALL_USERS ? { userId } : {}),
         },
       } as unknown as Href);
     },
-    [router, month, year, statusFilter, userId]
+    [router, month, year, statusFilter, apiMonthList, userId]
   );
 
   const filters = (
@@ -202,6 +167,7 @@ export default function DashboardScreen() {
         />
       </View>
       <HomeFilters value={statusFilter} onChange={setStatusFilter} />
+      <MonthListFilters value={monthListFilter} onChange={setMonthListFilter} />
     </View>
   );
 
@@ -287,10 +253,7 @@ export default function DashboardScreen() {
                 )}
               </SectionCard>
 
-              <View style={styles.sectionSpace}>
-                <Text style={[styles.detailTitle, { color: colors.text }]}>
-                  Detalhe por categoria — {MONTHS_FULL[month - 1]}/{year}
-                </Text>
+              <SectionCard title={`Detalhe por categoria — ${MONTHS_FULL[month - 1]}/${year}`}>
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
@@ -300,7 +263,7 @@ export default function DashboardScreen() {
                     onCategoryPress={handleCategoryPress}
                   />
                 )}
-              </View>
+              </SectionCard>
             </>
           )}
         </ScrollView>
@@ -335,43 +298,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
-  },
-  statCard: {
-    flexGrow: 1,
-    flexBasis: "47%",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  statLoader: {
-    alignSelf: "flex-start",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  section: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 14,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  sectionSpace: {
-    gap: 12,
-  },
-  detailTitle: {
-    fontSize: 15,
-    fontWeight: "700",
   },
 });
