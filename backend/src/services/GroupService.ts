@@ -23,14 +23,32 @@ function generateInviteCode(): string {
 
 class GroupService {
     private async fetchMembers(groupId: string): Promise<MemberRow[]> {
-        const { data, error } = await supabaseAdmin
+        const { data: members, error } = await supabaseAdmin
             .from("group_members")
-            .select("user_id, role, users:user_id(username)")
+            .select("user_id, role")
             .eq("group_id", groupId)
             .order("joined_at", { ascending: true })
 
         if (error) throw error
-        return (data ?? []) as MemberRow[]
+        if (!members?.length) return []
+
+        const userIds = members.map((member) => member.user_id)
+        const { data: users, error: usersError } = await supabaseAdmin
+            .from("users")
+            .select("id, username")
+            .in("id", userIds)
+
+        if (usersError) throw usersError
+
+        const usernameById = new Map(
+            (users ?? []).map((user) => [user.id, user.username ?? null])
+        )
+
+        return members.map((member) => ({
+            user_id: member.user_id,
+            role: member.role as "owner" | "member",
+            users: { username: usernameById.get(member.user_id) ?? null },
+        }))
     }
 
     private mapGroup(groupId: string, name: string, role: "owner" | "member", members: MemberRow[]): GroupResponse {
