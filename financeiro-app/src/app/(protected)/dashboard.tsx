@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { useTheme } from "@/context/theme.context";
 import { useProductStats } from "@/hooks/use-product-stats";
 import { useGoal, useUpdateGoal } from "@/hooks/use-goal";
+import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import { HomeFilters } from "@/features/list/components/home-filters";
 import { MonthListFilters } from "@/features/dashboard/components/month-list-filters";
 import { DashboardSelect } from "@/features/dashboard/components/dashboard-select";
@@ -45,6 +46,11 @@ export default function DashboardScreen() {
     setStatusFilter,
     setMonthListFilter,
   } = useDashboardFilters();
+
+  const { inGroup, groupName } = useGroupMode();
+  const dashboardSubtitle = inGroup
+    ? `Gastos do grupo ${groupName ?? ""}`
+    : "Seus gastos pessoais";
 
   const {
     data: stats,
@@ -158,13 +164,15 @@ export default function DashboardScreen() {
           onChange={(v) => setYear(Number(v))}
           style={styles.filterItem}
         />
-        <DashboardSelect
-          label="Usuário"
-          value={userId}
-          options={userOptions}
-          onChange={setUserId}
-          style={styles.filterItem}
-        />
+        {inGroup && (
+          <DashboardSelect
+            label="Usuário"
+            value={userId}
+            options={userOptions}
+            onChange={setUserId}
+            style={styles.filterItem}
+          />
+        )}
       </View>
       <HomeFilters value={statusFilter} onChange={setStatusFilter} />
       <MonthListFilters value={monthListFilter} onChange={setMonthListFilter} />
@@ -172,7 +180,7 @@ export default function DashboardScreen() {
   );
 
   return (
-    <AppShell title="Dashboard" subtitle="Gastos da lista compartilhada" showBack showSettings={false}>
+    <AppShell title="Dashboard" subtitle={dashboardSubtitle} showBack showSettings={false}>
       <SafeAreaView style={styles.container} edges={["bottom"]}>
         <ScrollView
           contentContainerStyle={styles.content}
@@ -223,6 +231,7 @@ export default function DashboardScreen() {
                 segments={categoryItems}
                 onSaveMeta={(v) => updateGoal.mutate(v)}
                 saving={updateGoal.isPending}
+                title={goal?.scope === "group" ? "Meta mensal do grupo" : "Meta mensal pessoal"}
               />
 
               <SectionCard title="Gastos por categoria">

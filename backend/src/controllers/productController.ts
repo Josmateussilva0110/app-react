@@ -40,7 +40,8 @@ class ProductController {
       });
     }
 
-    const result = await ProductService.getAll(parsedQuery.data);
+    const userId = request.user.id
+    const result = await ProductService.getAll(parsedQuery.data, userId)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
@@ -71,7 +72,8 @@ class ProductController {
       });
     }
 
-    const result = await ProductService.getStats(parsedQuery.data);
+    const userId = request.user.id
+    const result = await ProductService.getStats(parsedQuery.data, userId)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(

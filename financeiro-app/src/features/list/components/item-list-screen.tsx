@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useTheme } from "@/context/theme.context";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
 import type { ProductResponse } from "@app/shared";
@@ -55,6 +56,7 @@ export function ItemListScreen({
   serverFiltered = false,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
+  const { inGroup } = useGroupMode();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     initialFilters?.status ?? "todos"
   );
@@ -252,16 +254,18 @@ export function ItemListScreen({
               emitQueryFilters({ month: m, year: y });
             }}
           />
-          <HomeUserFilter
-            products={products}
-            value={userFilter}
-            onChange={(value) => {
-              setUserFilter(value);
-              emitQueryFilters({
-                userId: value === ALL_USERS_VALUE ? ALL_USERS_VALUE : value,
-              });
-            }}
-          />
+          {inGroup && (
+            <HomeUserFilter
+              products={products}
+              value={userFilter}
+              onChange={(value) => {
+                setUserFilter(value);
+                emitQueryFilters({
+                  userId: value === ALL_USERS_VALUE ? ALL_USERS_VALUE : value,
+                });
+              }}
+            />
+          )}
 
           {filteredProducts.length === 0 ? (
             <HomeEmptyState />

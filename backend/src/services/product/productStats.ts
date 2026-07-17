@@ -5,9 +5,12 @@ import {
     matchesStatus,
     parseYearMonth,
 } from "../../utils/productUtils"
+import type { ProductScope } from "../../utils/productScope"
+import { productMatchesScope } from "../../utils/productScope"
 
 export type ProductStatsRow = {
     user_id: string
+    group_id?: string | null
     price: unknown
     category?: string
     payment_type?: string
@@ -69,16 +72,24 @@ export function normalizeDashboardStats(data: unknown): DashboardStats {
     }
 }
 
-export async function fetchProductsForYearStats(year: number) {
+export async function fetchProductsForYearStats(year: number, scope: ProductScope) {
     const yearStart = `${year}-01-01`
     const yearEnd = `${year + 1}-01-01`
 
-    return supabaseAdmin
+    let query = supabaseAdmin
         .from("products")
-        .select("user_id, price, category, payment_type, date, finished, month_list, users:user_id(username)")
+        .select("user_id, group_id, price, category, payment_type, date, finished, month_list, users:user_id(username)")
         .gte("date", yearStart)
         .lt("date", yearEnd)
         .limit(10000)
+
+    if (scope.mode === "solo") {
+        query = query.eq("user_id", scope.userId).is("group_id", null)
+    } else {
+        query = query.eq("group_id", scope.groupId)
+    }
+
+    return query
 }
 
 function buildUsersMap(rows: ProductStatsRow[]): Map<string, string> {
@@ -176,13 +187,15 @@ function toDashboardStats(acc: StatsAccumulator, usersMap: Map<string, string>):
 
 export function aggregateDashboardStats(
     rows: ProductStatsRow[],
-    query: StatsQuery
+    query: StatsQuery,
+    scope: ProductScope
 ): DashboardStats {
     const { month, year, userId, status = "todos", monthList } = query
     const acc = createEmptyAccumulator()
-    const usersMap = buildUsersMap(rows)
+    const scopedRows = rows.filter((row) => productMatchesScope(row, scope))
+    const usersMap = buildUsersMap(scopedRows)
 
-    for (const row of rows) {
+    for (const row of scopedRows) {
         const ym = parseYearMonth(row.date)
         if (!ym) continue
 

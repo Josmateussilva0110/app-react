@@ -2,6 +2,7 @@ import { View, StyleSheet, useWindowDimensions } from "react-native";
 import { AppShell } from "@/components/appShell"
 import { ScreenWrapper } from "@/components/layout/screen-wrapper";
 import { ProfileUserCard } from "../../../features/profile/components/profile-user-card";
+import { ProfileGroupCard } from "../../../features/profile/components/profile-group-card";
 import { ProfileThemeCard } from "../../../features/profile/components/profile-theme-card";
 import { ProfileLogoutButton } from "../../../features/profile/components/profile-logout-button";
 
@@ -19,6 +20,7 @@ export default function ProfileScreen() {
       >
         <View style={[styles.content, { maxWidth: isTablet ? 500 : 420 }]}>
           <ProfileUserCard />
+          <ProfileGroupCard />
           <ProfileThemeCard />
           <ProfileLogoutButton />
         </View>

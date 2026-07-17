@@ -17,12 +17,14 @@ import {
     ProductRowWithUser,
 } from "../utils/productUtils"
 import { buildProductListQuery } from "./product/productQuery"
+import { resolveProductScope, resolveScopedUserFilter } from "../utils/productScope"
 import {
     aggregateDashboardStats,
     fetchProductsForYearStats,
     normalizeDashboardStats,
     ProductStatsRow,
 } from "./product/productStats"
+import type { ProductScope } from "../utils/productScope"
 
 class ProductService {
     private toIsoDate(date: string): string {
@@ -89,21 +91,24 @@ class ProductService {
     async create(data: CreateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
         try {
             const { name, price, priority, paymentType, category, date, finished, monthList } = data
+            const scope = await resolveProductScope(data.userId)
+            const groupId = scope.mode === "group" ? scope.groupId : null
 
             const isoDate = this.toIsoDate(date)
 
             const { data: product, error } = await supabaseAdmin
                 .from("products")
                 .insert({
-                    user_id: data.userId,  // snake_case
+                    user_id: data.userId,
+                    group_id: groupId,
                     name,
                     price,
                     priority,
-                    payment_type: paymentType,  // camelCase → snake_case
+                    payment_type: paymentType,
                     category,
                     date: isoDate,
                     finished,
-                    month_list: monthList,    // camelCase → snake_case
+                    month_list: monthList,
                 })
                 .select("id")
                 .single()
@@ -224,13 +229,17 @@ class ProductService {
     }
 
     async getAll(
-        query: ProductListQuery
+        query: ProductListQuery,
+        requestingUserId: string
     ): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
         try {
             const { page, limit } = query
             const { from, to } = getPaginationRange(page, limit)
+            const scope = await resolveProductScope(requestingUserId)
+            const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
+            const scopedQuery = { ...query, userId: scopedUserId }
 
-            const { data, error, count } = await buildProductListQuery(query).range(from, to)
+            const { data, error, count } = await buildProductListQuery(scopedQuery, scope).range(from, to)
 
             if (error) {
                 console.error("[ProductService.getAll] Supabase error:", error)
@@ -251,13 +260,21 @@ class ProductService {
     }
 
     async getStats(
-        query: StatsQuery
+        query: StatsQuery,
+        requestingUserId: string
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
         try {
+            const scope = await resolveProductScope(requestingUserId)
+            const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
+            const scopedQuery = { ...query, userId: scopedUserId }
+            const pGroupId = scope.mode === "group" ? scope.groupId : null
+
             const { data, error } = await supabaseAdmin.rpc("get_product_stats", {
-                p_month: query.month,
-                p_year: query.year,
-                p_user_id: query.userId ?? null,
+                p_month: scopedQuery.month,
+                p_year: scopedQuery.year,
+                p_viewer_user_id: requestingUserId,
+                p_group_id: pGroupId,
+                p_filter_user_id: scopedQuery.userId ?? null,
                 p_status: query.status ?? "todos",
                 p_month_list:
                     query.monthList === "true"
@@ -273,23 +290,23 @@ class ProductService {
 
             if (error) {
                 console.warn(
-                    "[ProductService.getStats] RPC unavailable, using filtered fallback:",
+                    "[ProductService.getStats] RPC unavailable, using fallback:",
                     error.message
                 )
             }
 
-            return await this.getStatsFallback(query)
+            return await this.getStatsFallback(scopedQuery, scope)
         } catch (error) {
             console.error("[ProductService.getStats] error:", error)
             return this.productFetchError("Não foi possível calcular as estatísticas.")
         }
     }
 
-    /** Fallback: busca só o ano selecionado (não a tabela inteira) e agrega em Node. */
     private async getStatsFallback(
-        query: StatsQuery
+        query: StatsQuery,
+        scope: ProductScope
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
-        const { data, error } = await fetchProductsForYearStats(query.year)
+        const { data, error } = await fetchProductsForYearStats(query.year, scope)
 
         if (error) {
             console.error("[ProductService.getStatsFallback] Supabase error:", error)
@@ -298,7 +315,7 @@ class ProductService {
 
         return {
             status: true,
-            data: aggregateDashboardStats((data ?? []) as ProductStatsRow[], query),
+            data: aggregateDashboardStats((data ?? []) as ProductStatsRow[], query, scope),
         }
     }
 }

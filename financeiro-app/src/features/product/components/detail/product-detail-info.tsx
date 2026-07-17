@@ -11,6 +11,7 @@ import {
 } from "lucide-react-native";
 
 import { useTheme } from "@/context/theme.context";
+import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import { ProductResponse } from "@app/shared";
 import {
   formatProductDate,
@@ -74,6 +75,7 @@ interface Props {
 
 export function ProductDetailInfo({ product }: Props) {
   const { colors } = useTheme();
+  const { inGroup } = useGroupMode();
 
   const isFinished = product.finished === true;
   const inMonthList = isMonthList(product.month_list);
@@ -147,13 +149,15 @@ export function ProductDetailInfo({ product }: Props) {
           value={getPaymentLabel(product.payment_type)}
         />
 
-        <InfoRow
-          icon={User}
-          iconColor={colors.primary}
-          iconBg={`${colors.primary}15`}
-          label="Cadastrado por"
-          value={product.user_name || "—"}
-        />
+        {inGroup && (
+          <InfoRow
+            icon={User}
+            iconColor={colors.primary}
+            iconBg={`${colors.primary}15`}
+            label="Cadastrado por"
+            value={product.user_name || "—"}
+          />
+        )}
 
         <InfoRow
           icon={CalendarCheck}
