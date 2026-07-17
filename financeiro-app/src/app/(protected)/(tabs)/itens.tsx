@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import type { InitialListFilters } from "@/features/list/constants/home.constants";
+import { useProductListLabels } from "@/hooks/use-product-list-labels";
 import { useProducts, type UseProductsParams } from "@/hooks/use-products";
 
 function defaultQueryFilters(): UseProductsParams {
@@ -24,6 +25,7 @@ function queryToInitialFilters(query: UseProductsParams): InitialListFilters {
 
 export default function HomeScreen() {
   const [queryFilters, setQueryFilters] = useState<UseProductsParams>(defaultQueryFilters);
+  const { title, subtitle } = useProductListLabels();
 
   const { data: products = [], isLoading, error, refetch } = useProducts(queryFilters);
 
@@ -44,8 +46,8 @@ export default function HomeScreen() {
 
   return (
     <ItemListScreen
-      title="Meus Itens"
-      subtitle="Controle seus itens por prioridade"
+      title={title}
+      subtitle={subtitle}
       products={products}
       loading={isLoading}
       error={error?.message ?? null}

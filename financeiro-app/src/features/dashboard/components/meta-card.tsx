@@ -22,9 +22,10 @@ type MetaCardProps = {
   segments: MetaSegment[];
   onSaveMeta: (value: number) => void;
   saving?: boolean;
+  title?: string;
 };
 
-export function MetaCard({ total, meta, segments, onSaveMeta, saving }: MetaCardProps) {
+export function MetaCard({ total, meta, segments, onSaveMeta, saving, title = "Meta mensal pessoal" }: MetaCardProps) {
   const { colors } = useTheme();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(String(meta ?? 0));
@@ -51,7 +52,7 @@ export function MetaCard({ total, meta, segments, onSaveMeta, saving }: MetaCard
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Meta mensal (global)</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
         <Text style={[styles.status, { color: statusColor }]}>
           {meta === 0 ? "Sem meta" : over ? "Acima da meta" : `${pct}% da meta`}
         </Text>

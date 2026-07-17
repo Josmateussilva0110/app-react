@@ -20,7 +20,7 @@ export const WELCOME_FEATURES: WelcomeFeature[] = [
   },
   {
     icon: Sparkles,
-    title: "Gestão inteligente",
-    desc: "Tenha controle total das suas finanças mensais.",
+    title: "Modo pessoal ou em grupo",
+    desc: "Use sozinho ou compartilhe com família e amigos.",
   },
 ];

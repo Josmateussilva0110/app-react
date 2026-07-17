@@ -4,8 +4,9 @@ import { goalErrorHttpStatusMap } from "../errors/goalErrorHttpMapper"
 import GoalService from "../services/GoalService"
 
 class GoalController {
-    async get(_request: Request, response: Response) {
-        const result = await GoalService.get()
+    async get(request: Request, response: Response) {
+        const userId = request.user.id
+        const result = await GoalService.get(userId)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(

@@ -12,4 +12,5 @@ export type GoalDTO = z.infer<typeof goalSchema>;
 export type GoalResponse = {
   monthlyGoal: number;
   updatedAt: string | null;
+  scope?: "user" | "group";
 };

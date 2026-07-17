@@ -24,6 +24,8 @@ export default function ProtectedLayout() {
       <Stack.Screen name="dashboard-category" options={{ headerShown: false }} />
       <Stack.Screen name="product-detail/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="edit-product/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="group/create" options={{ headerShown: false }} />
+      <Stack.Screen name="group/join" options={{ headerShown: false }} />
     </Stack>
   );
 }

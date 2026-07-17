@@ -1,8 +1,9 @@
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
+import { useProductListLabels } from "@/hooks/use-product-list-labels";
 import { useProducts } from "@/hooks/use-products";
 
 export default function MonthListScreen() {
-  // Filtro principal no servidor; demais filtros (mês/ano) ficam no client.
+  const { subtitle: groupSubtitle } = useProductListLabels();
   const { data: products = [], isLoading, error, refetch } = useProducts({
     limit: 100,
     monthList: true,
@@ -12,7 +13,7 @@ export default function MonthListScreen() {
   return (
     <ItemListScreen
       title="Lista do Mês"
-      subtitle="Compras planejadas para este mês"
+      subtitle={groupSubtitle === "Seus itens pessoais" ? "Compras planejadas para este mês" : groupSubtitle}
       products={products}
       loading={isLoading}
       error={error?.message ?? null}
