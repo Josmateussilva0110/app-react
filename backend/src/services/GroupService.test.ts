@@ -20,7 +20,7 @@ function createThenableChain(resolver: () => QueryResult) {
     const chain: Record<string, unknown> = {}
     const result = () => Promise.resolve(resolver())
 
-    for (const method of ["select", "insert", "update", "delete", "eq", "order"]) {
+    for (const method of ["select", "insert", "update", "delete", "eq", "order", "in"]) {
         chain[method] = vi.fn().mockReturnValue(chain)
     }
 
@@ -89,8 +89,8 @@ describe("GroupService.leave", () => {
                     }
                     return {
                         data: [
-                            { user_id: "user-a", role: "owner", users: { username: "A" } },
-                            { user_id: "user-b", role: "member", users: { username: "B" } },
+                            { user_id: "user-a", role: "owner" },
+                            { user_id: "user-b", role: "member" },
                         ],
                         error: null,
                     }
@@ -100,6 +100,16 @@ describe("GroupService.leave", () => {
                     createThenableChain(() => ({ data: null, error: null }))
                 )
                 return chain
+            }
+
+            if (table === "users") {
+                return createThenableChain(() => ({
+                    data: [
+                        { id: "user-a", username: "A" },
+                        { id: "user-b", username: "B" },
+                    ],
+                    error: null,
+                }))
             }
 
             if (table === "products") {
