@@ -55,7 +55,12 @@ class RefreshService {
         { timeout: 15000 }
       );
 
-      const auth: AuthData = data.data;
+      const payload = data as { success?: boolean; data?: AuthData };
+      const auth = payload?.data;
+
+      if (!payload?.success || !auth?.accessToken || !auth?.refreshToken) {
+        return null;
+      }
 
       tokenManager.setTokens(auth.accessToken, auth.refreshToken);
       await saveAuth(auth);
@@ -67,10 +72,10 @@ class RefreshService {
 
       return auth;
     } catch (err: unknown) {
-      const error = err as { response?: unknown };
-      const isNetworkError = !error.response;
+      const error = err as { response?: { status?: number } };
+      const status = error.response?.status;
 
-      if (isNetworkError) {
+      if (!error.response || status === 429 || (status !== undefined && status >= 500)) {
         return null;
       }
 

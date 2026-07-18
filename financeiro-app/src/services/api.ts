@@ -127,6 +127,10 @@ api.interceptors.response.use(
 
       return api(original);
     } catch (refreshError) {
+      if (tokenManager.getRefreshToken()) {
+        return Promise.reject(error);
+      }
+
       await refreshService.logout();
       return Promise.reject(refreshError);
     }
