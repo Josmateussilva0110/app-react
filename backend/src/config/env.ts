@@ -14,8 +14,11 @@ const envSchema = z.object({
     SUPABASE_URL: z.url("SUPABASE_URL inválida"),
     SUPABASE_ANON_KEY: z.string().min(1, "SUPABASE_ANON_KEY ausente").optional(),
     EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
-    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY ausente"),
-    SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET ausente"),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY ausente").transform((s) => s.trim()),
+    SUPABASE_JWT_SECRET: z
+        .string()
+        .min(1, "SUPABASE_JWT_SECRET ausente — use o JWT Secret em Supabase → Settings → API")
+        .transform((s) => s.trim()),
     ALLOWED_ORIGINS: z
         .string()
         .default("http://localhost:8081")
