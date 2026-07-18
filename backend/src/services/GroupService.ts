@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../database/supabase/supabase"
 import { GroupErrorCode } from "../types/code/groupCode"
 import type { GroupInviteResponse, GroupMeResponse, GroupResponse } from "@app/shared"
 import { logGroupEvent } from "../utils/structuredLog"
-import { unlinkUserProductsFromGroup } from "../utils/groupProducts"
+import { parseGroupRpcResult, resolveGroupRpcError } from "../utils/groupRpc"
 
 const INVITE_TTL_DAYS = 7
 const INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -117,64 +117,39 @@ class GroupService {
 
     async create(userId: string, name: string): Promise<ServiceResult<GroupResponse, GroupErrorCode>> {
         try {
-            const existing = await this.getMembership(userId)
-            if (existing) {
+            const { data, error } = await supabaseAdmin.rpc("create_group_with_owner", {
+                p_user_id: userId,
+                p_name: name,
+            })
+
+            if (error) {
+                console.error("[GroupService.create] rpc error:", error)
                 return {
                     status: false,
                     error: {
-                        code: GroupErrorCode.GROUP_ALREADY_IN_GROUP,
-                        message: "Você já participa de um grupo. Saia antes de criar outro.",
+                        code: GroupErrorCode.GROUP_CREATE_FAILED,
+                        message: "Não foi possível criar o grupo.",
                     },
                 }
             }
 
-            const { data: group, error: groupError } = await supabaseAdmin
-                .from("groups")
-                .insert({ name: name.trim(), created_by: userId })
-                .select("id, name")
-                .single()
-
-            if (groupError || !group) {
-                console.error("[GroupService.create] group error:", groupError)
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_CREATE_FAILED, message: "Não foi possível criar o grupo." },
-                }
+            const result = parseGroupRpcResult(data)
+            if (!result.ok || !result.group_id || !result.group_name) {
+                const rpcError = resolveGroupRpcError(result, GroupErrorCode.GROUP_CREATE_FAILED)
+                return { status: false, error: rpcError }
             }
 
-            const { error: memberError } = await supabaseAdmin.from("group_members").insert({
-                group_id: group.id,
-                user_id: userId,
-                role: "owner",
-            })
-
-            if (memberError) {
-                console.error("[GroupService.create] member error:", memberError)
-                await supabaseAdmin.from("groups").delete().eq("id", group.id)
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_CREATE_FAILED, message: "Não foi possível criar o grupo." },
-                }
-            }
-
-            await supabaseAdmin.from("goals").insert({
-                scope: "group",
-                group_id: group.id,
-                user_id: null,
-                monthly_goal: 0,
-                updated_by: userId,
-            })
-
-            const members = await this.fetchMembers(group.id)
+            const members = await this.fetchMembers(result.group_id)
             logGroupEvent("group.create", {
                 userId,
-                groupId: group.id,
-                groupName: group.name,
+                groupId: result.group_id,
+                groupName: result.group_name,
                 memberCount: members.length,
+                productsLinked: result.products_linked ?? 0,
             })
             return {
                 status: true,
-                data: this.mapGroup(group.id, group.name, "owner", members),
+                data: this.mapGroup(result.group_id, result.group_name, "owner", members),
             }
         } catch (error) {
             console.error("[GroupService.create] error:", error)
@@ -313,75 +288,42 @@ class GroupService {
 
     async join(userId: string, code: string): Promise<ServiceResult<GroupResponse, GroupErrorCode>> {
         try {
-            const existing = await this.getMembership(userId)
-            if (existing) {
+            const { data, error } = await supabaseAdmin.rpc("join_group_with_products", {
+                p_user_id: userId,
+                p_code: code,
+            })
+
+            if (error) {
+                console.error("[GroupService.join] rpc error:", error)
                 return {
                     status: false,
                     error: {
-                        code: GroupErrorCode.GROUP_ALREADY_IN_GROUP,
-                        message: "Saia do grupo atual antes de entrar em outro.",
+                        code: GroupErrorCode.GROUP_JOIN_FAILED,
+                        message: "Não foi possível entrar no grupo.",
                     },
                 }
             }
 
-            const { data: invite, error: inviteError } = await supabaseAdmin
-                .from("group_invites")
-                .select("id, group_id, status, expires_at, groups:group_id(id, name)")
-                .eq("code", code.toUpperCase())
-                .maybeSingle()
-
-            if (inviteError || !invite) {
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_INVITE_INVALID, message: "Código de convite inválido." },
+            const result = parseGroupRpcResult(data)
+            if (!result.ok || !result.group_id || !result.group_name) {
+                const rpcError = resolveGroupRpcError(result, GroupErrorCode.GROUP_JOIN_FAILED)
+                if (rpcError.code === GroupErrorCode.GROUP_ALREADY_IN_GROUP) {
+                    rpcError.message = "Saia do grupo atual antes de entrar em outro."
                 }
+                return { status: false, error: rpcError }
             }
 
-            if (invite.status !== "pending" || new Date(invite.expires_at) < new Date()) {
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_INVITE_INVALID, message: "Convite expirado ou inválido." },
-                }
-            }
-
-            const groupRaw = invite.groups as { id: string; name: string } | { id: string; name: string }[] | null
-            const groupData = Array.isArray(groupRaw) ? groupRaw[0] : groupRaw
-            if (!groupData) {
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_NOT_FOUND, message: "Grupo não encontrado." },
-                }
-            }
-
-            const { error: memberError } = await supabaseAdmin.from("group_members").insert({
-                group_id: invite.group_id,
-                user_id: userId,
-                role: "member",
-            })
-
-            if (memberError) {
-                console.error("[GroupService.join] member error:", memberError)
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_JOIN_FAILED, message: "Não foi possível entrar no grupo." },
-                }
-            }
-
-            await supabaseAdmin
-                .from("group_invites")
-                .update({ status: "accepted" })
-                .eq("id", invite.id)
-
-            const members = await this.fetchMembers(invite.group_id)
+            const members = await this.fetchMembers(result.group_id)
             logGroupEvent("group.join", {
                 userId,
-                groupId: invite.group_id,
-                groupName: groupData.name,
+                groupId: result.group_id,
+                groupName: result.group_name,
                 memberCount: members.length,
+                productsLinked: result.products_linked ?? 0,
             })
             return {
                 status: true,
-                data: this.mapGroup(groupData.id, groupData.name, "member", members),
+                data: this.mapGroup(result.group_id, result.group_name, "member", members),
             }
         } catch (error) {
             console.error("[GroupService.join] error:", error)
@@ -395,73 +337,33 @@ class GroupService {
     async leave(userId: string): Promise<ServiceResult<null, GroupErrorCode>> {
         try {
             const membership = await this.getMembership(userId)
-            if (!membership?.groups) {
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_NOT_IN_GROUP, message: "Você não está em um grupo." },
-                }
-            }
+            const role = membership?.role ?? "member"
 
-            const groupId = membership.group_id
-            const members = await this.fetchMembers(groupId)
-
-            // Produtos do usuário saem do grupo (permanecem em products.user_id).
-            try {
-                await unlinkUserProductsFromGroup(userId, groupId)
-            } catch (productsError) {
-                console.error("[GroupService.leave] products error:", productsError)
-                return {
-                    status: false,
-                    error: { code: GroupErrorCode.GROUP_LEAVE_FAILED, message: "Não foi possível sair do grupo." },
-                }
-            }
-
-            if (members.length === 1) {
-                await supabaseAdmin.from("goals").delete().eq("group_id", groupId)
-                await supabaseAdmin.from("group_invites").delete().eq("group_id", groupId)
-                await supabaseAdmin.from("group_members").delete().eq("group_id", groupId)
-                await supabaseAdmin.from("groups").delete().eq("id", groupId)
-                logGroupEvent("group.leave", {
-                    userId,
-                    groupId,
-                    role: membership.role,
-                    groupDeleted: true,
-                    productsMovedToSolo: true,
-                })
-                return { status: true, data: null }
-            }
-
-            if (membership.role === "owner") {
-                const nextOwner = members.find((m) => m.user_id !== userId)
-                if (nextOwner) {
-                    await supabaseAdmin
-                        .from("group_members")
-                        .update({ role: "owner" })
-                        .eq("group_id", groupId)
-                        .eq("user_id", nextOwner.user_id)
-                }
-            }
-
-            const { error } = await supabaseAdmin
-                .from("group_members")
-                .delete()
-                .eq("group_id", groupId)
-                .eq("user_id", userId)
+            const { data, error } = await supabaseAdmin.rpc("leave_group", {
+                p_user_id: userId,
+            })
 
             if (error) {
-                console.error("[GroupService.leave] error:", error)
+                console.error("[GroupService.leave] rpc error:", error)
                 return {
                     status: false,
                     error: { code: GroupErrorCode.GROUP_LEAVE_FAILED, message: "Não foi possível sair do grupo." },
                 }
+            }
+
+            const result = parseGroupRpcResult(data)
+            if (!result.ok) {
+                const rpcError = resolveGroupRpcError(result, GroupErrorCode.GROUP_LEAVE_FAILED)
+                return { status: false, error: rpcError }
             }
 
             logGroupEvent("group.leave", {
                 userId,
-                groupId,
-                role: membership.role,
-                groupDeleted: false,
+                groupId: result.group_id,
+                role,
+                groupDeleted: result.group_deleted ?? false,
                 productsMovedToSolo: true,
+                productsUnlinked: result.products_unlinked ?? 0,
             })
             return { status: true, data: null }
         } catch (error) {
