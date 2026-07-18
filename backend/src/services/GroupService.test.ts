@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
 const mockFrom = vi.fn()
+const mockUnlinkUserProductsFromGroup = vi.fn()
 
 vi.mock("../database/supabase/supabase", () => ({
     supabaseAdmin: {
@@ -10,6 +11,10 @@ vi.mock("../database/supabase/supabase", () => ({
 
 vi.mock("../utils/structuredLog", () => ({
     logGroupEvent: vi.fn(),
+}))
+
+vi.mock("../utils/groupProducts", () => ({
+    unlinkUserProductsFromGroup: (...args: unknown[]) => mockUnlinkUserProductsFromGroup(...args),
 }))
 
 import GroupService from "./GroupService"
@@ -66,10 +71,10 @@ describe("GroupService.createInvite", () => {
 describe("GroupService.leave", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mockUnlinkUserProductsFromGroup.mockResolvedValue(undefined)
     })
 
-    it("remove group_id dos produtos do usuário ao sair", async () => {
-        const productUpdate = vi.fn()
+    it("remove vínculos group_products do usuário ao sair", async () => {
         const memberDelete = vi.fn()
 
         let groupMembersCalls = 0
@@ -112,19 +117,13 @@ describe("GroupService.leave", () => {
                 }))
             }
 
-            if (table === "products") {
-                const chain = createThenableChain(() => ({ data: null, error: null }))
-                chain.update = productUpdate.mockReturnValue(chain)
-                return chain
-            }
-
             return createThenableChain(() => ({ data: null, error: null }))
         })
 
         const result = await GroupService.leave("user-b")
 
         expect(result.status).toBe(true)
-        expect(productUpdate).toHaveBeenCalledWith({ group_id: null })
+        expect(mockUnlinkUserProductsFromGroup).toHaveBeenCalledWith("user-b", "group-1")
         expect(memberDelete).toHaveBeenCalled()
     })
 })

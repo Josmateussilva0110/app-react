@@ -2,3 +2,4 @@ export { GROUP_MODE_LABELS, type GroupMode } from "./constants/group-mode.consta
 export { useGroupMode } from "./hooks/use-group-mode";
 export { GroupModeBadge } from "./components/group-mode-badge";
 export { GroupModeTabIndicator } from "./components/group-mode-tab-indicator";
+export { GroupManageScreen } from "./components/group-manage-screen";

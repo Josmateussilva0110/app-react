@@ -18,11 +18,12 @@ import {
 } from "../utils/productUtils"
 import { buildProductListQuery } from "./product/productQuery"
 import { resolveProductScope, resolveScopedUserFilter } from "../utils/productScope"
+import { linkProductToGroup } from "../utils/groupProducts"
 import {
     aggregateDashboardStats,
     fetchProductsForYearStats,
+    mapStatsRow,
     normalizeDashboardStats,
-    ProductStatsRow,
 } from "./product/productStats"
 import type { ProductScope } from "../utils/productScope"
 
@@ -92,7 +93,6 @@ class ProductService {
         try {
             const { name, price, priority, paymentType, category, date, finished, monthList } = data
             const scope = await resolveProductScope(data.userId)
-            const groupId = scope.mode === "group" ? scope.groupId : null
 
             const isoDate = this.toIsoDate(date)
 
@@ -100,7 +100,6 @@ class ProductService {
                 .from("products")
                 .insert({
                     user_id: data.userId,
-                    group_id: groupId,
                     name,
                     price,
                     priority,
@@ -121,6 +120,22 @@ class ProductService {
                         code: ProductErrorCode.PRODUCT_CREATE_FAILED,
                         message: "Não foi possível cadastrar o produto. Tente novamente.",
                     },
+                }
+            }
+
+            if (scope.mode === "group") {
+                try {
+                    await linkProductToGroup(product.id, scope.groupId)
+                } catch (linkError) {
+                    console.error("[ProductService.register] group link error:", linkError)
+                    await supabaseAdmin.from("products").delete().eq("id", product.id)
+                    return {
+                        status: false,
+                        error: {
+                            code: ProductErrorCode.PRODUCT_CREATE_FAILED,
+                            message: "Não foi possível compartilhar o produto com o grupo.",
+                        },
+                    }
                 }
             }
 
@@ -239,7 +254,7 @@ class ProductService {
             const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
             const scopedQuery = { ...query, userId: scopedUserId }
 
-            const { data, error, count } = await buildProductListQuery(scopedQuery, scope).range(from, to)
+            const { data, error, count } = await (await buildProductListQuery(scopedQuery, scope)).range(from, to)
 
             if (error) {
                 console.error("[ProductService.getAll] Supabase error:", error)
@@ -315,7 +330,11 @@ class ProductService {
 
         return {
             status: true,
-            data: aggregateDashboardStats((data ?? []) as ProductStatsRow[], query, scope),
+            data: aggregateDashboardStats(
+                ((data ?? []) as Parameters<typeof mapStatsRow>[0][]).map(mapStatsRow),
+                query,
+                scope
+            ),
         }
     }
 }

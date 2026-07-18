@@ -6,6 +6,8 @@ export const createGroupSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter ao menos 2 caracteres").max(60),
 });
 
+export const updateGroupSchema = createGroupSchema;
+
 export const joinGroupSchema = z.object({
   code: z
     .string()

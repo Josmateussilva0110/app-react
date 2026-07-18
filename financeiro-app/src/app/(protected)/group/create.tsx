@@ -1,18 +1,15 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { Text, TextInput, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { AppShell } from "@/components/appShell";
 import { ScreenWrapper } from "@/components/layout/screen-wrapper";
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import { useCreateGroup } from "@/hooks/use-group";
+import {
+  GroupFormLayout,
+  groupFormStyles as styles,
+} from "@/features/group/components/group-form-layout";
 
 export default function CreateGroupScreen() {
   const { colors } = useTheme();
@@ -31,7 +28,7 @@ export default function CreateGroupScreen() {
     try {
       await createGroup.mutateAsync(trimmed);
       show("success", "Grupo criado!");
-      router.back();
+      router.replace("/(protected)/group");
     } catch (error: unknown) {
       show("error", error instanceof Error ? error.message : "Erro ao criar grupo.");
     }
@@ -39,67 +36,43 @@ export default function CreateGroupScreen() {
 
   return (
     <AppShell title="Criar grupo" subtitle="Compartilhe gastos com família ou amigos" showBack>
-      <ScreenWrapper style={styles.wrapper}>
-        <Text style={[styles.label, { color: colors.text }]}>Nome do grupo</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Ex: Família Silva"
-          placeholderTextColor={colors.textSecondary}
-          style={[
-            styles.input,
-            { color: colors.text, borderColor: colors.border, backgroundColor: colors.card },
-          ]}
-          maxLength={60}
-          editable={!createGroup.isPending}
-        />
+      <ScreenWrapper>
+        <GroupFormLayout>
+          <Text style={[styles.label, { color: colors.text }]}>Nome do grupo</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>
+            Escolha um nome que todos do grupo reconheçam.
+          </Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Ex: Família Silva"
+            placeholderTextColor={colors.textSecondary}
+            style={[
+              styles.input,
+              { color: colors.text, borderColor: colors.border, backgroundColor: colors.card },
+            ]}
+            maxLength={60}
+            editable={!createGroup.isPending}
+          />
 
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: colors.primary }, createGroup.isPending && styles.disabled]}
-          activeOpacity={0.85}
-          onPress={handleCreate}
-          disabled={createGroup.isPending}
-        >
-          {createGroup.isPending ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Criar grupo</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              { backgroundColor: colors.primary },
+              createGroup.isPending && styles.disabled,
+            ]}
+            activeOpacity={0.85}
+            onPress={handleCreate}
+            disabled={createGroup.isPending}
+          >
+            {createGroup.isPending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Criar grupo</Text>
+            )}
+          </TouchableOpacity>
+        </GroupFormLayout>
       </ScreenWrapper>
     </AppShell>
   );
 }
-
-const styles = StyleSheet.create({
-  wrapper: {
-    padding: 24,
-    gap: 12,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  input: {
-    height: 52,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  button: {
-    height: 52,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-});

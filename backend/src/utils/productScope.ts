@@ -24,13 +24,13 @@ export async function resolveProductScope(userId: string): Promise<ProductScope>
 }
 
 export function productMatchesScope(
-    row: { user_id: string; group_id?: string | null },
+    row: { user_id: string; shared_group_id?: string | null },
     scope: ProductScope
 ): boolean {
     if (scope.mode === "solo") {
-        return row.user_id === scope.userId && (row.group_id == null || row.group_id === "")
+        return row.user_id === scope.userId && (row.shared_group_id == null || row.shared_group_id === "")
     }
-    return row.group_id === scope.groupId
+    return row.shared_group_id === scope.groupId
 }
 
 export type ScopeFilterDescriptor =

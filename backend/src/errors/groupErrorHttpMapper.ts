@@ -11,4 +11,5 @@ export const groupErrorHttpStatusMap: Record<GroupErrorCode, number> = {
     [GroupErrorCode.GROUP_INVITE_INVALID]: 422,
     [GroupErrorCode.GROUP_JOIN_FAILED]: 500,
     [GroupErrorCode.GROUP_LEAVE_FAILED]: 500,
+    [GroupErrorCode.GROUP_UPDATE_FAILED]: 500,
 }

@@ -8,13 +8,14 @@ Este documento descreve o que já foi implementado e o passo a passo do que falt
 
 ### Banco (migration pronta, ainda não aplicada em produção)
 - Arquivo: `supabase/migrations/20260717100000_groups_solo_scope.sql`
-- Tabelas: `groups`, `group_members`, `group_invites`, `goals`
-- Coluna `group_id` em `products`
-- RLS de produtos: solo (dono + `group_id` nulo) ou membro do grupo
+- Tabelas: `groups`, `group_members`, `group_invites`, `goals`, `group_products`
+- Vínculo produto↔grupo: `group_products(group_id, product_id)` — **sem** `group_id` em `products`
+- RLS de produtos: pessoais (dono) ou compartilhados via `group_products`
 
 ### Backend
 - `GroupService` — criar, entrar, sair, convite (**somente o dono** gera convite)
-- Ao sair: produtos do usuário voltam ao solo (`group_id = null`, `user_id` mantido)
+- Ao sair: remove linhas em `group_products` dos produtos do usuário (permanecem em `products.user_id`)
+- Ao cadastrar em grupo: insere em `products` + `group_products`
 - `ProductService` — listagem e stats escopados por solo/grupo
 - `GoalService` — meta pessoal ou meta do grupo
 - Rotas: `/groups/me`, `/groups`, `/groups/invites`, `/groups/join`, `/groups/leave`
@@ -230,8 +231,10 @@ npm run test --workspace=backend
 
 ## Regras de negócio (resumo)
 
-- **Padrão:** modo solo — só vê produtos próprios com `group_id` nulo
-- **Grupo:** vê produtos de todos os membros daquele grupo
+- **Padrão:** modo pessoal — vê produtos próprios sem vínculo em `group_products`
+- **Grupo:** vê produtos ligados ao grupo via `group_products`
+- **Cadastro em grupo:** produto fica do usuário e é vinculado automaticamente ao grupo
+- **Sair:** remove vínculos do usuário em `group_products`; produtos continuam dele
 - **Convite:** apenas o **dono** gera código (válido 7 dias)
 - **Sair:** produtos que você criou voltam ao seu solo; dos outros permanecem no grupo
 - **Edição:** só quem criou edita/apaga (independente do grupo)
