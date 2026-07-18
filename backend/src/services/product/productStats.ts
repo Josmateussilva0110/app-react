@@ -9,6 +9,11 @@ import type { ProductScope } from "../../utils/productScope"
 import { productMatchesScope } from "../../utils/productScope"
 import { getUserSharedProductIds } from "../../utils/groupProducts"
 
+/** PostgREST exige UUIDs entre aspas duplas dentro de listas `in`. */
+function formatUuidInList(ids: string[]): string {
+    return `(${ids.map((id) => `"${id}"`).join(",")})`
+}
+
 export type ProductStatsRow = {
     user_id: string
     shared_group_id?: string | null
@@ -132,7 +137,7 @@ export async function fetchProductsForYearStats(year: number, scope: ProductScop
         .limit(10000)
 
     if (sharedIds.length > 0) {
-        query = query.not("id", "in", `(${sharedIds.join(",")})`)
+        query = query.not("id", "in", formatUuidInList(sharedIds))
     }
 
     return query

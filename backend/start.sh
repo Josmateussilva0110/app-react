@@ -11,9 +11,6 @@ done
 
 echo "PostgreSQL pronto 🚀"
 
-echo "Rodando migrations..."
-npx knex migrate:latest --env development
-
 echo "Iniciando servidor..."
 
 exec npm run dev

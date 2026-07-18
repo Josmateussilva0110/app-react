@@ -254,7 +254,7 @@ class ProductService {
             const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
             const scopedQuery = { ...query, userId: scopedUserId }
 
-            const { data, error, count } = await (await buildProductListQuery(scopedQuery, scope)).range(from, to)
+            const { data, error, count } = await buildProductListQuery(scopedQuery, scope, from, to)
 
             if (error) {
                 console.error("[ProductService.getAll] Supabase error:", error)
