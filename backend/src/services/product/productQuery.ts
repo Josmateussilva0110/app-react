@@ -8,40 +8,35 @@ import type { ProductScope } from "../../utils/productScope"
 type StatusFilter = "todos" | "pendente" | "finalizado"
 type MonthListFilter = "true" | "false" | undefined
 
-type ProductListRangeResult = {
-    data: unknown[] | null
-    error: { message: string } | null
-    count: number | null
+/** PostgREST exige UUIDs entre aspas duplas dentro de listas `in`. */
+function formatUuidInList(ids: string[]): string {
+    return `(${ids.map((id) => `"${id}"`).join(",")})`
 }
 
-type ProductListDbQuery = {
-    eq: (column: string, value: unknown) => ProductListDbQuery
-    not: (column: string, operator: string, value: unknown) => ProductListDbQuery
-    gte: (column: string, value: unknown) => ProductListDbQuery
-    lt: (column: string, value: unknown) => ProductListDbQuery
-    range: (from: number, to: number) => Promise<ProductListRangeResult>
-}
-
-function applyStatusFilter(dbQuery: ProductListDbQuery, status: StatusFilter): ProductListDbQuery {
+function applyStatusFilter<T extends { eq: (column: string, value: unknown) => T }>(
+    dbQuery: T,
+    status: StatusFilter
+): T {
     if (status === "finalizado") return dbQuery.eq("finished", true)
     if (status === "pendente") return dbQuery.eq("finished", false)
     return dbQuery
 }
 
-function applyMonthListFilter(
-    dbQuery: ProductListDbQuery,
+function applyMonthListFilter<T extends { eq: (column: string, value: unknown) => T }>(
+    dbQuery: T,
     monthList: MonthListFilter
-): ProductListDbQuery {
+): T {
     if (monthList === "true") return dbQuery.eq("month_list", true)
     if (monthList === "false") return dbQuery.eq("month_list", false)
     return dbQuery
 }
 
-function applyDateRangeFilter(
-    dbQuery: ProductListDbQuery,
-    year?: number,
-    month?: number
-): ProductListDbQuery {
+function applyDateRangeFilter<
+    T extends {
+        gte: (column: string, value: unknown) => T
+        lt: (column: string, value: unknown) => T
+    },
+>(dbQuery: T, year?: number, month?: number): T {
     const range = getDateRange(year, month)
     if (!range) return dbQuery
     return dbQuery.gte("date", range.start).lt("date", range.end)
@@ -49,11 +44,13 @@ function applyDateRangeFilter(
 
 export async function buildProductListQuery(
     query: ProductListQuery,
-    scope: ProductScope
-): Promise<ProductListDbQuery> {
+    scope: ProductScope,
+    from: number,
+    to: number
+) {
     const { category, userId, status = "todos", monthList, year, month } = query
 
-    let dbQuery: ProductListDbQuery
+    let dbQuery
 
     if (scope.mode === "group") {
         dbQuery = supabaseAdmin
@@ -62,7 +59,6 @@ export async function buildProductListQuery(
                 count: "exact",
             })
             .eq("group_products.group_id", scope.groupId)
-            .order("date", { ascending: false }) as unknown as ProductListDbQuery
     } else {
         const sharedIds = await getUserSharedProductIds(scope.userId)
 
@@ -70,10 +66,9 @@ export async function buildProductListQuery(
             .from("products")
             .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`, { count: "exact" })
             .eq("user_id", scope.userId)
-            .order("date", { ascending: false }) as unknown as ProductListDbQuery
 
         if (sharedIds.length > 0) {
-            dbQuery = dbQuery.not("id", "in", `(${sharedIds.join(",")})`)
+            dbQuery = dbQuery.not("id", "in", formatUuidInList(sharedIds))
         }
     }
 
@@ -84,5 +79,5 @@ export async function buildProductListQuery(
     dbQuery = applyMonthListFilter(dbQuery, monthList)
     dbQuery = applyDateRangeFilter(dbQuery, year, month)
 
-    return dbQuery
+    return dbQuery.order("date", { ascending: false }).range(from, to)
 }
