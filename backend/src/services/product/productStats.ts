@@ -7,10 +7,11 @@ import {
 } from "../../utils/productUtils"
 import type { ProductScope } from "../../utils/productScope"
 import { productMatchesScope } from "../../utils/productScope"
+import { getUserSharedProductIds } from "../../utils/groupProducts"
 
 export type ProductStatsRow = {
     user_id: string
-    group_id?: string | null
+    shared_group_id?: string | null
     price: unknown
     category?: string
     payment_type?: string
@@ -39,6 +40,37 @@ function createEmptyAccumulator(): StatsAccumulator {
         categoryMap: new Map(),
         paymentMap: new Map(),
         evoByUser: new Map(),
+    }
+}
+
+type ProductStatsDbRow = {
+    user_id: string
+    price: unknown
+    category?: string
+    payment_type?: string
+    date: string
+    finished: unknown
+    month_list: unknown
+    users?: { username?: string } | null
+    group_products?: { group_id: string }[] | { group_id: string } | null
+}
+
+function mapStatsRow(row: ProductStatsDbRow): ProductStatsRow {
+    const groupProducts = row.group_products
+    const sharedGroupId = Array.isArray(groupProducts)
+        ? groupProducts[0]?.group_id ?? null
+        : groupProducts?.group_id ?? null
+
+    return {
+        user_id: row.user_id,
+        shared_group_id: sharedGroupId,
+        price: row.price,
+        category: row.category,
+        payment_type: row.payment_type,
+        date: row.date,
+        finished: row.finished,
+        month_list: row.month_list,
+        users: row.users,
     }
 }
 
@@ -76,17 +108,31 @@ export async function fetchProductsForYearStats(year: number, scope: ProductScop
     const yearStart = `${year}-01-01`
     const yearEnd = `${year + 1}-01-01`
 
+    if (scope.mode === "group") {
+        return supabaseAdmin
+            .from("products")
+            .select(
+                "user_id, price, category, payment_type, date, finished, month_list, users:user_id(username), group_products!inner(group_id)"
+            )
+            .eq("group_products.group_id", scope.groupId)
+            .gte("date", yearStart)
+            .lt("date", yearEnd)
+            .limit(10000)
+    }
+
+    const sharedIds = await getUserSharedProductIds(scope.userId)
     let query = supabaseAdmin
         .from("products")
-        .select("user_id, group_id, price, category, payment_type, date, finished, month_list, users:user_id(username)")
+        .select(
+            "user_id, price, category, payment_type, date, finished, month_list, users:user_id(username), group_products(group_id)"
+        )
+        .eq("user_id", scope.userId)
         .gte("date", yearStart)
         .lt("date", yearEnd)
         .limit(10000)
 
-    if (scope.mode === "solo") {
-        query = query.eq("user_id", scope.userId).is("group_id", null)
-    } else {
-        query = query.eq("group_id", scope.groupId)
+    if (sharedIds.length > 0) {
+        query = query.not("id", "in", `(${sharedIds.join(",")})`)
     }
 
     return query
@@ -218,3 +264,5 @@ export function aggregateDashboardStats(
 
     return toDashboardStats(acc, usersMap)
 }
+
+export { mapStatsRow }

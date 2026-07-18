@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../database/supabase/supabase"
 import { GroupErrorCode } from "../types/code/groupCode"
 import type { GroupInviteResponse, GroupMeResponse, GroupResponse } from "@app/shared"
 import { logGroupEvent } from "../utils/structuredLog"
+import { unlinkUserProductsFromGroup } from "../utils/groupProducts"
 
 const INVITE_TTL_DAYS = 7
 const INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -184,6 +185,65 @@ class GroupService {
         }
     }
 
+    /** Apenas o dono pode renomear o grupo. */
+    async update(userId: string, name: string): Promise<ServiceResult<GroupResponse, GroupErrorCode>> {
+        try {
+            const membership = await this.getMembership(userId)
+            if (!membership?.groups) {
+                return {
+                    status: false,
+                    error: { code: GroupErrorCode.GROUP_NOT_IN_GROUP, message: "Você não está em um grupo." },
+                }
+            }
+
+            if (membership.role !== "owner") {
+                return {
+                    status: false,
+                    error: {
+                        code: GroupErrorCode.GROUP_FORBIDDEN,
+                        message: "Apenas o dono do grupo pode editar o nome.",
+                    },
+                }
+            }
+
+            const groupInfo = Array.isArray(membership.groups)
+                ? membership.groups[0]
+                : membership.groups
+            if (!groupInfo) {
+                return {
+                    status: false,
+                    error: { code: GroupErrorCode.GROUP_NOT_FOUND, message: "Grupo não encontrado." },
+                }
+            }
+
+            const trimmedName = name.trim()
+            const { error } = await supabaseAdmin
+                .from("groups")
+                .update({ name: trimmedName, updated_at: new Date().toISOString() })
+                .eq("id", membership.group_id)
+
+            if (error) {
+                console.error("[GroupService.update] error:", error)
+                return {
+                    status: false,
+                    error: { code: GroupErrorCode.GROUP_UPDATE_FAILED, message: "Não foi possível salvar o nome." },
+                }
+            }
+
+            const members = await this.fetchMembers(membership.group_id)
+            return {
+                status: true,
+                data: this.mapGroup(groupInfo.id, trimmedName, membership.role, members),
+            }
+        } catch (error) {
+            console.error("[GroupService.update] error:", error)
+            return {
+                status: false,
+                error: { code: GroupErrorCode.GROUP_UPDATE_FAILED, message: "Não foi possível salvar o nome." },
+            }
+        }
+    }
+
     /** Apenas o dono do grupo pode gerar convites. */
     async createInvite(userId: string): Promise<ServiceResult<GroupInviteResponse, GroupErrorCode>> {
         try {
@@ -345,14 +405,10 @@ class GroupService {
             const groupId = membership.group_id
             const members = await this.fetchMembers(groupId)
 
-            // Produtos do usuário voltam ao modo pessoal (mantém user_id, remove group_id).
-            const { error: productsError } = await supabaseAdmin
-                .from("products")
-                .update({ group_id: null })
-                .eq("group_id", groupId)
-                .eq("user_id", userId)
-
-            if (productsError) {
+            // Produtos do usuário saem do grupo (permanecem em products.user_id).
+            try {
+                await unlinkUserProductsFromGroup(userId, groupId)
+            } catch (productsError) {
                 console.error("[GroupService.leave] products error:", productsError)
                 return {
                     status: false,

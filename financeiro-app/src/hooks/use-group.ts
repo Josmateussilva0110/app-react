@@ -52,6 +52,23 @@ export function useCreateGroup() {
   });
 }
 
+export function useUpdateGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await requestData<GroupResponse>({
+        endpoint: "/groups",
+        method: "PATCH",
+        data: { name },
+        withAuth: true,
+      });
+      if (!res.success) throw new Error(res.message);
+      return res.data as GroupResponse;
+    },
+    onSuccess: () => invalidateGroupData(queryClient),
+  });
+}
+
 export function useCreateGroupInvite() {
   return useMutation({
     mutationFn: async () => {

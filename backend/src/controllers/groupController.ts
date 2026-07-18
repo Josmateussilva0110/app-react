@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { createGroupSchema, joinGroupSchema } from "@app/shared"
+import { createGroupSchema, joinGroupSchema, updateGroupSchema } from "@app/shared"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { groupErrorHttpStatusMap } from "../errors/groupErrorHttpMapper"
 import GroupService from "../services/GroupService"
@@ -38,6 +38,31 @@ class GroupController {
         return response.status(201).json({
             success: true,
             message: "Grupo criado com sucesso.",
+            data: result.data,
+        })
+    }
+
+    async update(request: Request, response: Response) {
+        const parsed = updateGroupSchema.safeParse(request.body)
+        if (!parsed.success) {
+            return response.status(422).json({
+                success: false,
+                message: "Dados inválidos.",
+                errors: parsed.error.issues,
+            })
+        }
+
+        const userId = request.user.id
+        const result = await GroupService.update(userId, parsed.data.name)
+
+        if (!result.status) {
+            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
+            return response.status(httpStatus).json({ success: false, message: result.error.message })
+        }
+
+        return response.status(200).json({
+            success: true,
+            message: "Grupo atualizado com sucesso.",
             data: result.data,
         })
     }
