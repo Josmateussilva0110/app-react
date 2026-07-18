@@ -29,9 +29,8 @@ export function ScreenWrapper({
       contentContainerStyle={[
         styles.container,
         {
-          paddingBottom:
-            120 + insets.bottom,
-          alignItems: "center",
+          paddingBottom: 120 + insets.bottom,
+          alignItems: "stretch",
           width: "100%",
         },
         style,

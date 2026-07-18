@@ -8,15 +8,17 @@ type GroupFormLayoutProps = {
 export function GroupFormLayout({ children }: GroupFormLayoutProps) {
   const { width } = useWindowDimensions();
   const horizontalPad = width < 380 ? 16 : width >= 768 ? 32 : 24;
-  const maxWidth = Math.min(width - horizontalPad * 2, 480);
+  const isTablet = width >= 768;
 
   return (
     <View
       style={[
         styles.container,
         {
+          width: "100%",
+          alignSelf: isTablet ? "center" : "stretch",
+          maxWidth: isTablet ? 520 : undefined,
           paddingHorizontal: horizontalPad,
-          maxWidth,
         },
       ]}
     >
@@ -74,7 +76,6 @@ export const groupFormStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    alignSelf: "stretch",
     gap: 12,
     paddingTop: 8,
     paddingBottom: 24,
