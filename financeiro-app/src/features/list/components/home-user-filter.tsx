@@ -1,31 +1,26 @@
-// src/features/list/components/home-user-filter.tsx
 import { useMemo } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { Users } from "lucide-react-native";
 import { FilterChip } from "@/components/ui/filter-chips";
 import { useTheme } from "@/context/theme.context";
-import type { ProductResponse } from "@app/shared";
 
 export const ALL_USERS_VALUE = "todos";
 
+type MemberOption = {
+  id: string;
+  name: string;
+};
+
 type Props = {
-  products: ProductResponse[];
+  members: MemberOption[];
   value: string;
   onChange: (value: string) => void;
 };
 
-export function HomeUserFilter({ products, value, onChange }: Props) {
+export function HomeUserFilter({ members, value, onChange }: Props) {
   const { colors: theme } = useTheme();
 
-  const users = useMemo(() => {
-    const map = new Map<string, string>();
-    products.forEach((p) => {
-      if (p.user_id && !map.has(p.user_id)) {
-        map.set(p.user_id, p.user_name ?? "Usuário");
-      }
-    });
-    return Array.from(map, ([id, name]) => ({ id, name }));
-  }, [products]);
+  const users = useMemo(() => members, [members]);
 
   if (users.length <= 1 && value === ALL_USERS_VALUE) return null;
 

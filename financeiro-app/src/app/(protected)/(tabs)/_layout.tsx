@@ -1,22 +1,11 @@
-import { useEffect } from "react";
 import { Tabs } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { useTheme } from "@/context/theme.context";
 import { CustomTabBar } from "@/components/navigation/custom-tab-bar";
 import { GroupModeTabIndicator } from "@/features/group/components/group-mode-tab-indicator";
-import { queryClient } from "@/lib/query-client";
-import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
-import { prefetchGoal } from "@/hooks/use-goal";
-import { prefetchGroup } from "@/hooks/use-group";
 
 export default function TabsLayout() {
   const { colors } = useTheme();
-
-  useEffect(() => {
-    void prefetchCurrentProductStats(queryClient);
-    void prefetchGoal(queryClient);
-    void prefetchGroup(queryClient);
-  }, []);
 
   return (
     <View style={styles.root}>

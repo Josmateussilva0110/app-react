@@ -18,6 +18,7 @@ import { EvolutionLineChart } from "@/features/dashboard/components/evolution-li
 import { MetaCard } from "@/features/dashboard/components/meta-card";
 import { StatCard, SectionCard } from "@/features/dashboard/components/dashboard-cards";
 import { CategoryTable } from "@/features/dashboard/components/category-table";
+import { DeferredMount } from "@/components/ui/deferred-mount";
 import {
   categoryMeta,
   paymentLabel,
@@ -238,7 +239,9 @@ export default function DashboardScreen() {
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <HorizontalBarChart items={categoryItems} />
+                  <DeferredMount>
+                    <HorizontalBarChart items={categoryItems} />
+                  </DeferredMount>
                 )}
               </SectionCard>
 
@@ -246,7 +249,9 @@ export default function DashboardScreen() {
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <VerticalBarChart items={paymentItems} />
+                  <DeferredMount placeholderMinHeight={220}>
+                    <VerticalBarChart items={paymentItems} />
+                  </DeferredMount>
                 )}
               </SectionCard>
 
@@ -254,11 +259,13 @@ export default function DashboardScreen() {
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <EvolutionLineChart
-                    months={evolutionMonths}
-                    series={evolutionSeries}
-                    average={evolutionAverage}
-                  />
+                  <DeferredMount placeholderMinHeight={260}>
+                    <EvolutionLineChart
+                      months={evolutionMonths}
+                      series={evolutionSeries}
+                      average={evolutionAverage}
+                    />
+                  </DeferredMount>
                 )}
               </SectionCard>
 
@@ -266,11 +273,13 @@ export default function DashboardScreen() {
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <CategoryTable
-                    rows={stats?.byCategory ?? []}
-                    total={stats?.total ?? 0}
-                    onCategoryPress={handleCategoryPress}
-                  />
+                  <DeferredMount placeholderMinHeight={200}>
+                    <CategoryTable
+                      rows={stats?.byCategory ?? []}
+                      total={stats?.total ?? 0}
+                      onCategoryPress={handleCategoryPress}
+                    />
+                  </DeferredMount>
                 )}
               </SectionCard>
             </>

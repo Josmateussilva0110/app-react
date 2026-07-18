@@ -21,6 +21,7 @@ export const groupQueryOptions = {
 export function useGroup() {
   return useQuery({
     ...groupQueryOptions,
+    notifyOnChangeProps: ["data"],
   });
 }
 
@@ -29,10 +30,10 @@ export function prefetchGroup(client: ReturnType<typeof useQueryClient>) {
 }
 
 function invalidateGroupData(queryClient: ReturnType<typeof useQueryClient>) {
-  queryClient.invalidateQueries({ queryKey: GROUP_KEY });
-  queryClient.invalidateQueries({ queryKey: ["products"] });
-  queryClient.invalidateQueries({ queryKey: ["product-stats"] });
-  queryClient.invalidateQueries({ queryKey: ["goal"] });
+  queryClient.invalidateQueries({ queryKey: GROUP_KEY, refetchType: "active" });
+  queryClient.invalidateQueries({ queryKey: ["products"], refetchType: "active" });
+  queryClient.invalidateQueries({ queryKey: ["product-stats"], refetchType: "active" });
+  queryClient.invalidateQueries({ queryKey: ["goal"], refetchType: "active" });
 }
 
 export function useCreateGroup() {

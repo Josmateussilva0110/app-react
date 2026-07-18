@@ -1,3 +1,4 @@
+import React, { memo, useCallback } from "react";
 import {
   View,
   Text,
@@ -59,7 +60,7 @@ const priorityConfig: Record<
   },
 };
 
-export function ProductCard({
+export const ProductCard = memo(function ProductCard({
   p,
 }: ProductCardProps): React.JSX.Element {
   const { colors: theme } = useTheme();
@@ -67,11 +68,14 @@ export function ProductCard({
 
   const config = priorityConfig[p.priority];
 
+  const handlePress = useCallback(() => {
+    router.push(`/(protected)/product-detail/${p.id}` as any);
+  }, [router, p.id]);
 
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => router.push(`/(protected)/product-detail/${p.id}` as any)}
+      onPress={handlePress}
     >
     <View
       style={[
@@ -206,7 +210,7 @@ export function ProductCard({
     </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

@@ -15,6 +15,7 @@ const envSchema = z.object({
     SUPABASE_ANON_KEY: z.string().min(1, "SUPABASE_ANON_KEY ausente").optional(),
     EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY ausente"),
+    SUPABASE_JWT_SECRET: z.string().min(1, "SUPABASE_JWT_SECRET ausente"),
     ALLOWED_ORIGINS: z
         .string()
         .default("http://localhost:8081")

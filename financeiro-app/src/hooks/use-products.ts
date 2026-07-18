@@ -2,8 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { requestData } from "@/services/request";
 import type { ProductResponse, PaginatedResult } from "@app/shared";
 import type { StatusFilter } from "@/features/list/constants/home.constants";
+import { getProductMonthYear } from "@/lib/product.utils";
 
 export const PRODUCTS_KEY = ["products"] as const;
+
+export type EnrichedProduct = ProductResponse & {
+  _month: number | null;
+  _year: number | null;
+};
 
 export type UseProductsParams = {
   page?: number;
@@ -18,9 +24,18 @@ export type UseProductsParams = {
   enabled?: boolean;
 };
 
+function enrichProduct(item: ProductResponse): EnrichedProduct {
+  const parsed = getProductMonthYear(item.date);
+  return {
+    ...item,
+    _month: parsed?.month ?? null,
+    _year: parsed?.year ?? null,
+  };
+}
+
 export function useProducts({
   page = 1,
-  limit = 100,
+  limit = 30,
   category,
   month,
   year,
@@ -63,6 +78,7 @@ export function useProducts({
     enabled,
     retry: (failureCount) => failureCount < 6,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
-    select: (data): ProductResponse[] => data?.items ?? [],
+    select: (data): EnrichedProduct[] =>
+      (data?.items ?? []).map(enrichProduct),
   });
 }

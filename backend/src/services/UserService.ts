@@ -1,9 +1,8 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
-import { supabaseAuth } from "../database/supabase/supabase"
+import { supabaseAuth, supabaseAdmin } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
-import { createClient } from "@supabase/supabase-js"
-import { env } from "../config/env"
+import jwt from "jsonwebtoken"
 import { UserProfile } from "../types/users/profile"
 
 interface RegisterDTO {
@@ -104,13 +103,15 @@ class UserService {
 
     async logout(accessToken: string): Promise<ServiceResult<null, UserErrorCode>> {
         try {
-            const userClient = createClient(
-                env.SUPABASE_URL,
-                env.SUPABASE_ANON_KEY,
-                { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-            )
+            const payload = jwt.decode(accessToken) as { sub?: string } | null
+            if (!payload?.sub) {
+                return {
+                    status: false,
+                    error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
+                }
+            }
 
-            const { error } = await userClient.auth.signOut()
+            const { error } = await supabaseAdmin.auth.admin.signOut(payload.sub, "global")
 
             if (error) {
                 return {

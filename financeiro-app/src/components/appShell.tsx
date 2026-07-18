@@ -14,9 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Settings, ArrowLeft, ChartColumn } from "lucide-react-native";
 import { useRouter, type Href } from "expo-router";
 import { useTheme } from "@/context/theme.context";
-import { queryClient } from "@/lib/query-client";
-import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
-import { prefetchGoal } from "@/hooks/use-goal";
 
 type AppShellProps = {
   title: string;
@@ -45,11 +42,7 @@ export function AppShell({
       <View style={styles.headerActions}>
         {showDashboard ? (
           <TouchableOpacity
-            onPress={() => {
-              void prefetchCurrentProductStats(queryClient);
-              void prefetchGoal(queryClient);
-              router.push("/dashboard" as Href);
-            }}
+            onPress={() => router.push("/dashboard" as Href)}
             activeOpacity={0.7}
             style={[styles.settingsButton, { backgroundColor: theme.backgroundElement }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

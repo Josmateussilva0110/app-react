@@ -7,12 +7,6 @@ import {
 } from "../../utils/productUtils"
 import type { ProductScope } from "../../utils/productScope"
 import { productMatchesScope } from "../../utils/productScope"
-import { getUserSharedProductIds } from "../../utils/groupProducts"
-
-/** PostgREST exige UUIDs entre aspas duplas dentro de listas `in`. */
-function formatUuidInList(ids: string[]): string {
-    return `(${ids.map((id) => `"${id}"`).join(",")})`
-}
 
 export type ProductStatsRow = {
     user_id: string
@@ -109,6 +103,7 @@ export function normalizeDashboardStats(data: unknown): DashboardStats {
     }
 }
 
+/** Fallback de emergência — preferir sempre a RPC get_product_stats. */
 export async function fetchProductsForYearStats(year: number, scope: ProductScope) {
     const yearStart = `${year}-01-01`
     const yearEnd = `${year + 1}-01-01`
@@ -125,8 +120,7 @@ export async function fetchProductsForYearStats(year: number, scope: ProductScop
             .limit(10000)
     }
 
-    const sharedIds = await getUserSharedProductIds(scope.userId)
-    let query = supabaseAdmin
+    return supabaseAdmin
         .from("products")
         .select(
             "user_id, price, category, payment_type, date, finished, month_list, users:user_id(username), group_products(group_id)"
@@ -134,21 +128,8 @@ export async function fetchProductsForYearStats(year: number, scope: ProductScop
         .eq("user_id", scope.userId)
         .gte("date", yearStart)
         .lt("date", yearEnd)
+        .is("group_products.group_id", null)
         .limit(10000)
-
-    if (sharedIds.length > 0) {
-        query = query.not("id", "in", formatUuidInList(sharedIds))
-    }
-
-    return query
-}
-
-function buildUsersMap(rows: ProductStatsRow[]): Map<string, string> {
-    const usersMap = new Map<string, string>()
-    for (const row of rows) {
-        if (row.user_id) usersMap.set(row.user_id, row.users?.username ?? "")
-    }
-    return usersMap
 }
 
 function matchesMonthList(
@@ -164,12 +145,11 @@ function accumulateEvolution(
     acc: StatsAccumulator,
     row: ProductStatsRow,
     year: number,
+    ym: { year: number; month: number },
     status: StatsQuery["status"],
     monthList: StatsQuery["monthList"]
 ): void {
-    const ym = parseYearMonth(row.date)
     if (
-        !ym ||
         ym.year !== year ||
         !matchesStatus(row.finished, status ?? "todos") ||
         !matchesMonthList(row, monthList)
@@ -243,14 +223,19 @@ export function aggregateDashboardStats(
 ): DashboardStats {
     const { month, year, userId, status = "todos", monthList } = query
     const acc = createEmptyAccumulator()
-    const scopedRows = rows.filter((row) => productMatchesScope(row, scope))
-    const usersMap = buildUsersMap(scopedRows)
+    const usersMap = new Map<string, string>()
 
-    for (const row of scopedRows) {
+    for (const row of rows) {
+        if (!productMatchesScope(row, scope)) continue
+
+        if (row.user_id) {
+            usersMap.set(row.user_id, row.users?.username ?? "")
+        }
+
         const ym = parseYearMonth(row.date)
         if (!ym) continue
 
-        accumulateEvolution(acc, row, year, status, monthList)
+        accumulateEvolution(acc, row, year, ym, status, monthList)
 
         const matchesUser = !userId || row.user_id === userId
         const matchesFinished = matchesStatus(row.finished, status)

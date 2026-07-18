@@ -28,7 +28,7 @@ export default function CreateGroupScreen() {
     try {
       await createGroup.mutateAsync(trimmed);
       show("success", "Grupo criado!");
-      router.replace("/(protected)/group");
+      router.replace("/(protected)/(tabs)/profile");
     } catch (error: unknown) {
       show("error", error instanceof Error ? error.message : "Erro ao criar grupo.");
     }

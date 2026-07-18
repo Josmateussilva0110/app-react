@@ -4,6 +4,7 @@ import { GroupErrorCode } from "../types/code/groupCode"
 import type { GroupInviteResponse, GroupMeResponse, GroupResponse } from "@app/shared"
 import { logGroupEvent } from "../utils/structuredLog"
 import { parseGroupRpcResult, resolveGroupRpcError } from "../utils/groupRpc"
+import { invalidateProductScopeCache } from "../utils/productScope"
 
 const INVITE_TTL_DAYS = 7
 const INVITE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -26,30 +27,12 @@ class GroupService {
     private async fetchMembers(groupId: string): Promise<MemberRow[]> {
         const { data: members, error } = await supabaseAdmin
             .from("group_members")
-            .select("user_id, role")
+            .select("user_id, role, users:user_id(username)")
             .eq("group_id", groupId)
             .order("joined_at", { ascending: true })
 
         if (error) throw error
-        if (!members?.length) return []
-
-        const userIds = members.map((member) => member.user_id)
-        const { data: users, error: usersError } = await supabaseAdmin
-            .from("users")
-            .select("id, username")
-            .in("id", userIds)
-
-        if (usersError) throw usersError
-
-        const usernameById = new Map(
-            (users ?? []).map((user) => [user.id, user.username ?? null])
-        )
-
-        return members.map((member) => ({
-            user_id: member.user_id,
-            role: member.role as "owner" | "member",
-            users: { username: usernameById.get(member.user_id) ?? null },
-        }))
+        return (members ?? []) as MemberRow[]
     }
 
     private mapGroup(groupId: string, name: string, role: "owner" | "member", members: MemberRow[]): GroupResponse {
@@ -140,6 +123,7 @@ class GroupService {
             }
 
             const members = await this.fetchMembers(result.group_id)
+            invalidateProductScopeCache(userId)
             logGroupEvent("group.create", {
                 userId,
                 groupId: result.group_id,
@@ -314,6 +298,7 @@ class GroupService {
             }
 
             const members = await this.fetchMembers(result.group_id)
+            invalidateProductScopeCache(userId)
             logGroupEvent("group.join", {
                 userId,
                 groupId: result.group_id,
@@ -365,6 +350,7 @@ class GroupService {
                 productsMovedToSolo: true,
                 productsUnlinked: result.products_unlinked ?? 0,
             })
+            invalidateProductScopeCache(userId)
             return { status: true, data: null }
         } catch (error) {
             console.error("[GroupService.leave] error:", error)
