@@ -4,10 +4,13 @@ import { useProducts } from "@/hooks/use-products";
 
 export default function MonthListScreen() {
   const { subtitle: groupSubtitle } = useProductListLabels();
+  const now = new Date();
   const { data: products = [], isLoading, error, refetch } = useProducts({
-    limit: 100,
+    limit: 30,
     monthList: true,
     status: "pendente",
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
   });
 
   return (

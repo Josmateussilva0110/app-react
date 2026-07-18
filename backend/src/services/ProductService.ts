@@ -17,15 +17,9 @@ import {
     ProductRowWithUser,
 } from "../utils/productUtils"
 import { buildProductListQuery } from "./product/productQuery"
-import { resolveProductScope, resolveScopedUserFilter } from "../utils/productScope"
+import { resolveScopedUserFilter, type ProductScope } from "../utils/productScope"
 import { linkProductToGroup } from "../utils/groupProducts"
-import {
-    aggregateDashboardStats,
-    fetchProductsForYearStats,
-    mapStatsRow,
-    normalizeDashboardStats,
-} from "./product/productStats"
-import type { ProductScope } from "../utils/productScope"
+import { normalizeDashboardStats } from "./product/productStats"
 
 class ProductService {
     private toIsoDate(date: string): string {
@@ -45,55 +39,22 @@ class ProductService {
         }
     }
 
-    private async assertProductOwner(
-        id: string,
-        userId: string
-    ): Promise<ServiceResult<{ user_id: string }, ProductErrorCode>> {
-        const { data, error } = await supabaseAdmin
-            .from("products")
-            .select("user_id")
-            .eq("id", id)
-            .maybeSingle()
-
-        if (error) {
-            console.error("[ProductService.assertProductOwner] Supabase error:", error)
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_FETCH_FAILED,
-                    message: "Não foi possível verificar o produto.",
-                },
-            }
+    private notFoundError(): ServiceResult<never, ProductErrorCode> {
+        return {
+            status: false,
+            error: {
+                code: ProductErrorCode.PRODUCT_NOT_FOUND,
+                message: "Produto não encontrado.",
+            },
         }
-
-        if (!data) {
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_NOT_FOUND,
-                    message: "Produto não encontrado.",
-                },
-            }
-        }
-
-        if (data.user_id !== userId) {
-            return {
-                status: false,
-                error: {
-                    code: ProductErrorCode.PRODUCT_FORBIDDEN,
-                    message: "Você não tem permissão para alterar este produto.",
-                },
-            }
-        }
-
-        return { status: true, data }
     }
 
-    async create(data: CreateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
+    async create(
+        data: CreateProductInput,
+        scope: ProductScope
+    ): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
         try {
             const { name, price, priority, paymentType, category, date, finished, monthList } = data
-            const scope = await resolveProductScope(data.userId)
-
             const isoDate = this.toIsoDate(date)
 
             const { data: product, error } = await supabaseAdmin
@@ -158,9 +119,6 @@ class ProductService {
 
     async update(data: UpdateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
         try {
-            const ownership = await this.assertProductOwner(data.id, data.userId)
-            if (!ownership.status) return ownership
-
             const { id, userId, name, price, priority, paymentType, category, date, finished, monthList } = data
             const isoDate = this.toIsoDate(date)
 
@@ -179,7 +137,7 @@ class ProductService {
                 .eq("id", id)
                 .eq("user_id", userId)
                 .select("id")
-                .single()
+                .maybeSingle()
 
             if (error) {
                 console.error("[ProductService.update] Supabase error:", error)
@@ -190,6 +148,10 @@ class ProductService {
                         message: "Não foi possível atualizar o produto. Tente novamente.",
                     },
                 }
+            }
+
+            if (!product) {
+                return this.notFoundError()
             }
 
             return {
@@ -210,14 +172,13 @@ class ProductService {
 
     async delete(id: string, userId: string): Promise<ServiceResult<null, ProductErrorCode>> {
         try {
-            const ownership = await this.assertProductOwner(id, userId)
-            if (!ownership.status) return ownership
-
-            const { error } = await supabaseAdmin
+            const { data: deleted, error } = await supabaseAdmin
                 .from("products")
                 .delete()
                 .eq("id", id)
                 .eq("user_id", userId)
+                .select("id")
+                .maybeSingle()
 
             if (error) {
                 console.error("[ProductService.delete] Supabase error:", error)
@@ -228,6 +189,10 @@ class ProductService {
                         message: "Não foi possível remover o produto. Tente novamente.",
                     },
                 }
+            }
+
+            if (!deleted) {
+                return this.notFoundError()
             }
 
             return { status: true, data: null }
@@ -245,13 +210,12 @@ class ProductService {
 
     async getAll(
         query: ProductListQuery,
-        requestingUserId: string
+        scope: ProductScope
     ): Promise<ServiceResult<PaginatedResult<ProductResponse>, ProductErrorCode>> {
         try {
             const { page, limit } = query
             const { from, to } = getPaginationRange(page, limit)
-            const scope = await resolveProductScope(requestingUserId)
-            const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
+            const scopedUserId = resolveScopedUserFilter(scope, query.userId)
             const scopedQuery = { ...query, userId: scopedUserId }
 
             const { data, error, count } = await buildProductListQuery(scopedQuery, scope, from, to)
@@ -276,18 +240,17 @@ class ProductService {
 
     async getStats(
         query: StatsQuery,
-        requestingUserId: string
+        scope: ProductScope
     ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
         try {
-            const scope = await resolveProductScope(requestingUserId)
-            const scopedUserId = await resolveScopedUserFilter(scope, query.userId)
+            const scopedUserId = resolveScopedUserFilter(scope, query.userId)
             const scopedQuery = { ...query, userId: scopedUserId }
             const pGroupId = scope.mode === "group" ? scope.groupId : null
 
             const { data, error } = await supabaseAdmin.rpc("get_product_stats", {
                 p_month: scopedQuery.month,
                 p_year: scopedQuery.year,
-                p_viewer_user_id: requestingUserId,
+                p_viewer_user_id: scope.userId,
                 p_group_id: pGroupId,
                 p_filter_user_id: scopedQuery.userId ?? null,
                 p_status: query.status ?? "todos",
@@ -299,42 +262,15 @@ class ProductService {
                           : null,
             })
 
-            if (!error && data) {
-                return { status: true, data: normalizeDashboardStats(data) }
+            if (error || !data) {
+                console.error("[ProductService.getStats] RPC error:", error?.message ?? "empty response")
+                return this.productFetchError("Não foi possível calcular as estatísticas.")
             }
 
-            if (error) {
-                console.warn(
-                    "[ProductService.getStats] RPC unavailable, using fallback:",
-                    error.message
-                )
-            }
-
-            return await this.getStatsFallback(scopedQuery, scope)
+            return { status: true, data: normalizeDashboardStats(data) }
         } catch (error) {
             console.error("[ProductService.getStats] error:", error)
             return this.productFetchError("Não foi possível calcular as estatísticas.")
-        }
-    }
-
-    private async getStatsFallback(
-        query: StatsQuery,
-        scope: ProductScope
-    ): Promise<ServiceResult<DashboardStats, ProductErrorCode>> {
-        const { data, error } = await fetchProductsForYearStats(query.year, scope)
-
-        if (error) {
-            console.error("[ProductService.getStatsFallback] Supabase error:", error)
-            return this.productFetchError("Não foi possível calcular as estatísticas.")
-        }
-
-        return {
-            status: true,
-            data: aggregateDashboardStats(
-                ((data ?? []) as Parameters<typeof mapStatsRow>[0][]).map(mapStatsRow),
-                query,
-                scope
-            ),
         }
     }
 }

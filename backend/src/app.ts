@@ -1,6 +1,7 @@
 import express from "express"
 import cors from "cors"
 import helmet from "helmet"
+import compression from "compression"
 import swaggerUi from "swagger-ui-express"
 import { env } from "./config/env"
 import { rateLimiter } from "./middleware/rateLimiter"
@@ -15,6 +16,7 @@ export const app = express()
 app.set("trust proxy", 1)
 
 app.use(helmet()) // cabeçalhos de segurança HTTP
+app.use(compression())
 
 app.use(cors({
     origin: env.ALLOWED_ORIGINS,  // whitelist por ambiente

@@ -12,7 +12,6 @@ class RefreshService {
    * Evita múltiplos refresh simultâneos
    */
   async refresh(refreshToken: string): Promise<AuthData> {
-    // Se já existe refresh rodando, aguarda ele
     if (this.refreshPromise) {
       const result = await this.refreshPromise;
       if (!result) throw new Error("Refresh falhou");
@@ -38,9 +37,18 @@ class RefreshService {
    * Execução real do refresh
    */
   private async execute(refreshToken: string): Promise<AuthData | null> {
-    try {
-      tokenManager.startRefresh(Promise.resolve());
+    const refreshWork = this.performRefresh(refreshToken);
+    tokenManager.startRefresh(refreshWork.then(() => undefined, () => undefined));
 
+    try {
+      return await refreshWork;
+    } finally {
+      tokenManager.finishRefresh();
+    }
+  }
+
+  private async performRefresh(refreshToken: string): Promise<AuthData | null> {
+    try {
       const { data } = await axios.post(
         `${API_URL}${AUTH_ROUTES.refresh}`,
         { refreshToken },
@@ -49,16 +57,8 @@ class RefreshService {
 
       const auth: AuthData = data.data;
 
-      // Atualiza memória
-      tokenManager.setTokens(
-        auth.accessToken,
-        auth.refreshToken
-      );
-
-      // Persiste no storage
+      tokenManager.setTokens(auth.accessToken, auth.refreshToken);
       await saveAuth(auth);
-
-      // Notifica listeners
       tokenManager.notifyRefreshed(
         auth.accessToken,
         auth.refreshToken,
@@ -66,23 +66,19 @@ class RefreshService {
       );
 
       return auth;
-    } catch (err: any) {
-      const isNetworkError = !err.response;
+    } catch (err: unknown) {
+      const error = err as { response?: unknown };
+      const isNetworkError = !error.response;
 
-      // ❗ Render dormindo ou timeout
       if (isNetworkError) {
         return null;
       }
 
-      // ❗ Refresh token inválido (401/403)
       tokenManager.clearTokens();
       tokenManager.notifyExpired();
-
       await removeAuth();
 
       return null;
-    } finally {
-      tokenManager.finishRefresh();
     }
   }
 
@@ -93,11 +89,7 @@ class RefreshService {
     const isExpired = Date.now() >= auth.expiresAt;
 
     if (!isExpired) {
-      tokenManager.setTokens(
-        auth.accessToken,
-        auth.refreshToken
-      );
-
+      tokenManager.setTokens(auth.accessToken, auth.refreshToken);
       return auth;
     }
 

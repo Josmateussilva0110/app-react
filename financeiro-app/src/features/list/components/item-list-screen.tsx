@@ -1,30 +1,31 @@
 import { useMemo, useState, useEffect } from "react";
-import { RefreshControl, ScrollView, StyleSheet } from "react-native";
+import { RefreshControl, SectionList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppShell } from "@/components/appShell";
+import { ProductCard } from "@/components/productCard";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useTheme } from "@/context/theme.context";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useGroupMode } from "@/features/group/hooks/use-group-mode";
+import type { EnrichedProduct } from "@/hooks/use-products";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
-import type { ProductResponse } from "@app/shared";
 
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
 import { HomeMonthYearFilter } from "./home-month-year-filter";
 import { HomeSearchInput } from "./home-search-input";
 import { HomeUserFilter, ALL_USERS_VALUE } from "./home-user-filter";
-import { HomePriorityList } from "./home-priority-list";
+import { HomePrioritySectionHeader } from "./home-priority-section-header";
 import { HomeEmptyState } from "./home-empty-state";
-import type { InitialListFilters, StatusFilter } from "../constants/home.constants";
+import { PRIORITY_GROUPS, type InitialListFilters, type StatusFilter } from "../constants/home.constants";
 
 type ItemListScreenProps = {
   title: string;
   subtitle: string;
-  products: ProductResponse[];
+  products: EnrichedProduct[];
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
@@ -32,14 +33,22 @@ type ItemListScreenProps = {
   showFab?: boolean;
   showDashboard?: boolean;
   initialFilters?: InitialListFilters;
-  /** Notifica o pai para refetch com filtros no GET /products. */
   onQueryFiltersChange?: (filters: InitialListFilters) => void;
-  /**
-   * Quando true, month/year/status/user já vieram filtrados da API;
-   * a lista só aplica busca local e mantém os chips em sync.
-   */
   serverFiltered?: boolean;
 };
+
+type PrioritySection = {
+  key: string;
+  group: (typeof PRIORITY_GROUPS)[number];
+  data: EnrichedProduct[];
+};
+
+function getProductMonthYearValue(product: EnrichedProduct) {
+  if (product._month !== null && product._year !== null) {
+    return { month: product._month, year: product._year };
+  }
+  return getProductMonthYear(product.date);
+}
 
 export function ItemListScreen({
   title,
@@ -56,7 +65,7 @@ export function ItemListScreen({
   serverFiltered = false,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
-  const { inGroup } = useGroupMode();
+  const { inGroup, group } = useGroupMode();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     initialFilters?.status ?? "todos"
   );
@@ -72,25 +81,21 @@ export function ItemListScreen({
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 250);
 
-  // Substitui o snapshot completo (não faz patch): campos omitidos voltam ao default.
+  const initialStatus = initialFilters?.status ?? "todos";
+  const initialUserId = initialFilters?.userId ?? ALL_USERS_VALUE;
+  const initialMonth =
+    initialFilters?.month !== undefined ? initialFilters.month : null;
+  const initialYear =
+    initialFilters?.year !== undefined ? initialFilters.year : null;
+
   useEffect(() => {
     if (!initialFilters) return;
 
-    setStatusFilter(initialFilters.status ?? "todos");
-    setUserFilter(initialFilters.userId ?? ALL_USERS_VALUE);
-    setSelectedMonth(
-      initialFilters.month !== undefined ? initialFilters.month : null
-    );
-    setSelectedYear(
-      initialFilters.year !== undefined ? initialFilters.year : null
-    );
-  }, [
-    initialFilters,
-    initialFilters?.status,
-    initialFilters?.userId,
-    initialFilters?.month,
-    initialFilters?.year,
-  ]);
+    setStatusFilter(initialStatus);
+    setUserFilter(initialUserId);
+    setSelectedMonth(initialMonth);
+    setSelectedYear(initialYear);
+  }, [initialFilters, initialStatus, initialUserId, initialMonth, initialYear]);
 
   useEffect(() => {
     if (serverFiltered) return;
@@ -102,8 +107,8 @@ export function ItemListScreen({
     const cm = now.getMonth();
     const cy = now.getFullYear();
 
-    const hasNow = products.some((p) => {
-      const my = getProductMonthYear(p.date);
+    const hasNow = products.some((product) => {
+      const my = getProductMonthYearValue(product);
       return my && my.month === cm && my.year === cy;
     });
 
@@ -141,40 +146,52 @@ export function ItemListScreen({
     });
   };
 
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
+  const listMetrics = useMemo(() => {
+    const grouped = new Map<string, EnrichedProduct[]>();
+    let total = 0;
+    let highCount = 0;
+
+    for (const product of products) {
       if (!serverFiltered) {
         if (
           statusFilter !== "todos" &&
           product.finished !== (statusFilter === "finalizado")
         ) {
-          return false;
+          continue;
         }
         if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
-          return false;
+          continue;
         }
-        try {
-          const my = (() => {
-            const dmMatch = product.date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-            if (dmMatch) return { month: Number(dmMatch[2]) - 1, year: Number(dmMatch[3]) };
-            const isoMatch = product.date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (isoMatch) return { month: Number(isoMatch[2]) - 1, year: Number(isoMatch[1]) };
-            const d = new Date(product.date);
-            if (!isNaN(d.getTime())) return { month: d.getMonth(), year: d.getFullYear() };
-            return null;
-          })();
 
-          if (selectedMonth !== null && my && my.month !== selectedMonth) return false;
-          if (selectedYear !== null && my && my.year !== selectedYear) return false;
-        } catch {
-          // ignore parse errors
-        }
+        const my = getProductMonthYearValue(product);
+        if (selectedMonth !== null && my && my.month !== selectedMonth) continue;
+        if (selectedYear !== null && my && my.year !== selectedYear) continue;
       }
+
       if (!matchesSearch(product.name, search)) {
-        return false;
+        continue;
       }
-      return true;
-    });
+
+      total += product.price;
+      if (product.priority === "alta") highCount += 1;
+
+      const items = grouped.get(product.priority) ?? [];
+      items.push(product);
+      grouped.set(product.priority, items);
+    }
+
+    const sections: PrioritySection[] = PRIORITY_GROUPS.map((groupDef) => ({
+      key: groupDef.key,
+      group: groupDef,
+      data: grouped.get(groupDef.key) ?? [],
+    })).filter((section) => section.data.length > 0);
+
+    return {
+      sections,
+      total,
+      highCount,
+      itemCount: sections.reduce((sum, section) => sum + section.data.length, 0),
+    };
   }, [
     products,
     statusFilter,
@@ -185,14 +202,58 @@ export function ItemListScreen({
     serverFiltered,
   ]);
 
-  const total = useMemo(
-    () => filteredProducts.reduce((sum, p) => sum + p.price, 0),
-    [filteredProducts]
+  const groupMembers = useMemo(
+    () =>
+      group?.members.map((member) => ({
+        id: member.id,
+        name: member.name,
+      })) ?? [],
+    [group?.members]
   );
 
-  const highCount = useMemo(
-    () => filteredProducts.filter((p) => p.priority === "alta").length,
-    [filteredProducts]
+  const listHeader = (
+    <View style={styles.headerContent}>
+      {showSummary && (
+        <HomeSummaryCard
+          total={listMetrics.total}
+          itemCount={listMetrics.itemCount}
+          highCount={listMetrics.highCount}
+        />
+      )}
+
+      <HomeSearchInput value={searchInput} onChange={setSearchInput} />
+
+      <HomeFilters
+        value={statusFilter}
+        onChange={(value) => {
+          setStatusFilter(value);
+          emitQueryFilters({ status: value });
+        }}
+      />
+      <HomeMonthYearFilter
+        products={products}
+        month={selectedMonth}
+        year={selectedYear}
+        serverFiltered={serverFiltered}
+        onChange={(m, y) => {
+          setSelectedMonth(m);
+          setSelectedYear(y);
+          emitQueryFilters({ month: m, year: y });
+        }}
+      />
+      {inGroup && (
+        <HomeUserFilter
+          members={groupMembers}
+          value={userFilter}
+          onChange={(value) => {
+            setUserFilter(value);
+            emitQueryFilters({
+              userId: value === ALL_USERS_VALUE ? ALL_USERS_VALUE : value,
+            });
+          }}
+        />
+      )}
+    </View>
   );
 
   if (loading && products.length === 0) {
@@ -212,11 +273,27 @@ export function ItemListScreen({
   }
 
   return (
-    <AppShell title={title} subtitle={subtitle} showDashboard={showDashboard}>
+    <AppShell
+      title={title}
+      subtitle={subtitle}
+      showDashboard={showDashboard}
+    >
       <SafeAreaView style={styles.container} edges={["bottom"]}>
-        <ScrollView
-          contentContainerStyle={styles.content}
+        <SectionList
+          sections={listMetrics.sections}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <ProductCard p={item} />}
+          renderSectionHeader={({ section }) => (
+            <HomePrioritySectionHeader
+              group={section.group}
+              count={section.data.length}
+            />
+          )}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={<HomeEmptyState />}
+          stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
           refreshControl={
             onRefresh ? (
               <RefreshControl
@@ -226,53 +303,7 @@ export function ItemListScreen({
               />
             ) : undefined
           }
-        >
-          {showSummary && (
-            <HomeSummaryCard
-              total={total}
-              itemCount={filteredProducts.length}
-              highCount={highCount}
-            />
-          )}
-
-          <HomeSearchInput value={searchInput} onChange={setSearchInput} />
-
-          <HomeFilters
-            value={statusFilter}
-            onChange={(value) => {
-              setStatusFilter(value);
-              emitQueryFilters({ status: value });
-            }}
-          />
-          <HomeMonthYearFilter
-            products={products}
-            month={selectedMonth}
-            year={selectedYear}
-            onChange={(m, y) => {
-              setSelectedMonth(m);
-              setSelectedYear(y);
-              emitQueryFilters({ month: m, year: y });
-            }}
-          />
-          {inGroup && (
-            <HomeUserFilter
-              products={products}
-              value={userFilter}
-              onChange={(value) => {
-                setUserFilter(value);
-                emitQueryFilters({
-                  userId: value === ALL_USERS_VALUE ? ALL_USERS_VALUE : value,
-                });
-              }}
-            />
-          )}
-
-          {filteredProducts.length === 0 ? (
-            <HomeEmptyState />
-          ) : (
-            <HomePriorityList products={filteredProducts} />
-          )}
-        </ScrollView>
+        />
       </SafeAreaView>
     </AppShell>
   );
@@ -286,5 +317,9 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 100,
     gap: 20,
+  },
+  headerContent: {
+    gap: 20,
+    marginBottom: 8,
   },
 });

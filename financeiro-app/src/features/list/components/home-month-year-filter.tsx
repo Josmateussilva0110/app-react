@@ -1,9 +1,8 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react-native";
 import { useTheme } from "@/context/theme.context";
-import type { ProductResponse } from "@app/shared";
-import { getProductMonthYear } from "@/lib/product.utils";
+import type { EnrichedProduct } from "@/hooks/use-products";
 
 const MONTH_LABELS = [
   "Jan",
@@ -21,13 +20,20 @@ const MONTH_LABELS = [
 ];
 
 type Props = {
-  products: ProductResponse[];
+  products: EnrichedProduct[];
   month: number | null;
   year: number | null;
   onChange: (month: number | null, year: number | null) => void;
+  serverFiltered?: boolean;
 };
 
-export function HomeMonthYearFilter({ products, month, year, onChange }: Props) {
+export function HomeMonthYearFilter({
+  products,
+  month,
+  year,
+  onChange,
+  serverFiltered = false,
+}: Props) {
   const { colors: theme } = useTheme();
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
@@ -35,18 +41,21 @@ export function HomeMonthYearFilter({ products, month, year, onChange }: Props) 
   const years = useMemo(() => {
     const current = new Date().getFullYear();
     const fromProducts = new Set<number>();
-    for (const p of products) {
-      const my = getProductMonthYear(p.date);
-      if (my) fromProducts.add(my.year);
+
+    if (!serverFiltered) {
+      for (const product of products) {
+        if (product._year != null) {
+          fromProducts.add(product._year);
+        }
+      }
     }
-    // Sempre inclui janela recente para o seletor funcionar com listagem filtrada no servidor.
+
     for (let y = current - 3; y <= current; y += 1) fromProducts.add(y);
     if (year !== null) fromProducts.add(year);
     return Array.from(fromProducts).sort((a, b) => b - a);
-  }, [products, year]);
+  }, [products, year, serverFiltered]);
 
   const months = useMemo(() => {
-    // Sempre 0–11 para não perder opções quando a API já filtrou por um mês.
     return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
   }, []);
 

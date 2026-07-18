@@ -9,7 +9,7 @@ import { ProductIdParam } from "../types/product/product-id-param"
 class ProductController {
   async create(request: Request, response: Response) {
     const userId = request.user.id
-    const result = await ProductService.create({ ...request.body, userId })
+    const result = await ProductService.create({ ...request.body, userId }, request.scope)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
@@ -40,8 +40,7 @@ class ProductController {
       });
     }
 
-    const userId = request.user.id
-    const result = await ProductService.getAll(parsedQuery.data, userId)
+    const result = await ProductService.getAll(parsedQuery.data, request.scope)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
@@ -72,8 +71,7 @@ class ProductController {
       });
     }
 
-    const userId = request.user.id
-    const result = await ProductService.getStats(parsedQuery.data, userId)
+    const result = await ProductService.getStats(parsedQuery.data, request.scope)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(

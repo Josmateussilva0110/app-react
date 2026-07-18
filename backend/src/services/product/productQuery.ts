@@ -2,16 +2,10 @@ import { ProductListQuery } from "@app/shared"
 import { supabaseAdmin } from "../../database/supabase/supabase"
 import { PRODUCT_SELECT_FIELDS } from "../../constants/product-select-fields"
 import { getDateRange } from "../../utils/productUtils"
-import { getUserSharedProductIds } from "../../utils/groupProducts"
 import type { ProductScope } from "../../utils/productScope"
 
 type StatusFilter = "todos" | "pendente" | "finalizado"
 type MonthListFilter = "true" | "false" | undefined
-
-/** PostgREST exige UUIDs entre aspas duplas dentro de listas `in`. */
-function formatUuidInList(ids: string[]): string {
-    return `(${ids.map((id) => `"${id}"`).join(",")})`
-}
 
 function applyStatusFilter<T extends { eq: (column: string, value: unknown) => T }>(
     dbQuery: T,
@@ -42,7 +36,7 @@ function applyDateRangeFilter<
     return dbQuery.gte("date", range.start).lt("date", range.end)
 }
 
-export async function buildProductListQuery(
+export function buildProductListQuery(
     query: ProductListQuery,
     scope: ProductScope,
     from: number,
@@ -60,16 +54,13 @@ export async function buildProductListQuery(
             })
             .eq("group_products.group_id", scope.groupId)
     } else {
-        const sharedIds = await getUserSharedProductIds(scope.userId)
-
         dbQuery = supabaseAdmin
             .from("products")
-            .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username)`, { count: "exact" })
+            .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username), group_products(group_id)`, {
+                count: "exact",
+            })
             .eq("user_id", scope.userId)
-
-        if (sharedIds.length > 0) {
-            dbQuery = dbQuery.not("id", "in", formatUuidInList(sharedIds))
-        }
+            .is("group_products.group_id", null)
     }
 
     if (category) dbQuery = dbQuery.eq("category", category)

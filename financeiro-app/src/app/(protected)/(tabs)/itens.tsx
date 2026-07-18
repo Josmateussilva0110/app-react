@@ -7,7 +7,7 @@ import { useProducts, type UseProductsParams } from "@/hooks/use-products";
 function defaultQueryFilters(): UseProductsParams {
   const now = new Date();
   return {
-    limit: 100,
+    limit: 30,
     month: now.getMonth() + 1,
     year: now.getFullYear(),
     status: "todos",
@@ -36,7 +36,7 @@ export default function HomeScreen() {
 
   const handleQueryFiltersChange = useCallback((next: InitialListFilters) => {
     setQueryFilters({
-      limit: 100,
+      limit: 30,
       month: next.month !== undefined && next.month !== null ? next.month + 1 : undefined,
       year: next.year !== undefined && next.year !== null ? next.year : undefined,
       userId: next.userId,

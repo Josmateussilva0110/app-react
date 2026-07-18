@@ -6,7 +6,7 @@ import GoalService from "../services/GoalService"
 class GoalController {
     async get(request: Request, response: Response) {
         const userId = request.user.id
-        const result = await GoalService.get(userId)
+        const result = await GoalService.get(userId, request.scope)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(
@@ -29,7 +29,7 @@ class GoalController {
         const userId = request.user.id
         const { monthlyGoal } = request.body
 
-        const result = await GoalService.update(monthlyGoal, userId)
+        const result = await GoalService.update(monthlyGoal, userId, request.scope)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(
