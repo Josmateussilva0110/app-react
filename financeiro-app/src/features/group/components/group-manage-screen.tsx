@@ -8,13 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Crown, LogOut, Share2, UserPlus, Users } from "lucide-react-native";
 import { AppShell } from "@/components/appShell";
 import { ScreenWrapper } from "@/components/layout/screen-wrapper";
-import { groupFormStyles } from "@/features/group/components/group-form-layout";
+import { GroupFormLayout, groupFormStyles } from "@/features/group/components/group-form-layout";
 import { useTheme, type ThemeColors } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import {
@@ -27,9 +26,6 @@ import {
 export function GroupManageScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { width } = useWindowDimensions();
-  const horizontalPad = width < 380 ? 16 : 24;
-  const screenStyle = { paddingHorizontal: horizontalPad, paddingTop: 16 };
   const router = useRouter();
   const { show } = useToast();
 
@@ -114,11 +110,9 @@ export function GroupManageScreen() {
   if (isLoading || !group) {
     return (
       <AppShell title="Meu grupo" subtitle="Carregando..." showBack>
-        <ScreenWrapper style={screenStyle}>
-          <View style={styles.content}>
-            <View style={styles.loading}>
-              <ActivityIndicator color={colors.primary} size="large" />
-            </View>
+        <ScreenWrapper>
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.primary} size="large" />
           </View>
         </ScreenWrapper>
       </AppShell>
@@ -131,8 +125,8 @@ export function GroupManageScreen() {
       subtitle={isOwner ? "Você é o dono do grupo" : "Membro do grupo"}
       showBack
     >
-      <ScreenWrapper style={screenStyle}>
-        <View style={styles.content}>
+      <ScreenWrapper>
+        <GroupFormLayout>
           <View style={[styles.section, { borderColor: colors.border, backgroundColor: colors.card }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Nome do grupo</Text>
             <TextInput
@@ -258,7 +252,7 @@ export function GroupManageScreen() {
               {leaveGroup.isPending ? "Saindo..." : "Sair do grupo"}
             </Text>
           </TouchableOpacity>
-        </View>
+        </GroupFormLayout>
       </ScreenWrapper>
     </AppShell>
   );
@@ -266,12 +260,6 @@ export function GroupManageScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    content: {
-      width: "100%",
-      alignSelf: "stretch",
-      gap: 16,
-      paddingBottom: 8,
-    },
     loading: {
       paddingVertical: 48,
       alignItems: "center",

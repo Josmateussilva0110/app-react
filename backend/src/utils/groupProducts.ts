@@ -11,6 +11,18 @@ export async function linkProductToGroup(productId: string, groupId: string): Pr
     }
 }
 
+export async function unlinkUserProductsFromGroup(userId: string, groupId: string): Promise<void> {
+    const { error } = await supabaseAdmin.rpc("unlink_user_group_products", {
+        p_user_id: userId,
+        p_group_id: groupId,
+    })
+
+    if (error) {
+        console.error("[unlinkUserProductsFromGroup] error:", error)
+        throw error
+    }
+}
+
 /** IDs de produtos do usuário que estão compartilhados em algum grupo. */
 export async function getUserSharedProductIds(userId: string): Promise<string[]> {
     const { data: products, error: productsError } = await supabaseAdmin
