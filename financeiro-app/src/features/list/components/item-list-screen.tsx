@@ -1,7 +1,12 @@
 import { useMemo, useState, useEffect } from "react";
-import { RefreshControl, SectionList, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { AppShell } from "@/components/appShell";
 import { ProductCard } from "@/components/productCard";
 import { ErrorState } from "@/components/ui/error-state";
@@ -10,9 +15,9 @@ import { useTheme } from "@/context/theme.context";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import type { EnrichedProduct } from "@/hooks/use-products";
+import { useProductStats } from "@/hooks/use-product-stats";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
-
 import { HomeSummaryCard } from "./home-summary-card";
 import { HomeFilters } from "./home-filters";
 import { HomeMonthYearFilter } from "./home-month-year-filter";
@@ -22,11 +27,23 @@ import { HomePrioritySectionHeader } from "./home-priority-section-header";
 import { HomeEmptyState } from "./home-empty-state";
 import { PRIORITY_GROUPS, type InitialListFilters, type StatusFilter } from "../constants/home.constants";
 
+export type ListSummaryFilters = {
+  month: number;
+  year: number;
+  userId?: string;
+  status?: StatusFilter;
+  monthList?: "true" | "false";
+};
+
 type ItemListScreenProps = {
   title: string;
   subtitle: string;
   products: EnrichedProduct[];
   loading?: boolean;
+  isRefreshing?: boolean;
+  isFetchingNextPage?: boolean;
+  hasNextPage?: boolean;
+  onLoadMore?: () => void;
   error?: string | null;
   onRefresh?: () => void;
   showSummary?: boolean;
@@ -35,6 +52,8 @@ type ItemListScreenProps = {
   initialFilters?: InitialListFilters;
   onQueryFiltersChange?: (filters: InitialListFilters) => void;
   serverFiltered?: boolean;
+  /** Quando definido, o resumo usa /products/stats (total e contagem corretos). */
+  summaryFilters?: ListSummaryFilters;
 };
 
 type PrioritySection = {
@@ -63,6 +82,11 @@ export function ItemListScreen({
   initialFilters,
   onQueryFiltersChange,
   serverFiltered = false,
+  summaryFilters,
+  isRefreshing = false,
+  isFetchingNextPage = false,
+  hasNextPage = false,
+  onLoadMore,
 }: ItemListScreenProps) {
   const { colors } = useTheme();
   const { inGroup, group } = useGroupMode();
@@ -146,6 +170,32 @@ export function ItemListScreen({
     });
   };
 
+  const canUseServerStats =
+    summaryFilters !== undefined ||
+    (serverFiltered && selectedMonth !== null && selectedYear !== null);
+
+  const statsMonth =
+    summaryFilters?.month ??
+    (selectedMonth !== null ? selectedMonth + 1 : new Date().getMonth() + 1);
+  const statsYear =
+    summaryFilters?.year ??
+    selectedYear ??
+    new Date().getFullYear();
+  const statsUserId =
+    summaryFilters?.userId ??
+    (userFilter !== ALL_USERS_VALUE ? userFilter : undefined);
+  const statsStatus = summaryFilters?.status ?? statusFilter;
+  const statsMonthList = summaryFilters?.monthList;
+
+  const { data: serverStats } = useProductStats({
+    month: statsMonth,
+    year: statsYear,
+    userId: statsUserId,
+    status: statsStatus,
+    monthList: statsMonthList,
+    enabled: canUseServerStats,
+  });
+
   const listMetrics = useMemo(() => {
     const grouped = new Map<string, EnrichedProduct[]>();
     let total = 0;
@@ -211,12 +261,19 @@ export function ItemListScreen({
     [group?.members]
   );
 
+  const summaryTotal = canUseServerStats && serverStats
+    ? serverStats.total
+    : listMetrics.total;
+  const summaryItemCount = canUseServerStats && serverStats
+    ? serverStats.itemsCount
+    : listMetrics.itemCount;
+
   const listHeader = (
     <View style={styles.headerContent}>
       {showSummary && (
         <HomeSummaryCard
-          total={listMetrics.total}
-          itemCount={listMetrics.itemCount}
+          total={summaryTotal}
+          itemCount={summaryItemCount}
           highCount={listMetrics.highCount}
         />
       )}
@@ -291,13 +348,22 @@ export function ItemListScreen({
           )}
           ListHeaderComponent={listHeader}
           ListEmptyComponent={<HomeEmptyState />}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : null
+          }
+          onEndReached={() => onLoadMore?.()}
+          onEndReachedThreshold={0.35}
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           refreshControl={
             onRefresh ? (
               <RefreshControl
-                refreshing={loading}
+                refreshing={isRefreshing}
                 onRefresh={onRefresh}
                 tintColor={colors.primary}
               />
@@ -321,5 +387,9 @@ const styles = StyleSheet.create({
   headerContent: {
     gap: 20,
     marginBottom: 8,
+  },
+  footerLoader: {
+    paddingVertical: 24,
+    alignItems: "center",
   },
 });

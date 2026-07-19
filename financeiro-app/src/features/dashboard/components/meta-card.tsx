@@ -10,22 +10,15 @@ import {
 import { useTheme } from "@/context/theme.context";
 import { formatBRL } from "../constants";
 
-export type MetaSegment = {
-  label: string;
-  value: number;
-  color: string;
-};
-
 type MetaCardProps = {
   total: number;
   meta: number;
-  segments: MetaSegment[];
   onSaveMeta: (value: number) => void;
   saving?: boolean;
   title?: string;
 };
 
-export function MetaCard({ total, meta, segments, onSaveMeta, saving, title = "Meta mensal pessoal" }: MetaCardProps) {
+export function MetaCard({ total, meta, onSaveMeta, saving, title = "Meta mensal pessoal" }: MetaCardProps) {
   const { colors } = useTheme();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(String(meta ?? 0));
@@ -59,12 +52,14 @@ export function MetaCard({ total, meta, segments, onSaveMeta, saving, title = "M
       </View>
 
       <View style={[styles.track, { backgroundColor: colors.backgroundElement }]}>
-        {segments.map((s) => (
-          <View
-            key={s.label}
-            style={{ width: `${(s.value / barTotal) * 100}%`, backgroundColor: s.color }}
-          />
-        ))}
+        <View
+          style={{
+            width: `${Math.min((total / barTotal) * 100, 100)}%`,
+            backgroundColor: colors.success,
+            height: "100%",
+            borderRadius: 7,
+          }}
+        />
       </View>
 
       <View style={styles.metaRow}>
