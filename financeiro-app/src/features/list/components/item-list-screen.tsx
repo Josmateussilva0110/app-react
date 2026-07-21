@@ -19,7 +19,7 @@ import { useProductStats } from "@/hooks/use-product-stats";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
 import { HomeSummaryCard } from "./home-summary-card";
-import { HomeFilters } from "./home-filters";
+import { HomeSegmentedFilter } from "./home-segmented-filter";
 import { HomeMonthYearFilter } from "./home-month-year-filter";
 import { HomeSearchInput } from "./home-search-input";
 import { HomeUserFilter, ALL_USERS_VALUE } from "./home-user-filter";
@@ -184,24 +184,56 @@ export function ItemListScreen({
   const statsUserId =
     summaryFilters?.userId ??
     (userFilter !== ALL_USERS_VALUE ? userFilter : undefined);
-  const statsStatus = summaryFilters?.status ?? statusFilter;
   const statsMonthList = summaryFilters?.monthList;
+  const statsStatusForTotal = summaryFilters?.status ?? "todos";
+  const needsBreakdownStats = statsStatusForTotal !== "todos";
 
-  const { data: serverStats } = useProductStats({
+  const { data: totalStats } = useProductStats({
     month: statsMonth,
     year: statsYear,
     userId: statsUserId,
-    status: statsStatus,
+    status: statsStatusForTotal,
     monthList: statsMonthList,
     enabled: canUseServerStats,
   });
 
+  const { data: breakdownStats } = useProductStats({
+    month: statsMonth,
+    year: statsYear,
+    userId: statsUserId,
+    status: "todos",
+    monthList: statsMonthList,
+    enabled: canUseServerStats && needsBreakdownStats,
+  });
+
+  const statsForBreakdown =
+    needsBreakdownStats ? breakdownStats : totalStats;
+
   const listMetrics = useMemo(() => {
     const grouped = new Map<string, EnrichedProduct[]>();
     let total = 0;
-    let highCount = 0;
+    let overviewTotal = 0;
+    let pendingCount = 0;
+    let finishedCount = 0;
 
     for (const product of products) {
+      const passesScope = (() => {
+        if (serverFiltered) return true;
+        if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
+          return false;
+        }
+        const my = getProductMonthYearValue(product);
+        if (selectedMonth !== null && my && my.month !== selectedMonth) return false;
+        if (selectedYear !== null && my && my.year !== selectedYear) return false;
+        return true;
+      })();
+
+      if (passesScope && matchesSearch(product.name, search)) {
+        overviewTotal += product.price;
+        if (product.finished) finishedCount += 1;
+        else pendingCount += 1;
+      }
+
       if (!serverFiltered) {
         if (
           statusFilter !== "todos" &&
@@ -209,13 +241,7 @@ export function ItemListScreen({
         ) {
           continue;
         }
-        if (userFilter !== ALL_USERS_VALUE && product.user_id !== userFilter) {
-          continue;
-        }
-
-        const my = getProductMonthYearValue(product);
-        if (selectedMonth !== null && my && my.month !== selectedMonth) continue;
-        if (selectedYear !== null && my && my.year !== selectedYear) continue;
+        if (!passesScope) continue;
       }
 
       if (!matchesSearch(product.name, search)) {
@@ -223,7 +249,6 @@ export function ItemListScreen({
       }
 
       total += product.price;
-      if (product.priority === "alta") highCount += 1;
 
       const items = grouped.get(product.priority) ?? [];
       items.push(product);
@@ -239,7 +264,9 @@ export function ItemListScreen({
     return {
       sections,
       total,
-      highCount,
+      overviewTotal,
+      pendingCount,
+      finishedCount,
       itemCount: sections.reduce((sum, section) => sum + section.data.length, 0),
     };
   }, [
@@ -261,26 +288,31 @@ export function ItemListScreen({
     [group?.members]
   );
 
-  const summaryTotal = canUseServerStats && serverStats
-    ? serverStats.total
-    : listMetrics.total;
-  const summaryItemCount = canUseServerStats && serverStats
-    ? serverStats.itemsCount
-    : listMetrics.itemCount;
+  const summaryTotal = canUseServerStats && totalStats
+    ? totalStats.total
+    : statusFilter !== "todos"
+      ? listMetrics.total
+      : listMetrics.overviewTotal;
+  const summaryPending = canUseServerStats && statsForBreakdown
+    ? statsForBreakdown.pendingCount
+    : listMetrics.pendingCount;
+  const summaryFinished = canUseServerStats && statsForBreakdown
+    ? statsForBreakdown.itemsCount - statsForBreakdown.pendingCount
+    : listMetrics.finishedCount;
 
   const listHeader = (
     <View style={styles.headerContent}>
       {showSummary && (
         <HomeSummaryCard
           total={summaryTotal}
-          itemCount={summaryItemCount}
-          highCount={listMetrics.highCount}
+          pendingCount={summaryPending}
+          finishedCount={summaryFinished}
         />
       )}
 
       <HomeSearchInput value={searchInput} onChange={setSearchInput} />
 
-      <HomeFilters
+      <HomeSegmentedFilter
         value={statusFilter}
         onChange={(value) => {
           setStatusFilter(value);

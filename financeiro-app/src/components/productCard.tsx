@@ -1,28 +1,17 @@
-import React, { memo, useCallback } from "react";
+import React, { memo, useCallback, useMemo } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
+import { formatBRL, type Priority } from "@/lib/storage";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
-
-import {
-  User,
-  Calendar,
-} from "lucide-react-native";
-
-import {
-  formatBRL,
-  type Priority,
-} from "@/lib/storage";
-import { formatProductDate, getCategoryLabel } from "@/lib/product.utils";
-
+  formatProductDate,
+  getPaymentLabel,
+} from "@/lib/product.utils";
+import { categoryMeta } from "@/features/dashboard/constants";
 import { ProductResponse } from "@app/shared";
+import { useTheme } from "@/context/theme.context";
+import { AnimatedPressable } from "@/components/ui/animated-pressable";
 
 type Product = ProductResponse;
-
-import { useTheme } from "@/context/theme.context";
-import { useRouter } from "expo-router";
 
 type ProductCardProps = {
   p: Product;
@@ -31,34 +20,52 @@ type ProductCardProps = {
 
 const priorityConfig: Record<
   Priority,
-  {
-    color: string;
-    bgColor: string;
-    borderColor: string;
-    label: string;
-  }
+  { color: string; label: string }
 > = {
-  alta: {
-    color: "#ef4444",
-    bgColor: "#ef444415",
-    borderColor: "#ef444430",
-    label: "Alta",
-  },
-
-  media: {
-    color: "#f59e0b",
-    bgColor: "#f59e0b15",
-    borderColor: "#f59e0b30",
-    label: "Média",
-  },
-
-  baixa: {
-    color: "#22c55e",
-    bgColor: "#22c55e15",
-    borderColor: "#22c55e30",
-    label: "Baixa",
-  },
+  alta: { color: "#ef4444", label: "Alta" },
+  media: { color: "#f59e0b", label: "Média" },
+  baixa: { color: "#22c55e", label: "Baixa" },
 };
+
+function StatusIndicator({ finished }: { finished: boolean }) {
+  const { colors: theme } = useTheme();
+
+  return (
+    <View style={styles.statusRow}>
+      <View
+        style={[
+          styles.statusDot,
+          { backgroundColor: finished ? theme.success : theme.warning },
+        ]}
+      />
+      <Text style={[styles.statusText, { color: theme.textSecondary }]}>
+        {finished ? "Comprado" : "Pendente"}
+      </Text>
+    </View>
+  );
+}
+
+function PriorityOutline({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}) {
+  return (
+    <View style={[styles.priorityOutline, { borderColor: color }]}>
+      <View style={[styles.priorityDot, { backgroundColor: color }]} />
+      <Text style={[styles.priorityLabel, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+function splitPrice(price: number): { main: string; cents: string } {
+  const formatted = formatBRL(price);
+  const numeric = formatted.replace("R$", "").trim();
+  const [main, cents = "00"] = numeric.split(",");
+  return { main, cents };
+}
 
 export const ProductCard = memo(function ProductCard({
   p,
@@ -66,149 +73,90 @@ export const ProductCard = memo(function ProductCard({
   const { colors: theme } = useTheme();
   const router = useRouter();
 
-  const config = priorityConfig[p.priority];
+  const priority = priorityConfig[p.priority];
+  const category = useMemo(() => categoryMeta(p.category), [p.category]);
+  const CategoryIcon = category.icon;
+  const finished = p.finished;
+  const priceParts = splitPrice(p.price);
 
   const handlePress = useCallback(() => {
-    router.push(`/(protected)/product-detail/${p.id}` as any);
+    router.push(`/(protected)/product-detail/${p.id}` as never);
   }, [router, p.id]);
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <AnimatedPressable
       onPress={handlePress}
-    >
-    <View
       style={[
         styles.card,
         {
-          backgroundColor:
-            theme.cardBackground,
-          borderColor:
-            config.borderColor,
+          backgroundColor: theme.cardBackground,
+          borderColor: theme.border,
         },
       ]}
     >
-      {/* Accent */}
-      <View
-        style={[
-          styles.accentBar,
-          {
-            backgroundColor:
-              config.color,
-          },
-        ]}
-      />
-
-      <View style={styles.cardInner}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View
-            style={[
-              styles.priorityBadge,
-              {
-                backgroundColor: config.bgColor,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.priorityText,
-                { color: config.color },
-              ]}
-            >
-              {config.label}
-            </Text>
-          </View>
-
-          <View style={styles.rightHeader}>
-            {/* User */}
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <View style={styles.categoryRow}>
             <View
               style={[
-                styles.userBadge,
+                styles.categoryIconWrap,
                 {
-                  backgroundColor:
-                    theme.userBadgeBg,
+                  backgroundColor: `${category.color}18`,
+                  borderColor: `${category.color}40`,
                 },
               ]}
             >
-              <User
-                size={13}
-                color={
-                  theme.userBadgeIcon
-                }
-              />
-
-              <Text
-                style={[
-                  styles.userText,
-                  {
-                    color:
-                      theme.userBadgeText,
-                  },
-                ]}
-              >
-                {p.user_name}
-              </Text>
+              <CategoryIcon size={14} color={category.color} />
             </View>
+            <Text style={[styles.categoryLabel, { color: theme.textSecondary }]}>
+              {category.label.toUpperCase()}
+            </Text>
           </View>
+          <StatusIndicator finished={finished} />
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <View style={styles.infoBlock}>
-            <Text
-              style={[
-                styles.name,
-                {
-                  color:
-                    theme.cardName,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {p.name}
-            </Text>
+        <Text
+          style={[
+            styles.name,
+            { color: theme.cardName },
+          ]}
+        >
+          {p.name}
+        </Text>
 
-            <Text
-              style={[
-                styles.price,
-                {
-                  color:
-                    theme.cardPrice,
-                },
-              ]}
-            >
-              {formatBRL(p.price)}
-            </Text>
-
-            <View style={styles.metaRow}>
-              <View style={styles.metaItem}>
-                <Calendar size={12} color={theme.textSecondary} />
-                <Text
-                  style={[styles.metaText, { color: theme.textSecondary }]}
-                >
-                  {formatProductDate(p.date)}
-                </Text>
-              </View>
-
-              <Text
-                style={[styles.metaDot, { color: theme.textSecondary }]}
-              >
-                •
-              </Text>
-
-              <Text
-                style={[styles.metaText, { color: theme.textSecondary }]}
-                numberOfLines={1}
-              >
-                {getCategoryLabel(p.category)}
-              </Text>
-            </View>
-          </View>
-        </View>
+        <Text style={[styles.meta, { color: theme.textSecondary }]}>
+          {getPaymentLabel(p.payment_type)} · {formatProductDate(p.date)}
+        </Text>
       </View>
-    </View>
-    </TouchableOpacity>
+
+      <View style={[styles.separator, { backgroundColor: theme.border }]} />
+
+      <View style={styles.footer}>
+        <View style={styles.footerLeft}>
+          <PriorityOutline
+            color={priority.color}
+            label={priority.label}
+          />
+          {p.user_name ? (
+            <Text style={[styles.userName, { color: theme.textSecondary }]}>
+              {p.user_name}
+            </Text>
+          ) : null}
+        </View>
+
+        <Text
+          style={[
+            styles.price,
+            { color: theme.primary },
+          ]}
+        >
+          R$ {priceParts.main}
+          <Text style={[styles.priceCents, { color: theme.textSecondary }]}>
+            ,{priceParts.cents}
+          </Text>
+        </Text>
+      </View>
+    </AnimatedPressable>
   );
 });
 
@@ -216,128 +164,114 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     borderWidth: 1,
-    flexDirection: "row",
     overflow: "hidden",
+    marginBottom: 10,
   },
-
-  accentBar: {
-    width: 5,
+  body: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 8,
   },
-
-  cardInner: {
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  categoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
     flex: 1,
-    padding: 16,
-    gap: 14,
   },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent:
-      "space-between",
-  },
-
-  rightHeader: {
-    alignItems: "flex-end",
-    gap: 10,
-  },
-
-  priorityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-  },
-
-  priorityText: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-
-  userBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-
-  userText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  deleteButton: {
-    width: 34,
-    height: 34,
+  categoryIconWrap: {
+    width: 28,
+    height: 28,
     borderRadius: 10,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  content: {
-    gap: 12,
+  categoryLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.6,
+    flexShrink: 1,
   },
-
-  infoBlock: {
-    gap: 4,
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
-
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+  },
   name: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "600",
+    lineHeight: 23,
     letterSpacing: -0.3,
   },
-
-  price: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 2,
-  },
-
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-
-  metaText: {
+  meta: {
     fontSize: 12,
     fontWeight: "500",
   },
-
-  metaDot: {
-    fontSize: 12,
+  separator: {
+    height: 1,
+    marginHorizontal: 16,
   },
-
   footer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-
-  footerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#27272a",
-  },
-
-  chevronWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+  footerLeft: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 10,
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  priorityOutline: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  priorityDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 999,
+  },
+  priorityLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  userName: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  priceCents: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
