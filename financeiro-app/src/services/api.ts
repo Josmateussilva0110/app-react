@@ -19,7 +19,7 @@ declare module "axios" {
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },

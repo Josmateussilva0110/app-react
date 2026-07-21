@@ -1,9 +1,11 @@
 {
   "name": "financeiro-app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "scripts": {
-    "start": "expo start",
+    "start": "node scripts/write-api-url.js && expo start",
+    "preandroid": "node scripts/write-api-url.js",
+    "preios": "node scripts/write-api-url.js",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -22,6 +24,7 @@
     "@tanstack/react-query-persist-client": "^5.101.2",
     "axios": "^1.16.1",
     "expo": "^54.0.0",
+    "expo-application": "~7.0.8",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.13",
@@ -49,6 +52,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "babel-preset-expo": "~54.0.11",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"

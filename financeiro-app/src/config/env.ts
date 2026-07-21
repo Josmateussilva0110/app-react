@@ -1,11 +1,11 @@
-import { z } from "zod";
+import { API_URL as GENERATED_API_URL } from "./api-url.generated";
 
-const envSchema = z.object({
-  EXPO_PUBLIC_API_URL: z.url(),
-});
+export const API_URL = GENERATED_API_URL;
 
-export const env = envSchema.parse({
-  EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
-});
-
-export const API_URL = env.EXPO_PUBLIC_API_URL;
+export function getApiHostLabel(): string {
+  try {
+    return new URL(API_URL).host;
+  } catch {
+    return "API indisponível";
+  }
+}

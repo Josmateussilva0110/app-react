@@ -150,9 +150,11 @@ export function HomeMonthYearFilter({
 
 const styles = StyleSheet.create({
   wrapper: {
-    gap: 10,
+    flexDirection: "row",
+    gap: 12,
   },
   section: {
+    flex: 1,
     gap: 8,
   },
   sectionLabel: {

@@ -1,3 +1,6 @@
+import "react-native-gesture-handler";
+import "react-native-reanimated";
+
 import { Stack } from "expo-router";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { queryClient } from "@/lib/query-client";

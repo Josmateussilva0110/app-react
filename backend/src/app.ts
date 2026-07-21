@@ -23,7 +23,14 @@ app.use(helmet()) // cabeçalhos de segurança HTTP
 app.use(compression())
 
 app.use(cors({
-    origin: env.ALLOWED_ORIGINS,  // whitelist por ambiente
+    origin(origin, callback) {
+        // Requisições sem Origin (apps nativos, curl, Postman) → libera
+        if (!origin) return callback(null, true)
+        // Browser com origem na whitelist → libera
+        if (env.ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+        // Browser com origem desconhecida → bloqueia
+        callback(new Error(`CORS: origem "${origin}" não permitida`))
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],

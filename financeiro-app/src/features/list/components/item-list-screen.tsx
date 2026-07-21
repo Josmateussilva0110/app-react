@@ -170,27 +170,26 @@ export function ItemListScreen({
     });
   };
 
-  const canUseServerStats =
-    summaryFilters !== undefined ||
-    (serverFiltered && selectedMonth !== null && selectedYear !== null);
-
   const statsMonth =
     summaryFilters?.month ??
-    (selectedMonth !== null ? selectedMonth + 1 : new Date().getMonth() + 1);
+    (selectedMonth !== null ? selectedMonth + 1 : undefined);
   const statsYear =
     summaryFilters?.year ??
-    selectedYear ??
-    new Date().getFullYear();
+    (selectedYear !== null ? selectedYear : undefined);
+  const canUseServerStats =
+    statsMonth !== undefined &&
+    statsYear !== undefined &&
+    (serverFiltered || summaryFilters !== undefined);
   const statsUserId =
     summaryFilters?.userId ??
     (userFilter !== ALL_USERS_VALUE ? userFilter : undefined);
   const statsMonthList = summaryFilters?.monthList;
-  const statsStatusForTotal = summaryFilters?.status ?? "todos";
+  const statsStatusForTotal = statusFilter;
   const needsBreakdownStats = statsStatusForTotal !== "todos";
 
   const { data: totalStats } = useProductStats({
-    month: statsMonth,
-    year: statsYear,
+    month: statsMonth ?? 1,
+    year: statsYear ?? 2000,
     userId: statsUserId,
     status: statsStatusForTotal,
     monthList: statsMonthList,
@@ -198,8 +197,8 @@ export function ItemListScreen({
   });
 
   const { data: breakdownStats } = useProductStats({
-    month: statsMonth,
-    year: statsYear,
+    month: statsMonth ?? 1,
+    year: statsYear ?? 2000,
     userId: statsUserId,
     status: "todos",
     monthList: statsMonthList,

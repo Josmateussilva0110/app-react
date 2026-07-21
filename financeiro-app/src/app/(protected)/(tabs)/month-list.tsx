@@ -1,11 +1,36 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
+import type { InitialListFilters } from "@/features/list/constants/home.constants";
 import { useProductListLabels } from "@/hooks/use-product-list-labels";
-import { useInfiniteProducts } from "@/hooks/use-products";
+import {
+  useInfiniteProducts,
+  type ProductsFilterParams,
+} from "@/hooks/use-products";
+
+function defaultQueryFilters(): ProductsFilterParams {
+  const now = new Date();
+  return {
+    monthList: true,
+    status: "pendente",
+    month: now.getMonth() + 1,
+    year: now.getFullYear(),
+  };
+}
+
+function queryToInitialFilters(query: ProductsFilterParams): InitialListFilters {
+  return {
+    month: query.month !== undefined ? query.month - 1 : null,
+    year: query.year ?? null,
+    userId: query.userId,
+    status: query.status ?? "pendente",
+  };
+}
 
 export default function MonthListScreen() {
   const { subtitle: groupSubtitle } = useProductListLabels();
-  const now = new Date();
+  const [queryFilters, setQueryFilters] = useState<ProductsFilterParams>(
+    defaultQueryFilters
+  );
 
   const {
     products,
@@ -16,12 +41,39 @@ export default function MonthListScreen() {
     fetchNextPage,
     refetch,
     error,
-  } = useInfiniteProducts({
-    monthList: true,
-    status: "pendente",
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-  });
+  } = useInfiniteProducts(queryFilters);
+
+  const initialFilters = useMemo(
+    () => queryToInitialFilters(queryFilters),
+    [queryFilters]
+  );
+
+  const summaryFilters = useMemo(
+    () =>
+      queryFilters.month !== undefined && queryFilters.year !== undefined
+        ? {
+            month: queryFilters.month,
+            year: queryFilters.year,
+            userId: queryFilters.userId,
+            status: queryFilters.status ?? "pendente",
+            monthList: "true" as const,
+          }
+        : undefined,
+    [queryFilters]
+  );
+
+  const handleQueryFiltersChange = useCallback((next: InitialListFilters) => {
+    setQueryFilters({
+      monthList: true,
+      month:
+        next.month !== undefined && next.month !== null
+          ? next.month + 1
+          : undefined,
+      year: next.year !== undefined && next.year !== null ? next.year : undefined,
+      userId: next.userId,
+      status: next.status ?? "pendente",
+    });
+  }, []);
 
   const handleLoadMore = useCallback(() => {
     if (!hasNextPage || isFetchingNextPage) return;
@@ -47,12 +99,10 @@ export default function MonthListScreen() {
       showSummary
       showFab={false}
       showDashboard
-      summaryFilters={{
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
-        status: "pendente",
-        monthList: "true",
-      }}
+      initialFilters={initialFilters}
+      onQueryFiltersChange={handleQueryFiltersChange}
+      serverFiltered
+      summaryFilters={summaryFilters}
     />
   );
 }

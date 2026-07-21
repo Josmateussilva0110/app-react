@@ -2,7 +2,7 @@
   "expo": {
     "name": "euComprei",
     "slug": "financeiro-app",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "financeiroapp",
@@ -41,11 +41,15 @@
         "expo-build-properties",
         {
           "android": {
+            "newArchEnabled": true,
             "usesCleartextTraffic": true,
-            "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": false,
+            "enableShrinkResourcesInReleaseBuilds": false,
             "enableBundleCompression": true,
-            "buildArchs": ["arm64-v8a"]
+            "buildArchs": [
+              "arm64-v8a"
+            ],
+            "extraProguardRules": "-keep class com.swmansion.reanimated.** { *; }\n-keep class com.swmansion.worklets.** { *; }\n-keep class com.facebook.react.turbomodule.** { *; }"
           }
         }
       ]

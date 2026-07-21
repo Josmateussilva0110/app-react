@@ -5,6 +5,7 @@ import { ProfileUserCard } from "../../../features/profile/components/profile-us
 import { ProfileGroupCard } from "../../../features/profile/components/profile-group-card";
 import { ProfileThemeCard } from "../../../features/profile/components/profile-theme-card";
 import { ProfileLogoutButton } from "../../../features/profile/components/profile-logout-button";
+import { ProfileVersionIndicator } from "../../../features/profile/components/profile-version-indicator";
 
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
           <ProfileGroupCard />
           <ProfileThemeCard />
           <ProfileLogoutButton />
+          <ProfileVersionIndicator />
         </View>
       </ScreenWrapper>
     </AppShell>
