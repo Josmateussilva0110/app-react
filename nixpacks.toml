@@ -1,0 +1,15 @@
+# Belmo / Coolify (Nixpacks) — backend do monorepo
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = [
+  "npm run build -w packages/shared",
+  "npm run build -w backend",
+]
+
+[start]
+cmd = "node backend/dist/server.js"

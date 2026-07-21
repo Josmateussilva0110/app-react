@@ -1,4 +1,4 @@
-import express from "express"
+import express, { type Request, type Response } from "express"
 import cors from "cors"
 import helmet from "helmet"
 import compression from "compression"
@@ -9,6 +9,10 @@ import { errorHandler } from "./middleware/errorHandler"
 import { notFound } from "./middleware/notFound"
 import { swaggerSpec } from "./config/swagger"
 import router from "./routes/routes"
+
+function healthPayload() {
+    return { status: "ok", env: env.NODE_ENV }
+}
 
 export const app = express()
 
@@ -26,9 +30,14 @@ app.use(cors({
 }))
 
 // ── Rotas ────────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", env: env.NODE_ENV })
-})
+// Belmo/Coolify costumam usar "/" ou "/health" no health check — todas respondem 200.
+const sendHealth = (_req: Request, res: Response) => {
+    res.json(healthPayload())
+}
+
+app.get("/", sendHealth)
+app.get("/health", sendHealth)
+app.get("/api/health", sendHealth)
 
 
 // ── Rate limit ANTES do parse do body ───────────────────
