@@ -25,6 +25,8 @@
 15. [Fluxos de usuário detalhados](#15-fluxos-de-usuário-detalhados)
 16. [Estratégias e decisões técnicas](#16-estratégias-e-decisões-técnicas)
 17. [Stack completa](#17-stack-completa)
+18. [Variáveis de ambiente e URL da API](#18-variáveis-de-ambiente-e-url-da-api)
+19. [Build APK, versionamento e deploy mobile](#19-build-apk-versionamento-e-deploy-mobile)
 
 ---
 
@@ -111,7 +113,8 @@ financeiro-app/src/
 │
 ├── features/                     # Lógica por domínio
 │   ├── auth/components/          # LoginForm, RegisterForm
-│   ├── list/components/          # ItemListScreen, filtros, cards
+│   ├── list/components/          # ItemListScreen, filtros, cards, version indicator
+│   ├── profile/components/       # ProfileUserCard, ProfileVersionIndicator, etc.
 │   ├── dashboard/components/     # Charts, MetaCard, StatCard
 │   ├── product/components/       # ProductForm, ProductDetail
 │   └── group/components/         # GroupForm, GroupManage
@@ -150,11 +153,24 @@ financeiro-app/src/
 │   └── auth.storage.ts           # SecureStore wrapper
 │
 ├── lib/                          # Utilitários
+│   ├── app-version.ts            # Label de versão (expo-application)
 │   ├── query-client.ts
 │   ├── query-persister.ts
 │   ├── format-currency.ts
 │   ├── product.utils.ts
 │   └── text.utils.ts
+├── config/
+│   ├── env.ts                    # API_URL (importa api-url.generated.ts)
+│   └── api-url.generated.ts      # URL gerada no build (write-api-url.js)
+├── plugins/
+│   └── with-android-prefer-ipv4.js  # Preferência IPv4 no Android (APK)
+├── scripts/
+│   ├── write-api-url.js          # Grava URL no bundle antes do build
+│   ├── bump-android-version.js   # Incrementa semver + versionCode
+│   └── sync-android-version.js   # Sincroniza build.gradle
+├── app.config.js                 # Config Expo (versão, plugins, extra.apiUrl)
+├── babel.config.js               # babel-preset-expo (obrigatório no APK)
+├── version.build.json            # versionCode persistido entre builds
 │
 ├── schemas/                      # Zod schemas locais (forms)
 ├── types/                        # Tipos frontend-only
@@ -174,6 +190,13 @@ financeiro-app/src/
 
 ### Root Layout (`app/_layout.tsx`)
 
+Imports nativos obrigatórios no topo (Reanimated + Gesture Handler):
+
+```typescript
+import "react-native-gesture-handler";
+import "react-native-reanimated";
+```
+
 Árvore de providers (de fora para dentro):
 
 ```
@@ -185,7 +208,9 @@ PersistQueryClientProvider     ← Cache React Query no AsyncStorage (24h)
                     └── ServerWakeOverlay ← Modal cold start
 ```
 
-No boot: `warmupServer()` dispara `GET /health` em background (desperta backend Render).
+No boot: `warmupServer()` dispara `GET /health` em background (desperta backend).
+
+`npm start` executa `node scripts/write-api-url.js` antes do Metro — garante URL da API atualizada no Expo Go.
 
 ### Protected Layout (`(protected)/_layout.tsx`)
 
@@ -455,15 +480,44 @@ interface ApiResponse<T> {
 - Hooks React Query fazem `throw new Error()` quando `!success` (para retry)
 - GET requests passam `data` como query params
 
+### Configuração da API (`config/env.ts`)
+
+A URL da API **não** é lida em runtime a partir de `.env` no APK release. Ela é **gravada no código** durante o build:
+
+```typescript
+// src/config/api-url.generated.ts (gerado por scripts/write-api-url.js)
+export const API_URL = "https://seu-servidor.com/api";
+
+// src/config/env.ts
+import { API_URL as GENERATED_API_URL } from "./api-url.generated";
+export const API_URL = GENERATED_API_URL;
+```
+
+No **Expo Go** / `expo start`, o script `write-api-url.js` roda antes do Metro e regenera o arquivo a partir de `financeiro-app/.env`.
+
 ### Instância Axios (`api.ts`)
 
 ```typescript
 const api = axios.create({
-  baseURL: API_URL,          // EXPO_PUBLIC_API_URL
-  timeout: 10000,            // 10 segundos
+  baseURL: API_URL,
+  timeout: 30000,            // 30 segundos (cold start / rede lenta)
   headers: { "Content-Type": "application/json" },
 });
 ```
+
+### Erros de rede (`request.ts`)
+
+Quando o servidor não responde (timeout, DNS, IPv6), retorna:
+
+```typescript
+{
+  success: false,
+  message: "Não foi possível conectar ao servidor..." | "Tempo esgotado..." | "Falha de rede (ECONNABORTED)...",
+  error: { reason: "network_error" }
+}
+```
+
+> **Postman no PC ≠ app no celular:** `localhost` funciona no PC, mas no celular aponta para o próprio dispositivo. Use URL pública (`https://...`) ou IP da máquina na rede Wi-Fi (`http://192.168.x.x:3001/api`).
 
 ### Endpoints consumidos
 
@@ -588,8 +642,25 @@ Duas telas tab compartilham o mesmo componente com configurações diferentes:
 
 | Tab | Rota | Configuração |
 |-----|------|-------------|
-| **Lista do Mês** | `month-list.tsx` | `monthList: true`, `status: pendente`, mês atual, infinite scroll |
-| **Itens** | `itens.tsx` | Filtros server-side (mês/ano/status/user), infinite scroll |
+| **Lista do Mês** | `month-list.tsx` | `serverFiltered`, `monthList: true`, default `status: pendente`, filtros conectados à API |
+| **Itens** | `itens.tsx` | `serverFiltered`, filtros server-side (mês/ano/status/user), infinite scroll |
+
+#### Fluxo de filtros (server-side)
+
+Ambas as telas com `serverFiltered` seguem o mesmo padrão:
+
+```
+UI (ItemListScreen)
+  → emitQueryFilters() / onQueryFiltersChange
+  → setQueryFilters (ProductsFilterParams)
+  → useInfiniteProducts(queryFilters) refetch
+  → GET /products?page&limit&month&year&userId&status&monthList
+  → listagem + resumo sincronizados com a API
+```
+
+- **Mês na UI:** 0-indexado (jan = 0). **Na API:** 1-indexado (jan = 1). Conversão em `itens.tsx` / `month-list.tsx`.
+- **Busca:** sempre client-side (debounce 250ms), apenas nos itens já carregados.
+- **Resumo (`HomeSummaryCard`):** usa `/products/stats` quando mês **e** ano estão definidos; respeita o filtro de **status** ativo.
 
 #### Funcionalidades do ItemListScreen
 
@@ -597,17 +668,15 @@ Duas telas tab compartilham o mesmo componente com configurações diferentes:
 ┌─────────────────────────────────────────┐
 │ AppShell (header + dashboard icon)      │
 ├─────────────────────────────────────────┤
-│ HomeSummaryCard (total, contagem, alta)   │
+│ HomeSummaryCard (total, pendentes, etc.) │
 ├─────────────────────────────────────────┤
 │ HomeSearchInput (busca debounced 250ms)  │
-│ HomeFilters (status chips)               │
-│ HomeMonthYearFilter (mês/ano picker)     │
+│ HomeSegmentedFilter (todos/pendente/finalizado) │
+│ HomeMonthYearFilter (mês | ano — lado a lado) │
 │ HomeUserFilter (membros, se em grupo)    │
 ├─────────────────────────────────────────┤
 │ SectionList (virtualizada)               │
 │   ├─ Section: Alta Prioridade            │
-│   │   ├─ ProductCard                     │
-│   │   └─ ProductCard                     │
 │   ├─ Section: Média Prioridade           │
 │   └─ Section: Baixa Prioridade           │
 ├─────────────────────────────────────────┤
@@ -616,14 +685,16 @@ Duas telas tab compartilham o mesmo componente com configurações diferentes:
 ```
 
 **Filtros:**
-- **Status:** todos, pendente, finalizado (server-side quando `serverFiltered=true`)
-- **Mês/Ano:** picker com anos extraídos dos produtos
-- **Usuário:** dropdown de membros (apenas em modo grupo)
-- **Busca:** client-side, debounced 250ms, normalização de texto
+
+| Filtro | UI | API param | Observação |
+|--------|-----|-----------|------------|
+| Status | `HomeSegmentedFilter` | `status` | `todos` \| `pendente` \| `finalizado` |
+| Mês / Ano | `HomeMonthYearFilter` | `month`, `year` | Layout horizontal; `null` = todos |
+| Usuário | `HomeUserFilter` | `userId` | Apenas modo grupo |
+| Lista do mês | (fixo em `month-list`) | `monthList=true` | Sempre ativo na tab Lista do Mês |
+| Busca | `HomeSearchInput` | — | Não enviada à API |
 
 **Agrupamento:** Produtos agrupados por prioridade (alta → média → baixa) via `SectionList`.
-
-**Resumo:** Card superior com total, contagem e itens de alta prioridade. Quando `summaryFilters` está definido, usa `/products/stats` (server-side, mais preciso).
 
 ### 8.2 Products — CRUD de produtos
 
@@ -750,8 +821,13 @@ Profile → "Entrar" → /group/join (aceita ?code=ABC123 deep link)
 ├─────────────────────────────────────────┤
 │ ProfileLogoutButton                      │
 │   Sair da conta                          │
+├─────────────────────────────────────────┤
+│ ProfileVersionIndicator                  │
+│   Versão X.Y.Z (build N) + host da API   │
 └─────────────────────────────────────────┘
 ```
+
+**Indicador de versão:** lê `expo-application` (`nativeApplicationVersion` + `nativeBuildVersion`). Exibe também o host da API configurada — útil para confirmar qual URL está no APK instalado.
 
 ### 8.6 Welcome / Auth screens
 
@@ -982,7 +1058,7 @@ const { mode, colors, isDark, setTheme } = useTheme();
 
 ## 14. Cold start e Render free tier
 
-O backend roda no **Render free tier**, que coloca o serviço para dormir após inatividade (~15 min). Cold start leva 30-60 segundos.
+O backend pode rodar no **Render free tier** ou em **Belmo/Coolify**. Serviços free/inativos podem ter cold start de 30–60 segundos.
 
 ### Estratégia de mitigação
 
@@ -1191,9 +1267,105 @@ sequenceDiagram
 | Monorepo | npm workspaces | Node 22 |
 | Shared | @app/shared | 1.0.0 |
 | Linguagem | TypeScript | 5.9 |
-| Build mobile | EAS Build | eas.json |
-| Backend hosting | Render (free tier) | Oregon |
+| Build mobile (APK local) | `./build-apk.sh` + Docker | Raiz do monorepo |
+| Build mobile (EAS) | EAS Build | `financeiro-app/eas.json` |
+| Backend hosting | Render / Belmo | `render.yaml` / painel |
 
 ---
 
-*Documentação gerada em julho/2026. Para detalhes do backend e banco de dados, consulte [BACKEND.md](./BACKEND.md).*
+## 18. Variáveis de ambiente e URL da API
+
+### Arquivo `.env` (`financeiro-app/.env`)
+
+Template: `financeiro-app/env-exemple`
+
+```bash
+# Produção (Belmo/Render):
+EXPO_PUBLIC_API_URL=https://app-react-3a6e.onbelmo.uk/api
+
+# Local (celular na mesma Wi-Fi — NÃO use localhost):
+# EXPO_PUBLIC_API_URL=http://192.168.x.x:3001/api
+```
+
+| Contexto | Como a URL é aplicada |
+|----------|----------------------|
+| **Expo Go** / `npm start` | `scripts/write-api-url.js` roda antes do Metro → atualiza `api-url.generated.ts` |
+| **APK (`./build-apk.sh`)** | Entrypoint Docker carrega `.env`, roda `write-api-url.js`, embute URL no bundle JS |
+| **EAS Build** | `EXPO_PUBLIC_API_URL` no ambiente EAS + `app.config.js` (`extra.apiUrl`) |
+
+### Requisitos
+
+- URL deve incluir o prefixo `/api` (ex.: `https://dominio.com/api`, não `https://dominio.com`).
+- Após alterar `.env`, **rebuild obrigatório** para APK; no Expo Go basta reiniciar `expo start`.
+- Variáveis `EXPO_PUBLIC_*` do Supabase **não** são usadas pelo app — autenticação passa pela API REST.
+
+### Troubleshooting de conexão
+
+| Sintoma | Causa provável | Solução |
+|---------|----------------|---------|
+| Postman OK, app falha | `localhost` no `.env` ou APK antigo | URL pública ou IP LAN; rebuild APK |
+| Timeout / network_error | Cold start ou IPv6 quebrado | Aguardar; plugin IPv4 no APK (`with-android-prefer-ipv4`) |
+| Perfil mostra API errada | APK buildado antes de mudar `.env` | `./build-apk.sh --clean-prebuild` |
+
+---
+
+## 19. Build APK, versionamento e deploy mobile
+
+### Build local via Docker (`./build-apk.sh`)
+
+Script na **raiz do monorepo**. Gera `build/financeiro-app.apk`.
+
+```bash
+./build-apk.sh                  # build rápido (reutiliza cache)
+./build-apk.sh --rebuild-image  # reconstrói imagem (após mudar package.json/deps)
+./build-apk.sh --clean-prebuild # regera projeto Android (após mudar app.json/plugins)
+./build-apk.sh --no-cache       # rebuild completo da imagem Docker
+```
+
+**Pipeline dentro do container** (`docker/entrypoint-build.sh`):
+
+1. Carrega `financeiro-app/.env` — falha se `EXPO_PUBLIC_API_URL` ausente
+2. `write-api-url.js` — grava URL em `src/config/api-url.generated.ts`
+3. `bump-android-version.js` — incrementa **semver** (`package.json`) e **versionCode** (`version.build.json`)
+4. `expo prebuild` (se config nativa mudou)
+5. `sync-android-version.js` — atualiza `android/app/build.gradle`
+6. `./gradlew assembleRelease` — compila APK
+
+### Versionamento automático (APK local)
+
+| Campo | Arquivo | Incremento |
+|-------|---------|------------|
+| Semver (`1.0.3`) | `package.json`, `app.json` | +0.0.1 a cada `./build-apk.sh` |
+| Build number | `version.build.json` → `versionCode` | +1 a cada build |
+| Exibição no app | Perfil → `ProfileVersionIndicator` | `Versão 1.0.3 (build 5)` |
+
+> Commitar `package.json`, `app.json` e `version.build.json` após releases se quiser histórico no git.
+
+### Versionamento EAS (`eas build`)
+
+Configurado em `financeiro-app/eas.json`:
+
+- `cli.appVersionSource: "remote"` — build number gerenciado nos servidores EAS
+- `build.production.autoIncrement: true` — incrementa `versionCode` / `buildNumber` a cada build
+- `build.preview.autoIncrement: true` — idem para preview
+
+Semver (`expo.version`) continua manual no `package.json` / `app.config.js`.
+
+### Config nativa relevante (`app.json` + plugins)
+
+| Config | Motivo |
+|--------|--------|
+| `newArchEnabled: true` | Reanimated 4 exige New Architecture |
+| `enableMinifyInReleaseBuilds: false` | Minificação quebrava Reanimated no release |
+| `with-android-prefer-ipv4` | Domínios Cloudflare com IPv6 instável em algumas redes móveis |
+| `babel-preset-expo` (devDependency) | Obrigatório para bundle release (`createBundleReleaseJsAndAssets`) |
+
+### Instalar no dispositivo
+
+```bash
+adb install -r ./build/financeiro-app.apk
+```
+
+---
+
+*Documentação atualizada em julho/2026. Para detalhes do backend e banco de dados, consulte [BACKEND.md](./BACKEND.md).*

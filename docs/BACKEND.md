@@ -25,6 +25,7 @@
 15. [Deploy e Docker](#15-deploy-e-docker)
 16. [Fluxos de requisição detalhados](#16-fluxos-de-requisição-detalhados)
 17. [Estratégias e decisões técnicas](#17-estratégias-e-decisões-técnicas)
+18. [Integração com app mobile](#18-integração-com-app-mobile)
 
 ---
 
@@ -111,13 +112,14 @@ server.ts
   ├── Carrega dotenv (raiz do monorepo + backend/.env)
   ├── Valida env via Zod (env.ts) — falha rápida se inválido
   ├── Cria app Express (app.ts)
-  └── Escuta em 0.0.0.0:PORT (default 3001)
+  ├── Escuta em 0.0.0.0:PORT (default 3001)
+  └── Health: GET / · /health · /api/health
 ```
 
 ### Stack de middleware (`app.ts`) — ordem importa
 
 ```typescript
-1. trust proxy (1)           // Render/reverse proxy
+1. trust proxy (1)           // Render/Belmo/reverse proxy
 2. helmet()                  // Headers de segurança HTTP
 3. compression()             // Gzip nas respostas
 4. cors({ origin: whitelist, credentials: true })
@@ -318,7 +320,19 @@ INNER JOIN group_products ON ...
 WHERE group_products.group_id = :groupId
 ```
 
-Filtros adicionais: `category`, `status` (pendente/finalizado), `monthList`, `month/year` (range de datas), `userId` (membro específico).
+Filtros adicionais (query params em `GET /products` e `GET /products/stats`):
+
+| Param | Valores | Efeito |
+|-------|---------|--------|
+| `status` | `todos` \| `pendente` \| `finalizado` | Filtra `finished` false/true |
+| `month` | 1–12 | Range de datas no mês |
+| `year` | 2000–2100 | Range de datas no ano |
+| `monthList` | `true` \| `false` | Filtra flag `month_list` |
+| `userId` | UUID | Membro específico (modo grupo) |
+| `category` | string | Categoria do produto |
+| `page`, `limit` | int | Paginação (`GET /products` only) |
+
+> **Convenção de mês:** API usa mês **1-indexado** (jan = 1). O frontend converte na borda (UI 0-indexada).
 
 ---
 
@@ -503,7 +517,11 @@ Base URL: `/api`
 
 | Método | Path | Descrição |
 |--------|------|-----------|
-| GET | `/health` | `{ status: "ok", env: "..." }` |
+| GET | `/` | `{ status: "ok", env: "..." }` |
+| GET | `/health` | Idem (Belmo/Coolify health check) |
+| GET | `/api/health` | Idem (Render `healthCheckPath`) |
+
+Todos respondem **200** sem autenticação. Usados pelo app (`warmupServer`) e pelos painéis de deploy.
 
 ---
 
@@ -694,10 +712,12 @@ Validadas via Zod em `config/env.ts`. Falha rápida na inicialização.
 | `SUPABASE_SERVICE_ROLE_KEY` | **Sim** | — | Chave service role |
 | `SUPABASE_ANON_KEY` | **Sim*** | — | Chave anon (ou `EXPO_PUBLIC_SUPABASE_ANON_KEY`) |
 | `SUPABASE_JWT_SECRET` | **Sim** | — | Secret para verificação JWT local |
-| `ALLOWED_ORIGINS` | Não | `http://localhost:8081` | CORS whitelist (comma-separated) |
+| `ALLOWED_ORIGINS` | Não | `http://localhost:8081` | CORS whitelist (comma-separated). **App mobile nativo não envia header `Origin`** — CORS não bloqueia requests do APK/Expo Go |
 | `RENDER_EXTERNAL_URL` | Não | — | Auto-adicionado ao CORS |
 
-Arquivos carregados: raiz `.env` → `backend/.env`. Template: `backend/.env.example`.
+Arquivos carregados (desenvolvimento local): raiz `.env` → `backend/.env`. Template: `backend/.env.example`.
+
+**Produção (Belmo/Render):** variáveis configuradas no painel da plataforma. Logs `dotenv injecting env (0)` indicam que o `.env` **não** está no container — isso é normal se as vars vêm do painel.
 
 ---
 
@@ -712,10 +732,28 @@ buildCommand: npm ci --include=dev && npm run build -w packages/shared && npm ru
 startCommand: node backend/dist/server.js
 healthCheckPath: /api/health
 plan: free  # Cold start ~30-60s
-port: 30001
+port: 3001
 ```
 
-### Docker (desenvolvimento local)
+### Belmo / Coolify
+
+Deploy típico do backend como serviço Node:
+
+- **Start:** `node backend/dist/server.js` (após `npm run build -w backend`)
+- **Porta:** definida por `PORT` (default `3001`; painel pode mapear para 3000 externamente)
+- **Health check:** `/`, `/health` ou `/api/health`
+- **Variáveis:** `SUPABASE_*`, `JWT_SECRET`, `PORT`, `NODE_ENV=production` no painel (não depender de `.env` no repo)
+- **Escuta:** `0.0.0.0` — necessário para container/proxy alcançar o processo
+
+Exemplo de URL pública consumida pelo app: `https://app-react-3a6e.onbelmo.uk/api`
+
+### Build APK do frontend (monorepo)
+
+O script `./build-apk.sh` (raiz) **não** faz deploy do backend — apenas compila o APK Android. O backend deve estar acessível pela URL configurada em `financeiro-app/.env` (`EXPO_PUBLIC_API_URL`).
+
+Ver [FRONTEND.md §19](./FRONTEND.md#19-build-apk-versionamento-e-deploy-mobile) para pipeline completo do APK.
+
+### Docker (desenvolvimento local — backend)
 
 ```dockerfile
 # Multi-stage: node:20-alpine
@@ -872,4 +910,57 @@ sequenceDiagram
 
 ---
 
-*Documentação gerada em julho/2026. Para detalhes do frontend, consulte [FRONTEND.md](./FRONTEND.md).*
+## 18. Integração com app mobile
+
+### URL base esperada pelo app
+
+O frontend configura `EXPO_PUBLIC_API_URL` com o prefixo `/api`:
+
+```
+https://<dominio>/api/login
+https://<dominio>/api/products
+https://<dominio>/api/products/stats
+```
+
+Rotas de auth **não** usam prefixo `/auth/` (exceto refresh):
+
+| App chama | Backend |
+|-----------|---------|
+| `POST /login` | `userRoutes` |
+| `POST /register` | `userRoutes` |
+| `POST /auth/refresh` | `userRoutes` |
+
+### Postman vs app mobile
+
+| | Postman (PC) | App (celular) |
+|---|-------------|---------------|
+| **Host** | `localhost:3001` funciona | `localhost` aponta para o celular |
+| **Rede** | IPv4 do desktop | Pode tentar IPv6 primeiro (Cloudflare) |
+| **CORS** | Browser aplica | App nativo **não** usa CORS |
+| **Auth** | Header manual | Bearer JWT automático (Axios interceptor) |
+
+### Filtros consumidos pelas listagens
+
+As tabs **Itens** e **Lista do Mês** enviam filtros via `GET /products`:
+
+```
+GET /api/products?page=1&limit=20&month=7&year=2026&status=pendente&monthList=true
+GET /api/products/stats?month=7&year=2026&status=pendente&monthList=true
+```
+
+O card de resumo no app usa `/products/stats` com os **mesmos filtros** da listagem (incluindo status).
+
+### Graceful shutdown
+
+O servidor trata `SIGTERM` / `SIGINT` (deploy rolling, restart do container):
+
+```
+SIGTERM recebido — encerrando servidor...
+Servidor encerrado.
+```
+
+Comportamento normal em Belmo/Coolify/Render durante redeploy.
+
+---
+
+*Documentação atualizada em julho/2026. Para detalhes do frontend, consulte [FRONTEND.md](./FRONTEND.md).*
