@@ -1,143 +1,150 @@
+import { useEffect } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { TrendingDown, Package, Flame, ArrowDownCircle } from "lucide-react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { useTheme } from "@/context/theme.context";
 import { formatBRL } from "@/lib/storage";
 
 type Props = {
   total: number;
-  itemCount: number;
-  highCount: number;
+  pendingCount: number;
+  finishedCount: number;
 };
 
-export function HomeSummaryCard({ total, itemCount, highCount }: Props) {
+function SummaryMetric({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
   const { colors: theme } = useTheme();
 
   return (
-    <LinearGradient
-      colors={[
-        theme.summaryGradientStart,
-        theme.summaryGradientMid,
-        theme.summaryGradientEnd,
-      ]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-    >
-      <View
-        style={[styles.decorCircle, { backgroundColor: theme.summaryDecorCircle }]}
-      />
-
-      {/* Top row */}
-      <View style={styles.topRow}>
-        <View style={styles.labelRow}>
-          <TrendingDown size={14} color={theme.summaryLabel} />
-          <Text style={[styles.label, { color: theme.summaryLabel }]}>
-            Total cadastrado
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.itemCountBadge,
-            {
-              backgroundColor: theme.summaryItemBadgeBg,
-              borderColor: theme.summaryItemBadgeBorder,
-            },
-          ]}
-        >
-          <Package size={12} color={theme.summaryItemBadgeText} />
-          <Text style={[styles.itemCountText, { color: theme.summaryItemBadgeText }]}>
-            {itemCount} {itemCount === 1 ? "item" : "itens"}
-          </Text>
-        </View>
-      </View>
-
-      {/* Total value */}
-      <Text style={[styles.value, { color: theme.summaryValue }]}>
-        {formatBRL(total)}
+    <View style={styles.metric}>
+      <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>
+        {label}
       </Text>
+      <Text
+        style={[
+          styles.metricValue,
+          { color: valueColor ?? theme.text },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
 
-      {/* Alert row */}
-      <View style={styles.alertRow}>
-        {highCount > 0 ? (
-          <>
-            <Flame size={13} color={theme.alertTextDanger} />
-            <Text style={[styles.alertText, { color: theme.alertTextDanger }]}>
-              {highCount} {highCount === 1 ? "item de alta prioridade" : "itens de alta prioridade"}
-            </Text>
-          </>
-        ) : (
-          <>
-            <ArrowDownCircle size={13} color={theme.alertTextSuccess} />
-            <Text style={[styles.alertText, { color: theme.alertTextSuccess }]}>
-              Tudo sob controle
-            </Text>
-          </>
-        )}
+export function HomeSummaryCard({
+  total,
+  pendingCount,
+  finishedCount,
+}: Props) {
+  const { colors: theme } = useTheme();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(8);
+
+  useEffect(() => {
+    opacity.value = withTiming(1, { duration: 380 });
+    translateY.value = withTiming(0, { duration: 380 });
+  }, [opacity, translateY]);
+
+  const entranceStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.cardBackground,
+          borderColor: theme.border,
+        },
+        entranceStyle,
+      ]}
+    >
+      <View style={styles.mainMetric}>
+        <Text style={[styles.totalLabel, { color: theme.textSecondary }]}>
+          TOTAL
+        </Text>
+        <Text style={[styles.totalValue, { color: theme.text }]}>
+          {formatBRL(total)}
+        </Text>
       </View>
-    </LinearGradient>
+
+      <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+      <View style={styles.sideMetrics}>
+        <SummaryMetric label="Pendentes" value={String(pendingCount)} />
+        <View style={[styles.dividerVertical, { backgroundColor: theme.border }]} />
+        <SummaryMetric
+          label="Comprados"
+          value={String(finishedCount)}
+          valueColor={theme.success}
+        />
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 28,
-    padding: 24,
-    overflow: "hidden",
-    position: "relative",
-  },
-  decorCircle: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    top: -60,
-    right: -60,
-  },
-  topRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  label: {
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-    fontWeight: "600",
-  },
-  itemCountBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 100,
+    borderRadius: 18,
     borderWidth: 1,
-  },
-  itemCountText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  value: {
-    fontSize: 38,
-    fontWeight: "800",
-    letterSpacing: -1,
-    marginBottom: 12,
-  },
-  alertRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 12,
   },
-  alertText: {
-    fontSize: 13,
+  mainMetric: {
+    flex: 1.2,
+    gap: 2,
+  },
+  totalLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  totalValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.6,
+  },
+  divider: {
+    width: 1,
+    height: 40,
+  },
+  dividerVertical: {
+    width: 1,
+    height: 28,
+  },
+  sideMetrics: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  metric: {
+    alignItems: "center",
+    gap: 2,
+    minWidth: 56,
+  },
+  metricLabel: {
+    fontSize: 11,
     fontWeight: "500",
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

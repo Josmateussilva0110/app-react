@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
+import { useTheme } from "@/context/theme.context";
 import type { Group } from "../constants/home.constants";
 
 type Props = {
@@ -7,62 +8,58 @@ type Props = {
 };
 
 export function HomePrioritySectionHeader({ group, count }: Props) {
-  const Icon = group.icon;
+  const { colors: theme } = useTheme();
 
   return (
-    <View style={styles.header}>
-      <View style={styles.titleContainer}>
-        <View
-          style={[styles.iconWrapper, { backgroundColor: group.bgColor }]}
-        >
-          <Icon size={15} color={group.color} />
+    <View style={styles.wrapper}>
+      <View style={styles.header}>
+        <View style={styles.titleRow}>
+          <View
+            style={[styles.dot, { backgroundColor: group.color }]}
+          />
+          <Text style={[styles.title, { color: theme.text }]}>
+            Prioridade {group.label}
+          </Text>
         </View>
-
-        <Text style={[styles.title, { color: group.color }]}>
-          {group.label}
+        <Text style={[styles.count, { color: theme.textSecondary }]}>
+          {count} {count === 1 ? "item" : "itens"}
         </Text>
       </View>
-
-      <View style={[styles.countBadge, { backgroundColor: group.bgColor }]}>
-        <Text style={[styles.countBadgeText, { color: group.color }]}>
-          {count}
-        </Text>
-      </View>
+      <View style={[styles.line, { backgroundColor: theme.border }]} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    marginBottom: 10,
+    gap: 8,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
   },
-  titleContainer: {
+  titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
-  iconWrapper: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 999,
   },
   title: {
     fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.3,
+    fontWeight: "600",
+    letterSpacing: 0.2,
   },
-  countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 100,
-  },
-  countBadgeText: {
+  count: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "500",
+  },
+  line: {
+    height: 1,
   },
 });

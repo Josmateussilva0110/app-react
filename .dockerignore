@@ -13,10 +13,6 @@ financeiro-app/android
 financeiro-app/ios
 financeiro-app/.expo
 
-# Backend source (não é necessário para o build do app)
-backend/src
-backend/dist
-
 # Arquivos de ambiente locais
 **/.env.local
 

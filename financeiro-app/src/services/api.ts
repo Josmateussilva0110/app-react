@@ -9,7 +9,6 @@ import { AUTH_ROUTES } from "@/config/api-routes";
 
 import { tokenManager } from "./token.manager";
 import { refreshService } from "./refresh.service";
-import { serverStatusManager } from "./server-status.manager";
 
 declare module "axios" {
   interface InternalAxiosRequestConfig {
@@ -20,7 +19,7 @@ declare module "axios" {
 
 export const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -30,8 +29,6 @@ export const api = axios.create({
  * REQUEST INTERCEPTOR
  */
 api.interceptors.request.use(async (config) => {
-  serverStatusManager.onRequestStart();
-
   if (config._skipAuth) {
     return config;
   }
@@ -59,14 +56,9 @@ api.interceptors.request.use(async (config) => {
  * RESPONSE INTERCEPTOR
  */
 api.interceptors.response.use(
-  (response) => {
-    serverStatusManager.onRequestEnd();
-    return response;
-  },
+  (response) => response,
 
   async (error: AxiosError) => {
-    serverStatusManager.onRequestEnd();
-
     const original = error.config as InternalAxiosRequestConfig | undefined;
 
     if (!original) {

@@ -77,10 +77,19 @@ export async function requestData<TResponse, TRequest = unknown>({
       };
     }
 
-    // Timeout / internet / Render dormindo
+    // Timeout / DNS / IPv6 / servidor indisponível
+    const axiosCode = err.code;
+    const detail =
+      axiosCode === "ECONNABORTED"
+        ? "Tempo esgotado ao conectar."
+        : axiosCode
+          ? `Falha de rede (${axiosCode}).`
+          : null;
+
     return {
       success: false,
       message:
+        detail ??
         "Não foi possível conectar ao servidor. Tente novamente em alguns instantes.",
       error: {
         reason: "network_error",

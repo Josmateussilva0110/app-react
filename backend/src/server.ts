@@ -3,6 +3,7 @@ import { app } from "./app"
 
 const server = app.listen(env.PORT, "0.0.0.0", () => {
     console.log(`🔥 Servidor rodando na porta ${env.PORT} [${env.NODE_ENV}]`)
+    console.log(`💚 Health check: / · /health · /api/health`)
 })
 
 function shutdown(signal: string): void {

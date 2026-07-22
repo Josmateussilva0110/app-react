@@ -1,4 +1,4 @@
-import express from "express"
+import express, { type Request, type Response } from "express"
 import cors from "cors"
 import helmet from "helmet"
 import compression from "compression"
@@ -10,6 +10,10 @@ import { notFound } from "./middleware/notFound"
 import { swaggerSpec } from "./config/swagger"
 import router from "./routes/routes"
 
+function healthPayload() {
+    return { status: "ok", env: env.NODE_ENV }
+}
+
 export const app = express()
 
 // ── Segurança ────────────────────────────────────────────
@@ -19,16 +23,28 @@ app.use(helmet()) // cabeçalhos de segurança HTTP
 app.use(compression())
 
 app.use(cors({
-    origin: env.ALLOWED_ORIGINS,  // whitelist por ambiente
+    origin(origin, callback) {
+        // Requisições sem Origin (apps nativos, curl, Postman) → libera
+        if (!origin) return callback(null, true)
+        // Browser com origem na whitelist → libera
+        if (env.ALLOWED_ORIGINS.includes(origin)) return callback(null, true)
+        // Browser com origem desconhecida → bloqueia
+        callback(new Error(`CORS: origem "${origin}" não permitida`))
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }))
 
 // ── Rotas ────────────────────────────────────────────────
-app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", env: env.NODE_ENV })
-})
+// Belmo/Coolify costumam usar "/" ou "/health" no health check — todas respondem 200.
+const sendHealth = (_req: Request, res: Response) => {
+    res.json(healthPayload())
+}
+
+app.get("/", sendHealth)
+app.get("/health", sendHealth)
+app.get("/api/health", sendHealth)
 
 
 // ── Rate limit ANTES do parse do body ───────────────────

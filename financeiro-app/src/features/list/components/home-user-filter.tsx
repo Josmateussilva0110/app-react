@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { ScrollView, StyleSheet } from "react-native";
-import { Users } from "lucide-react-native";
 import { FilterChip } from "@/components/ui/filter-chips";
 import { useTheme } from "@/context/theme.context";
 
@@ -32,7 +31,6 @@ export function HomeUserFilter({ members, value, onChange }: Props) {
     >
       <FilterChip
         label="Todos"
-        icon={Users}
         active={value === ALL_USERS_VALUE}
         onPress={() => onChange(ALL_USERS_VALUE)}
         activeColor={theme.fabGradientStart}
@@ -43,7 +41,6 @@ export function HomeUserFilter({ members, value, onChange }: Props) {
         <FilterChip
           key={user.id}
           label={user.name}
-          icon={Users}
           active={value === user.id}
           onPress={() => onChange(user.id)}
           activeColor={theme.fabGradientStart}

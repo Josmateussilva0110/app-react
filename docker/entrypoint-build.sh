@@ -50,8 +50,44 @@ npm run build --silent
 # ----------------------------------------------------------------
 cd /app/financeiro-app
 
+load_app_env() {
+  if [ -f .env.production ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env.production
+    set +a
+  fi
+
+  if [ -f .env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+  fi
+
+  if [ -z "$EXPO_PUBLIC_API_URL" ]; then
+    echo "❌ EXPO_PUBLIC_API_URL não definida em financeiro-app/.env"
+    echo "   Exemplo: EXPO_PUBLIC_API_URL=https://seu-servidor.com/api"
+    exit 1
+  fi
+
+  echo "📡 API URL do APK: $EXPO_PUBLIC_API_URL"
+}
+
+load_app_env
+
+echo "🔗 Gravando URL da API no bundle..."
+node scripts/write-api-url.js
+
+echo "🔢 Incrementando versão do build..."
+node scripts/bump-android-version.js
+
 CONFIG_HASH=$(
   cat /app/financeiro-app/app.json \
+      /app/financeiro-app/app.config.js \
+      /app/financeiro-app/babel.config.js \
+      /app/financeiro-app/.env \
+      /app/financeiro-app/.env.production \
       /app/financeiro-app/package.json \
       /app/package-lock.json 2>/dev/null \
     | sha256sum | cut -d' ' -f1
@@ -113,6 +149,11 @@ append_gradle_prop "org.gradle.parallel" "true"
 append_gradle_prop "org.gradle.caching" "true"
 append_gradle_prop "org.gradle.configureondemand" "true"
 append_gradle_prop "org.gradle.jvmargs" "-Xmx4096m -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError"
+
+echo "🔢 Sincronizando versão no projeto Android..."
+node scripts/sync-android-version.js
+
+load_app_env
 
 # ----------------------------------------------------------------
 # 4. Gradle Build (compila o APK)

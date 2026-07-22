@@ -229,7 +229,6 @@ export default function DashboardScreen() {
               <MetaCard
                 total={stats?.total ?? 0}
                 meta={meta}
-                segments={categoryItems}
                 onSaveMeta={(v) => updateGoal.mutate(v)}
                 saving={updateGoal.isPending}
                 title={goal?.scope === "group" ? "Meta mensal do grupo" : "Meta mensal pessoal"}

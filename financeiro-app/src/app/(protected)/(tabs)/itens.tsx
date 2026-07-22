@@ -2,19 +2,21 @@ import { useCallback, useMemo, useState } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import type { InitialListFilters } from "@/features/list/constants/home.constants";
 import { useProductListLabels } from "@/hooks/use-product-list-labels";
-import { useProducts, type UseProductsParams } from "@/hooks/use-products";
+import {
+  useInfiniteProducts,
+  type ProductsFilterParams,
+} from "@/hooks/use-products";
 
-function defaultQueryFilters(): UseProductsParams {
+function defaultQueryFilters(): ProductsFilterParams {
   const now = new Date();
   return {
-    limit: 30,
     month: now.getMonth() + 1,
     year: now.getFullYear(),
     status: "todos",
   };
 }
 
-function queryToInitialFilters(query: UseProductsParams): InitialListFilters {
+function queryToInitialFilters(query: ProductsFilterParams): InitialListFilters {
   return {
     month: query.month !== undefined ? query.month - 1 : null,
     year: query.year ?? null,
@@ -24,10 +26,21 @@ function queryToInitialFilters(query: UseProductsParams): InitialListFilters {
 }
 
 export default function HomeScreen() {
-  const [queryFilters, setQueryFilters] = useState<UseProductsParams>(defaultQueryFilters);
+  const [queryFilters, setQueryFilters] = useState<ProductsFilterParams>(
+    defaultQueryFilters
+  );
   const { title, subtitle } = useProductListLabels();
 
-  const { data: products = [], isLoading, error, refetch } = useProducts(queryFilters);
+  const {
+    products,
+    isLoading,
+    isRefetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    error,
+  } = useInfiniteProducts(queryFilters);
 
   const initialFilters = useMemo(
     () => queryToInitialFilters(queryFilters),
@@ -36,7 +49,6 @@ export default function HomeScreen() {
 
   const handleQueryFiltersChange = useCallback((next: InitialListFilters) => {
     setQueryFilters({
-      limit: 30,
       month: next.month !== undefined && next.month !== null ? next.month + 1 : undefined,
       year: next.year !== undefined && next.year !== null ? next.year : undefined,
       userId: next.userId,
@@ -44,14 +56,23 @@ export default function HomeScreen() {
     });
   }, []);
 
+  const handleLoadMore = useCallback(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
   return (
     <ItemListScreen
       title={title}
       subtitle={subtitle}
       products={products}
       loading={isLoading}
+      isRefreshing={isRefetching}
+      isFetchingNextPage={isFetchingNextPage}
+      hasNextPage={hasNextPage}
+      onLoadMore={handleLoadMore}
       error={error?.message ?? null}
-      onRefresh={refetch}
+      onRefresh={() => void refetch()}
       showDashboard
       initialFilters={initialFilters}
       onQueryFiltersChange={handleQueryFiltersChange}
