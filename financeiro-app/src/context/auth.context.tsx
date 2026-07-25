@@ -7,10 +7,11 @@ import {
 } from "react";
 
 import { getAuth, removeAuth, saveAuth } from "@/storage/auth.storage";
-import { registerUser, loginUser } from "@/services/auth.service";
+import { registerUser, loginUser, logoutUser } from "@/services/auth.service";
 import { refreshService } from "@/services/refresh.service";
 import { tokenManager } from "@/services/token.manager";
 import { queryClient } from "@/lib/query-client";
+import { clearPersistedQueryCache } from "@/lib/query-persister";
 import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
 import { prefetchGoal } from "@/hooks/use-goal";
 import { prefetchGroup } from "@/hooks/use-group";
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubExpired = tokenManager.onExpired(async () => {
       tokenManager.clearTokens();
       await removeAuth();
+      await clearPersistedQueryCache();
       setUser(null);
       setSigned(false);
     });
@@ -108,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!refreshed) {
         tokenManager.clearTokens();
         await removeAuth();
+        await clearPersistedQueryCache();
         setUser(null);
         setSigned(false);
       }
@@ -118,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       tokenManager.clearTokens();
       await removeAuth();
+      await clearPersistedQueryCache();
       setUser(null);
       setSigned(false);
     } finally {
@@ -135,15 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       prefetchAppData();
       return true;
     } catch {
-      if (!tokenManager.getRefreshToken()) {
-        return false;
-      }
-
-      tokenManager.setTokens(stored.accessToken, stored.refreshToken);
-      setUser(stored.user);
-      setSigned(true);
-      prefetchAppData();
-      return true;
+      return false;
     }
   }, []);
 
@@ -184,8 +180,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    try {
+      await logoutUser();
+    } catch {
+      // Revoga sessão no servidor quando possível; logout local segue mesmo se falhar.
+    }
+
     tokenManager.clearTokens();
     await removeAuth();
+    await clearPersistedQueryCache();
     setUser(null);
     setSigned(false);
   }

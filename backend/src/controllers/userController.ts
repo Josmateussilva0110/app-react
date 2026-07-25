@@ -71,13 +71,6 @@ class UserController {
   async refresh(request: Request, response: Response): Promise<Response> {
     const { refreshToken } = request.body
 
-    if (!refreshToken) {
-      return response.status(400).json({
-        success: false,
-        message: "refreshToken é obrigatório.",
-      })
-    }
-
     const result = await UserService.refresh(refreshToken)
 
     if (!result.status) {
@@ -87,6 +80,7 @@ class UserController {
       )
       return response.status(httpStatus).json({
         success: false,
+        code: result.error.code,
         message: result.error.message,
       })
     }

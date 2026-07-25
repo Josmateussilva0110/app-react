@@ -18,7 +18,7 @@ export const RegisterSchema = z.object({
 
   password: z
     .string()
-    .min(6, "Senha deve ter no mínimo 6 caracteres."),
+    .min(8, "Senha deve ter no mínimo 8 caracteres."),
 
   confirmPassword: z.string(),
 })
@@ -26,3 +26,4 @@ export const RegisterSchema = z.object({
   message: "Senhas precisam ser iguais.",
   path: ["confirmPassword"],
 })
+.transform(({ confirmPassword: _confirmPassword, ...data }) => data)

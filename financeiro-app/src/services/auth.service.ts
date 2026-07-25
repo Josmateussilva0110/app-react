@@ -11,10 +11,12 @@ import { AUTH_ROUTES } from "@/config/api-routes";
 export function registerUser(
   data: RegisterFormData
 ) {
+  const { username, email, password } = data;
+
   return requestData<{ username: string }>({
     endpoint: AUTH_ROUTES.register,
     method: "POST",
-    data,
+    data: { username, email, password },
     withAuth: false,
   });
 }

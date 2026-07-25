@@ -3,10 +3,27 @@ import { API_URL } from "@/config/env";
 import { AUTH_ROUTES } from "@/config/api-routes";
 import { tokenManager } from "@/services/token.manager";
 import { saveAuth, removeAuth } from "@/storage/auth.storage";
+import { clearPersistedQueryCache } from "@/lib/query-persister";
 import type { AuthData } from "@/types/auth.types";
+
+type RefreshApiResponse = {
+  success?: boolean;
+  code?: string;
+  data?: AuthData;
+};
 
 class RefreshService {
   private refreshPromise: Promise<AuthData | null> | null = null;
+
+  /**
+   * Limpa tokens, cache persistido e notifica expiração de sessão.
+   */
+  private async clearLocalSession(): Promise<void> {
+    tokenManager.clearTokens();
+    tokenManager.notifyExpired();
+    await removeAuth();
+    await clearPersistedQueryCache();
+  }
 
   /**
    * Evita múltiplos refresh simultâneos
@@ -47,21 +64,29 @@ class RefreshService {
     }
   }
 
+  private isAuthFailure(status: number | undefined, code?: string): boolean {
+    if (status === 401 || status === 403) return true;
+    return code === "SESSION_REVOKED" || code === "INVALID_CREDENTIALS";
+  }
+
   private async performRefresh(refreshToken: string): Promise<AuthData | null> {
     try {
-      const { data } = await axios.post(
+      const { data } = await axios.post<RefreshApiResponse>(
         `${API_URL}${AUTH_ROUTES.refresh}`,
         { refreshToken },
         { timeout: 15000 }
       );
 
-      const payload = data as { success?: boolean; data?: AuthData };
-      const auth = payload?.data;
+      const auth = data?.data;
 
-      if (!payload?.success || !auth?.accessToken || !auth?.refreshToken) {
+      if (!data?.success || !auth?.accessToken || !auth?.refreshToken) {
+        if (this.isAuthFailure(undefined, data?.code)) {
+          await this.clearLocalSession();
+        }
         return null;
       }
 
+      // Rotação: substituir sempre o par access + refresh pelo retornado pelo servidor.
       tokenManager.setTokens(auth.accessToken, auth.refreshToken);
       await saveAuth(auth);
       tokenManager.notifyRefreshed(
@@ -72,16 +97,17 @@ class RefreshService {
 
       return auth;
     } catch (err: unknown) {
-      const error = err as { response?: { status?: number } };
+      const error = err as { response?: { status?: number; data?: RefreshApiResponse } };
       const status = error.response?.status;
+      const code = error.response?.data?.code;
 
       if (!error.response || status === 429 || (status !== undefined && status >= 500)) {
         return null;
       }
 
-      tokenManager.clearTokens();
-      tokenManager.notifyExpired();
-      await removeAuth();
+      if (this.isAuthFailure(status, code)) {
+        await this.clearLocalSession();
+      }
 
       return null;
     }
@@ -102,15 +128,11 @@ class RefreshService {
   }
 
   /**
-   * Logout centralizado
+   * Logout centralizado (refresh inválido, rotação/revogação detectada)
    */
   async logout() {
     this.refreshPromise = null;
-
-    tokenManager.clearTokens();
-    tokenManager.notifyExpired();
-
-    await removeAuth();
+    await this.clearLocalSession();
   }
 }
 

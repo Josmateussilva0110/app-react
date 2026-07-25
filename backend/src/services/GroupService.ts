@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto"
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { supabaseAdmin } from "../database/supabase/supabase"
 import { GroupErrorCode } from "../types/code/groupCode"
@@ -18,7 +19,7 @@ type MemberRow = {
 function generateInviteCode(): string {
     let code = ""
     for (let i = 0; i < 6; i++) {
-        code += INVITE_CHARS[Math.floor(Math.random() * INVITE_CHARS.length)]
+        code += INVITE_CHARS[randomInt(INVITE_CHARS.length)]
     }
     return code
 }

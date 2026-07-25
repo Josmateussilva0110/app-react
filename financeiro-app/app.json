@@ -2,13 +2,13 @@
   "expo": {
     "name": "euComprei",
     "slug": "financeiro-app",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "financeiroapp",
     "userInterfaceStyle": "automatic",
     "android": {
-      "usesCleartextTraffic": true,
+      "usesCleartextTraffic": false,
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
@@ -42,7 +42,7 @@
         {
           "android": {
             "newArchEnabled": true,
-            "usesCleartextTraffic": true,
+            "usesCleartextTraffic": false,
             "enableMinifyInReleaseBuilds": false,
             "enableShrinkResourcesInReleaseBuilds": false,
             "enableBundleCompression": true,

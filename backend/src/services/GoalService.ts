@@ -110,6 +110,33 @@ class GoalService {
             const now = new Date().toISOString()
 
             if (scope.mode === "group") {
+                const { data: membership, error: memberError } = await supabaseAdmin
+                    .from("group_members")
+                    .select("role")
+                    .eq("group_id", scope.groupId)
+                    .eq("user_id", userId)
+                    .maybeSingle()
+
+                if (memberError || !membership) {
+                    return {
+                        status: false,
+                        error: {
+                            code: GoalErrorCode.GOAL_FORBIDDEN,
+                            message: "Você não está neste grupo.",
+                        },
+                    }
+                }
+
+                if (membership.role !== "owner") {
+                    return {
+                        status: false,
+                        error: {
+                            code: GoalErrorCode.GOAL_FORBIDDEN,
+                            message: "Apenas o dono do grupo pode alterar a meta compartilhada.",
+                        },
+                    }
+                }
+
                 const { data, error } = await supabaseAdmin
                     .from("goals")
                     .upsert(
