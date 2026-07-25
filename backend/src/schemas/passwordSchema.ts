@@ -9,8 +9,8 @@ export const passwordField = z
     .regex(/[0-9]/, "Senha deve conter ao menos um número.")
     .regex(/[^A-Za-z0-9]/, "Senha deve conter ao menos um caractere especial.")
 
-/** Login aceita senhas existentes sem revalidar complexidade. */
+/** Login: só exige senha preenchida — contas antigas podem ter senha curta. */
 export const loginPasswordField = z
     .string()
-    .min(8, "Senha deve ter no mínimo 8 caracteres.")
+    .min(1, "Senha é obrigatória.")
     .max(128, "Senha deve ter no máximo 128 caracteres.")
