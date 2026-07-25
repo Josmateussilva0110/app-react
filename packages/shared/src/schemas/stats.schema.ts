@@ -9,8 +9,15 @@ function emptyToUndefined(value: unknown): unknown {
 }
 
 export const statsQuerySchema = z.object({
-  month: z.coerce.number().int().min(1).max(12),
-  year: z.coerce.number().int().min(2000).max(2100),
+  /** Mês 1-12; omitir = todos os meses do ano (ou ano corrente se só mês no filtro de lista). */
+  month: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(1).max(12).optional()
+  ),
+  year: z.preprocess(
+    emptyToUndefined,
+    z.coerce.number().int().min(2000).max(2100).optional()
+  ),
   userId: z.string().min(1).optional(),
   status: statsStatusEnum.default("todos"),
   /** Filtra pela flag month_list (`true` | `false`). */

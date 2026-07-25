@@ -8,8 +8,9 @@ import type { DashboardStats } from "@app/shared";
 import type { StatusFilter } from "@/features/list/constants/home.constants";
 
 export type UseProductStatsParams = {
-  month: number; // 1-12
-  year: number;
+  /** Mês 1-12; omitir = todos os meses do período. */
+  month?: number;
+  year?: number;
   userId?: string;
   status?: StatusFilter;
   monthList?: "true" | "false";
@@ -26,14 +27,14 @@ export function productStatsQueryOptions({
   monthList,
 }: Omit<UseProductStatsParams, "enabled">) {
   return {
-    queryKey: [...PRODUCT_STATS_KEY, year, month, userId ?? "all", status, monthList ?? "all"],
+    queryKey: [...PRODUCT_STATS_KEY, year ?? "all", month ?? "all", userId ?? "all", status, monthList ?? "all"],
     queryFn: async () => {
       const res = await requestData<DashboardStats>({
         endpoint: "/products/stats",
         method: "GET",
         data: {
-          month,
-          year,
+          ...(month !== undefined ? { month } : {}),
+          ...(year !== undefined ? { year } : {}),
           status,
           ...(userId ? { userId } : {}),
           ...(monthList ? { monthList } : {}),

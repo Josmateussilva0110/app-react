@@ -12,6 +12,7 @@ type Props = {
   total: number;
   pendingCount: number;
   finishedCount: number;
+  loading?: boolean;
 };
 
 function SummaryMetric({
@@ -46,6 +47,7 @@ export function HomeSummaryCard({
   total,
   pendingCount,
   finishedCount,
+  loading = false,
 }: Props) {
   const { colors: theme } = useTheme();
   const opacity = useSharedValue(0);
@@ -77,7 +79,7 @@ export function HomeSummaryCard({
           TOTAL
         </Text>
         <Text style={[styles.totalValue, { color: theme.text }]}>
-          {formatBRL(total)}
+          {loading ? "…" : formatBRL(total)}
         </Text>
       </View>
 

@@ -28,8 +28,8 @@ import { HomeEmptyState } from "./home-empty-state";
 import { PRIORITY_GROUPS, type InitialListFilters, type StatusFilter } from "../constants/home.constants";
 
 export type ListSummaryFilters = {
-  month: number;
-  year: number;
+  month?: number;
+  year?: number;
   userId?: string;
   status?: StatusFilter;
   monthList?: "true" | "false";
@@ -177,9 +177,9 @@ export function ItemListScreen({
     summaryFilters?.year ??
     (selectedYear !== null ? selectedYear : undefined);
   const canUseServerStats =
-    statsMonth !== undefined &&
-    statsYear !== undefined &&
-    (serverFiltered || summaryFilters !== undefined);
+    summaryFilters !== undefined ||
+    (serverFiltered && (statsMonth !== undefined || statsYear !== undefined)) ||
+    (!serverFiltered && statsMonth !== undefined && statsYear !== undefined);
   const statsUserId =
     summaryFilters?.userId ??
     (userFilter !== ALL_USERS_VALUE ? userFilter : undefined);
@@ -187,18 +187,18 @@ export function ItemListScreen({
   const statsStatusForTotal = statusFilter;
   const needsBreakdownStats = statsStatusForTotal !== "todos";
 
-  const { data: totalStats } = useProductStats({
-    month: statsMonth ?? 1,
-    year: statsYear ?? 2000,
+  const { data: totalStats, isFetching: totalStatsFetching } = useProductStats({
+    month: statsMonth,
+    year: statsYear,
     userId: statsUserId,
     status: statsStatusForTotal,
     monthList: statsMonthList,
     enabled: canUseServerStats,
   });
 
-  const { data: breakdownStats } = useProductStats({
-    month: statsMonth ?? 1,
-    year: statsYear ?? 2000,
+  const { data: breakdownStats, isFetching: breakdownStatsFetching } = useProductStats({
+    month: statsMonth,
+    year: statsYear,
     userId: statsUserId,
     status: "todos",
     monthList: statsMonthList,
@@ -287,16 +287,20 @@ export function ItemListScreen({
     [group?.members]
   );
 
-  const summaryTotal = canUseServerStats && totalStats
-    ? totalStats.total
+  const statsPending = canUseServerStats && (totalStatsFetching || breakdownStatsFetching);
+
+  const summaryTotal = canUseServerStats
+    ? (totalStats?.total ?? 0)
     : statusFilter !== "todos"
       ? listMetrics.total
       : listMetrics.overviewTotal;
-  const summaryPending = canUseServerStats && statsForBreakdown
-    ? statsForBreakdown.pendingCount
+  const summaryPending = canUseServerStats
+    ? (statsForBreakdown?.pendingCount ?? 0)
     : listMetrics.pendingCount;
-  const summaryFinished = canUseServerStats && statsForBreakdown
-    ? statsForBreakdown.itemsCount - statsForBreakdown.pendingCount
+  const summaryFinished = canUseServerStats
+    ? statsForBreakdown
+      ? statsForBreakdown.itemsCount - statsForBreakdown.pendingCount
+      : 0
     : listMetrics.finishedCount;
 
   const listHeader = (
@@ -306,6 +310,7 @@ export function ItemListScreen({
           total={summaryTotal}
           pendingCount={summaryPending}
           finishedCount={summaryFinished}
+          loading={statsPending}
         />
       )}
 

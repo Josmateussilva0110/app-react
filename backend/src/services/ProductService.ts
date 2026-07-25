@@ -266,8 +266,8 @@ class ProductService {
             const pGroupId = scope.mode === "group" ? scope.groupId : null
 
             const { data, error } = await supabaseAdmin.rpc("get_product_stats", {
-                p_month: scopedQuery.month,
-                p_year: scopedQuery.year,
+                p_month: scopedQuery.month ?? null,
+                p_year: scopedQuery.year ?? null,
                 p_viewer_user_id: scope.userId,
                 p_group_id: pGroupId,
                 p_filter_user_id: scopedQuery.userId ?? null,
