@@ -1,12 +1,1 @@
-# =============================================================================
-# URL da API — OBRIGATÓRIO para build do APK
-# =============================================================================
-#
-# Produção (Belmo/Render):
-EXPO_PUBLIC_API_URL=https://app-react-3a6e.onbelmo.uk/api
-#
-# Local (celular na mesma rede Wi-Fi — NÃO use localhost):
-# EXPO_PUBLIC_API_URL=http://192.168.x.x:3001/api
-#
-# Postman no PC pode usar localhost; o app no celular precisa do IP da máquina
-# ou da URL pública do servidor.
+EXPO_PUBLIC_API_URL=

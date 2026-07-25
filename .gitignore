@@ -33,6 +33,10 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 .env
+
+# generated local app config
+financeiro-app/src/config/api-url.generated.ts
+
 # vercel
 .vercel
 # Logs
