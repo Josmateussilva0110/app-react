@@ -1,5 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { queryClient } from "@/lib/query-client";
+
+const CACHE_KEY = "FINANCEIRO_QUERY_CACHE";
 
 /**
  * Persiste o cache do React Query no AsyncStorage.
@@ -9,6 +12,12 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
  */
 export const asyncStoragePersister = createAsyncStoragePersister({
   storage: AsyncStorage,
-  key: "FINANCEIRO_QUERY_CACHE",
+  key: CACHE_KEY,
   throttleTime: 1000,
 });
+
+/** Remove cache persistido — chamar no logout para não vazar dados do usuário anterior. */
+export async function clearPersistedQueryCache(): Promise<void> {
+  queryClient.clear();
+  await AsyncStorage.removeItem(CACHE_KEY);
+}

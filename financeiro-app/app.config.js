@@ -14,6 +14,24 @@ const buildMeta = fs.existsSync(versionFile)
   : { versionCode: 1 };
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+/** Cleartext só quando a API for HTTP local (dev); produção com HTTPS fica bloqueado. */
+const allowCleartextTraffic = Boolean(apiUrl && apiUrl.startsWith("http://"));
+
+const plugins = (appJson.expo.plugins ?? []).map((plugin) => {
+  if (Array.isArray(plugin) && plugin[0] === "expo-build-properties") {
+    return [
+      "expo-build-properties",
+      {
+        ...plugin[1],
+        android: {
+          ...plugin[1].android,
+          usesCleartextTraffic: allowCleartextTraffic,
+        },
+      },
+    ];
+  }
+  return plugin;
+});
 
 /** @type {import("@expo/config").ExpoConfig} */
 module.exports = {
@@ -22,8 +40,9 @@ module.exports = {
   android: {
     ...appJson.expo.android,
     versionCode: buildMeta.versionCode,
+    usesCleartextTraffic: allowCleartextTraffic,
   },
-  plugins: [...(appJson.expo.plugins ?? []), withAndroidPreferIpv4],
+  plugins: [...plugins, withAndroidPreferIpv4],
   extra: {
     ...appJson.expo.extra,
     appVersion: packageJson.version,

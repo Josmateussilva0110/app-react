@@ -26,5 +26,7 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
       - key: ALLOWED_ORIGINS
         value: http://localhost:8081

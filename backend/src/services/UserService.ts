@@ -4,11 +4,26 @@ import { supabaseAuth, supabaseAdmin } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
 import jwt from "jsonwebtoken"
 import { UserProfile } from "../types/users/profile"
+import { env } from "../config/env"
 
 interface RegisterDTO {
     username: string
     email: string
     password: string
+}
+
+function isRefreshTokenReuseOrRevoked(error: { message?: string; code?: string } | null): boolean {
+    if (!error) return false
+
+    const message = (error.message ?? "").toLowerCase()
+    const code = (error.code ?? "").toLowerCase()
+
+    return (
+        code.includes("refresh_token") ||
+        message.includes("already used") ||
+        message.includes("not found") ||
+        message.includes("invalid refresh")
+    )
 }
 
 class UserService {
@@ -30,7 +45,10 @@ class UserService {
                 if (error.code === "user_already_exists" || error.status === 422) {
                     return {
                         status: false,
-                        error: { code: UserErrorCode.EMAIL_ALREADY_EXISTS, message: "E-mail já cadastrado" },
+                        error: {
+                            code: UserErrorCode.EMAIL_ALREADY_EXISTS,
+                            message: "Não foi possível criar a conta. Verifique os dados ou tente outro e-mail.",
+                        },
                     }
                 }
 
@@ -103,15 +121,26 @@ class UserService {
 
     async logout(accessToken: string): Promise<ServiceResult<null, UserErrorCode>> {
         try {
-            const payload = jwt.decode(accessToken) as { sub?: string } | null
-            if (!payload?.sub) {
+            let userId: string | undefined
+
+            try {
+                const payload = jwt.verify(accessToken, env.SUPABASE_JWT_SECRET, {
+                    algorithms: ["HS256"],
+                }) as { sub?: string }
+                userId = payload.sub
+            } catch {
+                const payload = jwt.decode(accessToken) as { sub?: string } | null
+                userId = payload?.sub
+            }
+
+            if (!userId) {
                 return {
                     status: false,
                     error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
                 }
             }
 
-            const { error } = await supabaseAdmin.auth.admin.signOut(payload.sub, "global")
+            const { error } = await supabaseAdmin.auth.admin.signOut(userId, "global")
 
             if (error) {
                 return {
@@ -137,15 +166,20 @@ class UserService {
             })
 
             if (error || !data.session) {
+                const revoked = isRefreshTokenReuseOrRevoked(error)
+
                 return {
                     status: false,
                     error: {
-                        code: UserErrorCode.INVALID_CREDENTIALS,
-                        message: "Sessão expirada. Faça login novamente.",
+                        code: revoked ? UserErrorCode.SESSION_REVOKED : UserErrorCode.INVALID_CREDENTIALS,
+                        message: revoked
+                            ? "Sessão encerrada por segurança. Faça login novamente."
+                            : "Sessão expirada. Faça login novamente.",
                     },
                 }
             }
 
+            // Supabase rotaciona refresh tokens: sempre persistir o par novo no cliente.
             return {
                 status: true,
                 data: {
@@ -172,7 +206,7 @@ class UserService {
 
     async getProfile(userId: string ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
         try {
-            const { data, error } = await supabaseAuth
+            const { data, error } = await supabaseAdmin
                 .from("users")
                 .select("id, username, email")
                 .eq("id", userId)
@@ -211,7 +245,7 @@ class UserService {
 
     async updateProfile(userId: string, updates: { username: string } ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
         try {
-            const { data, error } = await supabaseAuth
+            const { data, error } = await supabaseAdmin
                 .from("users")
                 .update({ username: updates.username })
                 .eq("id", userId)
