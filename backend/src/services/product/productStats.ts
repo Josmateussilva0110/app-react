@@ -141,6 +141,24 @@ function matchesMonthList(
     return monthList === "true" ? flag : !flag
 }
 
+function matchesStatsPeriod(
+    ym: { year: number; month: number },
+    month?: number,
+    year?: number
+): boolean {
+    if (year !== undefined && month !== undefined) {
+        return ym.year === year && ym.month === month
+    }
+    if (year !== undefined) {
+        return ym.year === year
+    }
+    if (month !== undefined) {
+        const currentYear = new Date().getFullYear()
+        return ym.year === currentYear && ym.month === month
+    }
+    return true
+}
+
 function accumulateEvolution(
     acc: StatsAccumulator,
     row: ProductStatsRow,
@@ -235,13 +253,13 @@ export function aggregateDashboardStats(
         const ym = parseYearMonth(row.date)
         if (!ym) continue
 
-        accumulateEvolution(acc, row, year, ym, status, monthList)
+        const evolutionYear = year ?? new Date().getFullYear()
+        accumulateEvolution(acc, row, evolutionYear, ym, status, monthList)
 
         const matchesUser = !userId || row.user_id === userId
         const matchesFinished = matchesStatus(row.finished, status)
         if (
-            ym.year !== year ||
-            ym.month !== month ||
+            !matchesStatsPeriod(ym, month, year) ||
             !matchesUser ||
             !matchesFinished ||
             !matchesMonthList(row, monthList)
