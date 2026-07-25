@@ -11,7 +11,7 @@ const router = Router();
 router.post("/products", authMiddleware, scopeMiddleware, validate(productSchema), ProductController.create);
 router.get("/products/stats", authMiddleware, scopeMiddleware, ProductController.getStats);
 router.get("/products", authMiddleware, scopeMiddleware, ProductController.getAll);
-router.put("/products/:id", authMiddleware, validate(productIdParamSchema, "params"), validate(productSchema), ProductController.update);
-router.delete("/products/:id", authMiddleware, validate(productIdParamSchema, "params"), ProductController.delete);
+router.put("/products/:id", authMiddleware, scopeMiddleware, validate(productIdParamSchema, "params"), validate(productSchema), ProductController.update);
+router.delete("/products/:id", authMiddleware, scopeMiddleware, validate(productIdParamSchema, "params"), ProductController.delete);
 
 export default router;

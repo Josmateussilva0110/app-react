@@ -1,23 +1,25 @@
 import swaggerJsdoc, { Options } from "swagger-jsdoc"
+import { env } from "./env"
 
 const swaggerOptions: Options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "API Estacionamento",
+      title: "Financeiro API",
       version: "1.0.0",
-      description: "Documentação da API",
+      description: "Documentação da API do app financeiro",
     },
-    servers: [{ url: "http://localhost:3000" }],
+    servers: [{ url: `http://localhost:${env.PORT}` }],
     components: {
       securitySchemes: {
-        cookieAuth: {
-          type: "apiKey",
-          in: "cookie",
-          name: "connect.sid",
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
     },
+    security: [{ bearerAuth: [] }],
   },
   apis: ["src/routes/*.ts", "src/docs/*.ts"],
 }

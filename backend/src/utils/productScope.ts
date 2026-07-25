@@ -5,10 +5,20 @@ export type ProductScope =
     | { mode: "group"; userId: string; groupId: string; memberIds: string[] }
 
 const SCOPE_CACHE_TTL_MS = 60_000
+const SCOPE_CACHE_MAX_SIZE = 1000
 const scopeCache = new Map<string, { scope: ProductScope; expiresAt: number }>()
 
 export function invalidateProductScopeCache(userId: string): void {
     scopeCache.delete(userId)
+}
+
+function setScopeCache(userId: string, scope: ProductScope): void {
+    if (scopeCache.size >= SCOPE_CACHE_MAX_SIZE) {
+        const oldestKey = scopeCache.keys().next().value
+        if (oldestKey) scopeCache.delete(oldestKey)
+    }
+
+    scopeCache.set(userId, { scope, expiresAt: Date.now() + SCOPE_CACHE_TTL_MS })
 }
 
 async function resolveProductScopeFromDb(userId: string): Promise<ProductScope> {
@@ -52,8 +62,42 @@ export async function resolveProductScope(userId: string): Promise<ProductScope>
     }
 
     const scope = await resolveProductScopeFromDb(userId)
-    scopeCache.set(userId, { scope, expiresAt: Date.now() + SCOPE_CACHE_TTL_MS })
+    setScopeCache(userId, scope)
     return scope
+}
+
+type GroupProductLink = { group_id: string }
+
+function extractGroupIds(links: GroupProductLink[] | GroupProductLink | null): string[] {
+    if (!links) return []
+    if (Array.isArray(links)) return links.map((link) => link.group_id)
+    return [links.group_id]
+}
+
+/** Valida que o produto pertence ao escopo atual e ao usuário autenticado (somente dono pode mutar). */
+export async function assertProductMutableInScope(
+    productId: string,
+    userId: string,
+    scope: ProductScope
+): Promise<boolean> {
+    const { data: product, error } = await supabaseAdmin
+        .from("products")
+        .select("id, user_id, group_products(group_id)")
+        .eq("id", productId)
+        .eq("user_id", userId)
+        .maybeSingle()
+
+    if (error || !product) return false
+
+    const groupIds = extractGroupIds(
+        product.group_products as GroupProductLink[] | GroupProductLink | null
+    )
+
+    if (scope.mode === "solo") {
+        return groupIds.length === 0
+    }
+
+    return groupIds.includes(scope.groupId)
 }
 
 export function productMatchesScope(

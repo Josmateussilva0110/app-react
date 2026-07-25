@@ -17,7 +17,7 @@ import {
     ProductRowWithUser,
 } from "../utils/productUtils"
 import { buildProductListQuery } from "./product/productQuery"
-import { resolveScopedUserFilter, type ProductScope } from "../utils/productScope"
+import { resolveScopedUserFilter, assertProductMutableInScope, type ProductScope } from "../utils/productScope"
 import { linkProductToGroup } from "../utils/groupProducts"
 import { normalizeDashboardStats } from "./product/productStats"
 
@@ -117,9 +117,18 @@ class ProductService {
         }
     }
 
-    async update(data: UpdateProductInput): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
+    async update(
+        data: UpdateProductInput,
+        scope: ProductScope
+    ): Promise<ServiceResult<{ id: string }, ProductErrorCode>> {
         try {
             const { id, userId, name, price, priority, paymentType, category, date, finished, monthList } = data
+
+            const inScope = await assertProductMutableInScope(id, userId, scope)
+            if (!inScope) {
+                return this.notFoundError()
+            }
+
             const isoDate = this.toIsoDate(date)
 
             const { data: product, error } = await supabaseAdmin
@@ -170,8 +179,17 @@ class ProductService {
         }
     }
 
-    async delete(id: string, userId: string): Promise<ServiceResult<null, ProductErrorCode>> {
+    async delete(
+        id: string,
+        userId: string,
+        scope: ProductScope
+    ): Promise<ServiceResult<null, ProductErrorCode>> {
         try {
+            const inScope = await assertProductMutableInScope(id, userId, scope)
+            if (!inScope) {
+                return this.notFoundError()
+            }
+
             const { data: deleted, error } = await supabaseAdmin
                 .from("products")
                 .delete()
