@@ -1,5 +1,4 @@
 import { Request, Response } from "express"
-import { createGroupSchema, joinGroupSchema, updateGroupSchema } from "@app/shared"
 import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { groupErrorHttpStatusMap } from "../errors/groupErrorHttpMapper"
 import GroupService from "../services/GroupService"
@@ -18,17 +17,9 @@ class GroupController {
     }
 
     async create(request: Request, response: Response) {
-        const parsed = createGroupSchema.safeParse(request.body)
-        if (!parsed.success) {
-            return response.status(422).json({
-                success: false,
-                message: "Dados inválidos.",
-                errors: parsed.error.issues,
-            })
-        }
-
         const userId = request.user.id
-        const result = await GroupService.create(userId, parsed.data.name)
+        const { name } = request.body as { name: string }
+        const result = await GroupService.create(userId, name)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
@@ -43,17 +34,9 @@ class GroupController {
     }
 
     async update(request: Request, response: Response) {
-        const parsed = updateGroupSchema.safeParse(request.body)
-        if (!parsed.success) {
-            return response.status(422).json({
-                success: false,
-                message: "Dados inválidos.",
-                errors: parsed.error.issues,
-            })
-        }
-
         const userId = request.user.id
-        const result = await GroupService.update(userId, parsed.data.name)
+        const { name } = request.body as { name: string }
+        const result = await GroupService.update(userId, name)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
@@ -84,17 +67,9 @@ class GroupController {
     }
 
     async join(request: Request, response: Response) {
-        const parsed = joinGroupSchema.safeParse(request.body)
-        if (!parsed.success) {
-            return response.status(422).json({
-                success: false,
-                message: "Código inválido.",
-                errors: parsed.error.issues,
-            })
-        }
-
         const userId = request.user.id
-        const result = await GroupService.join(userId, parsed.data.code)
+        const { code } = request.body as { code: string }
+        const result = await GroupService.join(userId, code)
 
         if (!result.status) {
             const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)

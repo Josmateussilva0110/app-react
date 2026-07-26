@@ -5,6 +5,7 @@ import { AuthTokens } from "../types/auth/auth.types"
 import jwt from "jsonwebtoken"
 import { UserProfile } from "../types/users/profile"
 import { env } from "../config/env"
+import { revokeAccessToken, revokeUserSessions } from "../utils/tokenRevocation"
 
 interface RegisterDTO {
     username: string
@@ -84,7 +85,7 @@ class UserService {
                 password,
             })
 
-            if (error || !data.session) {
+            if (error || !data.session || !data.user) {
                 return {
                     status: false,
                     error: {
@@ -94,15 +95,17 @@ class UserService {
                 }
             }
 
+            const expiresAtSec = data.session.expires_at ?? 0
+
             return {
                 status: true,
                 data: {
                     accessToken: data.session.access_token,
                     refreshToken: data.session.refresh_token,
-                    expiresAt: data.session.expires_at! * 1000, // Supabase retorna em segundos → ms
+                    expiresAt: expiresAtSec * 1000,
                     user: {
                         id: data.user.id,
-                        email: data.user.email,
+                        email: data.user.email ?? "",
                     },
                 },
             }
@@ -149,6 +152,9 @@ class UserService {
                 }
             }
 
+            revokeAccessToken(accessToken)
+            revokeUserSessions(userId)
+
             return { status: true, data: null }
         } catch (error) {
             console.error("[UserService.logout] error:", error)
@@ -165,7 +171,7 @@ class UserService {
                 refresh_token: refreshToken,
             })
 
-            if (error || !data.session) {
+            if (error || !data.session || !data.user) {
                 const revoked = isRefreshTokenReuseOrRevoked(error)
 
                 return {
@@ -179,16 +185,18 @@ class UserService {
                 }
             }
 
+            const expiresAtSec = data.session.expires_at ?? 0
+
             // Supabase rotaciona refresh tokens: sempre persistir o par novo no cliente.
             return {
                 status: true,
                 data: {
                     accessToken: data.session.access_token,
                     refreshToken: data.session.refresh_token,
-                    expiresAt: data.session.expires_at! * 1000, // Supabase retorna em segundos → ms
+                    expiresAt: expiresAtSec * 1000,
                     user: {
-                        id: data.user!.id,
-                        email: data.user!.email,
+                        id: data.user.id,
+                        email: data.user.email ?? "",
                     },
                 },
             }

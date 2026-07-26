@@ -49,16 +49,13 @@ export default function MonthListScreen() {
   );
 
   const summaryFilters = useMemo(
-    () =>
-      queryFilters.month !== undefined && queryFilters.year !== undefined
-        ? {
-            month: queryFilters.month,
-            year: queryFilters.year,
-            userId: queryFilters.userId,
-            status: queryFilters.status ?? "pendente",
-            monthList: "true" as const,
-          }
-        : undefined,
+    () => ({
+      ...(queryFilters.month !== undefined ? { month: queryFilters.month } : {}),
+      ...(queryFilters.year !== undefined ? { year: queryFilters.year } : {}),
+      userId: queryFilters.userId,
+      status: queryFilters.status ?? "pendente",
+      monthList: "true" as const,
+    }),
     [queryFilters]
   );
 

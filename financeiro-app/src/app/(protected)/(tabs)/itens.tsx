@@ -47,6 +47,16 @@ export default function HomeScreen() {
     [queryFilters]
   );
 
+  const summaryFilters = useMemo(
+    () => ({
+      ...(queryFilters.month !== undefined ? { month: queryFilters.month } : {}),
+      ...(queryFilters.year !== undefined ? { year: queryFilters.year } : {}),
+      userId: queryFilters.userId,
+      status: queryFilters.status ?? "todos",
+    }),
+    [queryFilters]
+  );
+
   const handleQueryFiltersChange = useCallback((next: InitialListFilters) => {
     setQueryFilters({
       month: next.month !== undefined && next.month !== null ? next.month + 1 : undefined,
@@ -77,6 +87,7 @@ export default function HomeScreen() {
       initialFilters={initialFilters}
       onQueryFiltersChange={handleQueryFiltersChange}
       serverFiltered
+      summaryFilters={summaryFilters}
     />
   );
 }

@@ -3,7 +3,6 @@ import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
 import { productListQuerySchema, statsQuerySchema } from "@app/shared"
-import { ProductIdParam } from "../types/product/product-id-param"
 
 
 class ProductController {
@@ -93,9 +92,9 @@ class ProductController {
 
   async update(request: Request, response: Response) {
     const userId = request.user.id
-    const { id } = request.params as ProductIdParam
+    const id = String(request.params.id)
 
-    const result = await ProductService.update({ ...request.body, id, userId })
+    const result = await ProductService.update({ ...request.body, id, userId }, request.scope)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(
@@ -117,9 +116,9 @@ class ProductController {
 
   async delete(request: Request, response: Response) {
     const userId = request.user.id
-    const { id } = request.params as ProductIdParam
+    const id = String(request.params.id)
 
-    const result = await ProductService.delete(id, userId)
+    const result = await ProductService.delete(id, userId, request.scope)
 
     if (!result.status) {
       const httpStatus = getHttpStatusFromError(

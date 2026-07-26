@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken"
 import type { User } from "@supabase/supabase-js"
 import { env } from "../config/env"
 import { supabaseAdmin } from "../database/supabase/supabase"
+import { isAccessTokenRevoked, isUserSessionRevoked } from "../utils/tokenRevocation"
 
 type SupabaseJwtPayload = jwt.JwtPayload & {
   sub: string
@@ -23,12 +24,15 @@ function toAuthUser(payload: SupabaseJwtPayload): User {
 }
 
 function verifyJwtLocally(token: string): User | null {
+  if (isAccessTokenRevoked(token)) return null
+
   try {
     const payload = jwt.verify(token, env.SUPABASE_JWT_SECRET, {
       algorithms: ["HS256"],
     }) as SupabaseJwtPayload
 
     if (!payload.sub) return null
+    if (isUserSessionRevoked(payload.sub)) return null
 
     return toAuthUser(payload)
   } catch {
@@ -62,6 +66,11 @@ export async function authMiddleware(
 
   if (error || !data.user) {
     response.status(401).json({ success: false, message: "Token inválido ou expirado" })
+    return
+  }
+
+  if (isUserSessionRevoked(data.user.id)) {
+    response.status(401).json({ success: false, message: "Sessão encerrada. Faça login novamente." })
     return
   }
 

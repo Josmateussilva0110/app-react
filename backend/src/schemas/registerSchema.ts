@@ -1,29 +1,11 @@
 import { z } from "zod"
+import { passwordField } from "./passwordSchema"
+import { usernameField } from "./usernameSchema"
 
 export const RegisterSchema = z.object({
-  id: z
-    .number()
-    .int()
-    .positive("ID inválido.")
-    .optional(),
+  username: usernameField,
 
-  username: z
-    .string()
-    .min(3, "Nome deve ter no mínimo 3 caracteres.")
-    .max(50, "Nome deve ter no máximo 50 caracteres."),
+  email: z.string().email("Email inválido."),
 
-  email: z
-    .string()
-    .email("Email inválido."),
-
-  password: z
-    .string()
-    .min(8, "Senha deve ter no mínimo 8 caracteres."),
-
-  confirmPassword: z.string(),
+  password: passwordField,
 })
-.refine((data) => data.password === data.confirmPassword, {
-  message: "Senhas precisam ser iguais.",
-  path: ["confirmPassword"],
-})
-.transform(({ confirmPassword: _confirmPassword, ...data }) => data)
