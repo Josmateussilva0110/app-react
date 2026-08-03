@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { ItemListScreen } from "@/features/list/components/item-list-screen";
 import type { InitialListFilters } from "@/features/list/constants/home.constants";
 import { useProductListLabels } from "@/hooks/use-product-list-labels";
+import { useProductPeriods } from "@/hooks/use-product-periods";
 import {
   useInfiniteProducts,
   type ProductsFilterParams,
@@ -41,6 +42,18 @@ export default function HomeScreen() {
     refetch,
     error,
   } = useInfiniteProducts(queryFilters);
+
+  const { data: periods } = useProductPeriods();
+
+  useEffect(() => {
+    const years = periods?.years;
+    if (!years?.length) return;
+
+    setQueryFilters((prev) => {
+      if (prev.year !== undefined && years.includes(prev.year)) return prev;
+      return { ...prev, year: years[0] };
+    });
+  }, [periods?.years]);
 
   const initialFilters = useMemo(
     () => queryToInitialFilters(queryFilters),

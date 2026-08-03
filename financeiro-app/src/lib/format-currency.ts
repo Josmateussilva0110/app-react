@@ -1,3 +1,14 @@
+/** Converte texto digitado (ex.: "3.000,50" ou "3000") em número. */
+export function parseBRLInput(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+
+  const normalized = trimmed.replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".");
+  const parsed = Number(normalized);
+  if (Number.isNaN(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
 /** Formata um valor em Reais sem depender de Intl (Hermes). */
 export function formatBRL(value: number): string {
   const rounded = Math.round((value + Number.EPSILON) * 100) / 100;

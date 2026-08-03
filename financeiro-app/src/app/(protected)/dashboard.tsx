@@ -1,17 +1,18 @@
-import { useMemo, useCallback } from "react";
-import { View, Text, ScrollView, RefreshControl, StyleSheet, ActivityIndicator } from "react-native";
+import { useMemo, useCallback, useEffect } from "react";
+import { View, Text, ScrollView, RefreshControl, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, type Href } from "expo-router";
 import { AppShell } from "@/components/appShell";
 import { ErrorState } from "@/components/ui/error-state";
 import { useTheme } from "@/context/theme.context";
 import { useProductStats } from "@/hooks/use-product-stats";
+import { useProductPeriods } from "@/hooks/use-product-periods";
 import { useGoal, useUpdateGoal } from "@/hooks/use-goal";
 import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import { HomeFilters } from "@/features/list/components/home-filters";
 import { MonthListFilters } from "@/features/dashboard/components/month-list-filters";
 import { DashboardSelect } from "@/features/dashboard/components/dashboard-select";
-import { ALL_USERS, useDashboardFilters } from "@/features/dashboard/hooks/use-dashboard-filters";
+import { ALL_USERS, ALL_MONTHS, useDashboardFilters } from "@/features/dashboard/hooks/use-dashboard-filters";
 import { HorizontalBarChart } from "@/features/dashboard/components/horizontal-bar-chart";
 import { VerticalBarChart } from "@/features/dashboard/components/vertical-bar-chart";
 import { EvolutionLineChart } from "@/features/dashboard/components/evolution-line-chart";
@@ -32,6 +33,8 @@ export default function DashboardScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
+  const { data: periods } = useProductPeriods();
+
   const {
     month,
     year,
@@ -46,9 +49,17 @@ export default function DashboardScreen() {
     setUserId,
     setStatusFilter,
     setMonthListFilter,
-  } = useDashboardFilters();
+  } = useDashboardFilters(periods?.years ?? []);
 
-  const { inGroup, groupName } = useGroupMode();
+  useEffect(() => {
+    const years = periods?.years;
+    if (!years?.length) return;
+    if (!years.includes(year)) {
+      setYear(years[0]);
+    }
+  }, [periods?.years, year, setYear]);
+
+  const { inGroup, groupName, isOwner } = useGroupMode();
   const dashboardSubtitle = inGroup
     ? `Gastos do grupo ${groupName ?? ""}`
     : "Seus gastos pessoais";
@@ -59,7 +70,7 @@ export default function DashboardScreen() {
     error,
     refetch,
   } = useProductStats({
-    month,
+    month: month ?? undefined,
     year,
     userId: apiUserId,
     status: statusFilter,
@@ -72,8 +83,38 @@ export default function DashboardScreen() {
   const updateGoal = useUpdateGoal();
 
   const meta = goal?.monthlyGoal ?? 0;
+  const canEditMeta = !inGroup || isOwner;
 
-  const monthOptions = MONTHS_FULL.map((m, i) => ({ value: String(i + 1), label: m }));
+  const handleSaveMeta = useCallback(
+    (
+      value: number,
+      options?: { onSuccess?: () => void; onError?: () => void }
+    ) => {
+      updateGoal.mutate(value, {
+        onSuccess: () => {
+          options?.onSuccess?.();
+        },
+        onError: (err) => {
+          options?.onError?.();
+          Alert.alert("Não foi possível salvar", err.message ?? "Tente novamente.");
+        },
+      });
+    },
+    [updateGoal]
+  );
+
+  const monthOptions = useMemo(
+    () => [
+      { value: ALL_MONTHS, label: "Todos os meses" },
+      ...MONTHS_FULL.map((m, i) => ({ value: String(i + 1), label: m })),
+    ],
+    []
+  );
+
+  const monthLabel =
+    month === null ? "Todos os meses" : MONTHS_FULL[month - 1];
+  const periodLabel =
+    month === null ? String(year) : `${monthLabel}/${year}`;
 
   const userOptions = useMemo(() => {
     const base = [{ value: ALL_USERS, label: "Todos" }];
@@ -137,7 +178,7 @@ export default function DashboardScreen() {
         pathname: "/(protected)/dashboard-category",
         params: {
           category,
-          month: String(month),
+          ...(month !== null ? { month: String(month) } : {}),
           year: String(year),
           status: statusFilter,
           ...(apiMonthList ? { monthList: apiMonthList } : {}),
@@ -153,9 +194,9 @@ export default function DashboardScreen() {
       <View style={styles.filters}>
         <DashboardSelect
           label="Mês"
-          value={String(month)}
+          value={month === null ? ALL_MONTHS : String(month)}
           options={monthOptions}
-          onChange={(v) => setMonth(Number(v))}
+          onChange={(v) => setMonth(v === ALL_MONTHS ? null : Number(v))}
           style={styles.filterItem}
         />
         <DashboardSelect
@@ -202,7 +243,7 @@ export default function DashboardScreen() {
             <>
               <View style={styles.statsGrid}>
                 <StatCard
-                  label={`Total de ${MONTHS_FULL[month - 1]}`}
+                  label={month === null ? `Total de ${year}` : `Total de ${monthLabel}`}
                   value={formatBRL(stats?.total ?? 0)}
                   color={meta > 0 && (stats?.total ?? 0) > meta ? colors.danger : colors.success}
                   loading={showSkeleton}
@@ -229,8 +270,14 @@ export default function DashboardScreen() {
               <MetaCard
                 total={stats?.total ?? 0}
                 meta={meta}
-                onSaveMeta={(v) => updateGoal.mutate(v)}
+                onSaveMeta={handleSaveMeta}
                 saving={updateGoal.isPending}
+                canEdit={canEditMeta}
+                readOnlyHint={
+                  inGroup && !isOwner
+                    ? "Apenas o dono do grupo pode alterar a meta compartilhada."
+                    : undefined
+                }
                 title={goal?.scope === "group" ? "Meta mensal do grupo" : "Meta mensal pessoal"}
               />
 
@@ -268,7 +315,7 @@ export default function DashboardScreen() {
                 )}
               </SectionCard>
 
-              <SectionCard title={`Detalhe por categoria — ${MONTHS_FULL[month - 1]}/${year}`}>
+              <SectionCard title={`Detalhe por categoria — ${periodLabel}`}>
                 {showSkeleton ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (

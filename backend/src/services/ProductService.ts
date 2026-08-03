@@ -6,16 +6,12 @@ import {
     ProductListQuery,
     PaginatedResult,
     ProductResponse,
+    ProductPeriods,
     StatsQuery,
     DashboardStats,
 } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
-import {
-    buildPaginationMeta,
-    getPaginationRange,
-    mapProductRow,
-    ProductRowWithUser,
-} from "../utils/productUtils"
+import { buildPaginationMeta, getPaginationRange, mapProductRow, parseYearMonth, ProductRowWithUser } from "../utils/productUtils"
 import { buildProductListQuery } from "./product/productQuery"
 import { resolveScopedUserFilter, assertProductMutableInScope, type ProductScope } from "../utils/productScope"
 import { linkProductToGroup } from "../utils/groupProducts"
@@ -223,6 +219,48 @@ class ProductService {
                     message: "Não foi possível remover o produto. Tente novamente.",
                 },
             }
+        }
+    }
+
+    async getPeriods(scope: ProductScope): Promise<ServiceResult<ProductPeriods, ProductErrorCode>> {
+        try {
+            let dbQuery
+
+            if (scope.mode === "group") {
+                dbQuery = supabaseAdmin
+                    .from("products")
+                    .select("date, group_products!inner(group_id)")
+                    .eq("group_products.group_id", scope.groupId)
+            } else {
+                dbQuery = supabaseAdmin
+                    .from("products")
+                    .select("date, group_products(group_id)")
+                    .eq("user_id", scope.userId)
+                    .is("group_products.group_id", null)
+            }
+
+            const { data, error } = await dbQuery.limit(10000)
+
+            if (error) {
+                console.error("[ProductService.getPeriods] Supabase error:", error)
+                return this.productFetchError("Não foi possível buscar os períodos.")
+            }
+
+            const years = new Set<number>()
+            for (const row of data ?? []) {
+                const ym = parseYearMonth(String(row.date ?? ""))
+                if (ym) years.add(ym.year)
+            }
+
+            return {
+                status: true,
+                data: {
+                    years: Array.from(years).sort((a, b) => b - a),
+                },
+            }
+        } catch (error) {
+            console.error("[ProductService.getPeriods] error:", error)
+            return this.productFetchError("Não foi possível buscar os períodos.")
         }
     }
 
