@@ -51,3 +51,44 @@ export const registerSchema = z
 
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
+
+export const forgotPasswordSchema = z.object({
+  identifier: z
+    .string()
+    .min(1, "O e-mail é obrigatório")
+    .email("Digite um e-mail válido"),
+});
+
+export const changePasswordSchema = z
+  .object({
+    current_password: z
+      .string()
+      .min(1, "Informe a senha atual")
+      .max(128, "A senha é muito longa"),
+    new_password: passwordComplexity,
+    confirm_password: z.string().min(1, "Confirme a nova senha"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "As senhas não coincidem",
+    path: ["confirm_password"],
+  })
+  .refine((data) => data.new_password !== data.current_password, {
+    message: "A nova senha deve ser diferente da senha atual",
+    path: ["new_password"],
+  });
+
+export const requiredChangePasswordSchema = z
+  .object({
+    new_password: passwordComplexity,
+    confirm_password: z.string().min(1, "Confirme a nova senha"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "As senhas não coincidem",
+    path: ["confirm_password"],
+  });
+
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
+export type RequiredChangePasswordFormData = z.infer<
+  typeof requiredChangePasswordSchema
+>;

@@ -13,6 +13,12 @@ interface RegisterDTO {
     password: string
 }
 
+interface ChangePasswordDTO {
+    current_password?: string
+    new_password: string
+    confirm_password: string
+}
+
 function isRefreshTokenReuseOrRevoked(error: { message?: string; code?: string } | null): boolean {
     if (!error) return false
 
@@ -216,7 +222,7 @@ class UserService {
         try {
             const { data, error } = await supabaseAdmin
                 .from("users")
-                .select("id, username, email")
+                .select("id, username, email, must_change_password")
                 .eq("id", userId)
                 .single()
 
@@ -236,6 +242,7 @@ class UserService {
                     id: data.id,
                     username: data.username,
                     email: data.email,
+                    must_change_password: Boolean(data.must_change_password),
                 },
             }
         } catch (error) {
@@ -257,7 +264,7 @@ class UserService {
                 .from("users")
                 .update({ username: updates.username })
                 .eq("id", userId)
-                .select("id, username, email")
+                .select("id, username, email, must_change_password")
                 .single()
 
             if (error || !data) {
@@ -276,6 +283,7 @@ class UserService {
                     id: data.id,
                     username: data.username,
                     email: data.email,
+                    must_change_password: Boolean(data.must_change_password),
                 },
             }
         } catch (error) {
@@ -286,6 +294,173 @@ class UserService {
                 error: {
                     code: UserErrorCode.USER_UPDATE_FAILED,
                     message: "Erro ao atualizar perfil do usuário.",
+                },
+            }
+        }
+    }
+
+    async changePassword(
+        userId: string,
+        data: ChangePasswordDTO
+    ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
+        try {
+            const profileResult = await this.getProfile(userId)
+
+            if (!profileResult.status) {
+                return profileResult
+            }
+
+            const profile = profileResult.data
+            const { current_password, new_password } = data
+
+            if (current_password && current_password === new_password) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.INVALID_PASSWORD,
+                        message: "A nova senha deve ser diferente da senha atual.",
+                    },
+                }
+            }
+
+            if (profile.must_change_password) {
+                const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+                    password: new_password,
+                })
+
+                if (error) {
+                    console.error("[UserService.changePassword] admin update error:", error)
+                    return {
+                        status: false,
+                        error: {
+                            code: UserErrorCode.PASSWORD_CHANGE_FAILED,
+                            message: "Não foi possível atualizar a senha.",
+                        },
+                    }
+                }
+
+                const { error: flagError } = await supabaseAdmin
+                    .from("users")
+                    .update({ must_change_password: false })
+                    .eq("id", userId)
+
+                if (flagError) {
+                    console.error("[UserService.changePassword] flag update error:", flagError)
+                    return {
+                        status: false,
+                        error: {
+                            code: UserErrorCode.PASSWORD_CHANGE_FAILED,
+                            message: "Não foi possível atualizar a senha.",
+                        },
+                    }
+                }
+
+                return this.getProfile(userId)
+            }
+
+            if (!current_password) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.INVALID_PASSWORD,
+                        message: "Informe a senha atual.",
+                    },
+                }
+            }
+
+            const { error: authError } = await supabaseAuth.auth.signInWithPassword({
+                email: profile.email,
+                password: current_password,
+            })
+
+            if (authError) {
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.INVALID_CREDENTIALS,
+                        message: "Senha atual incorreta.",
+                    },
+                }
+            }
+
+            const { error: updateError } = await supabaseAuth.auth.updateUser({
+                password: new_password,
+            })
+
+            if (updateError) {
+                console.error("[UserService.changePassword] updateUser error:", updateError)
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.PASSWORD_CHANGE_FAILED,
+                        message: "Não foi possível atualizar a senha.",
+                    },
+                }
+            }
+
+            return this.getProfile(userId)
+        } catch (error) {
+            console.error("[UserService.changePassword] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.PASSWORD_CHANGE_FAILED,
+                    message: "Não foi possível atualizar a senha.",
+                },
+            }
+        }
+    }
+
+    async requestPasswordReset(identifier: string): Promise<ServiceResult<null, UserErrorCode>> {
+        try {
+            const normalizedEmail = identifier.trim().toLowerCase()
+
+            const { data: user, error: userError } = await supabaseAdmin
+                .from("users")
+                .select("id")
+                .ilike("email", normalizedEmail)
+                .maybeSingle()
+
+            if (userError) {
+                console.error("[UserService.requestPasswordReset] user lookup error:", userError)
+                return {
+                    status: false,
+                    error: {
+                        code: UserErrorCode.PASSWORD_RESET_REQUEST_FAILED,
+                        message: "Não foi possível registrar a solicitação.",
+                    },
+                }
+            }
+
+            if (user) {
+                const { error: insertError } = await supabaseAdmin
+                    .from("password_reset_requests")
+                    .insert({
+                        user_id: user.id,
+                        identifier: normalizedEmail,
+                        status: "pending",
+                    })
+
+                if (insertError) {
+                    console.error("[UserService.requestPasswordReset] insert error:", insertError)
+                    return {
+                        status: false,
+                        error: {
+                            code: UserErrorCode.PASSWORD_RESET_REQUEST_FAILED,
+                            message: "Não foi possível registrar a solicitação.",
+                        },
+                    }
+                }
+            }
+
+            return { status: true, data: null }
+        } catch (error) {
+            console.error("[UserService.requestPasswordReset] error:", error)
+            return {
+                status: false,
+                error: {
+                    code: UserErrorCode.PASSWORD_RESET_REQUEST_FAILED,
+                    message: "Não foi possível registrar a solicitação.",
                 },
             }
         }
