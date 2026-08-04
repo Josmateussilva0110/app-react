@@ -1,117 +1,159 @@
 /**
- * Script de suporte: gera senha temporária e força troca no próximo login.
+ * Script de suporte: reseta senha temporária e exige troca no próximo login.
  *
  * Uso:
- *   npx ts-node scripts/reset-user-password.ts usuario@email.com
- *   npx ts-node scripts/reset-user-password.ts usuario@email.com MinhaSenhaTemp1!
+ *   cd backend
+ *   npx ts-node scripts/reset-user-password.ts <email> [nova-senha-temporaria]
  *
- * Requer SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env (backend ou raiz).
+ * Requer SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.
  */
-
-import crypto from "crypto"
-import path from "path"
-import dotenv from "dotenv"
 import { createClient } from "@supabase/supabase-js"
+import { config } from "dotenv"
+import path from "path"
 
-dotenv.config({ path: path.resolve(__dirname, "../../.env") })
-dotenv.config({ path: path.resolve(__dirname, "../.env") })
+const backendRoot = path.resolve(__dirname, "..")
+const monorepoRoot = path.resolve(backendRoot, "..")
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+config({ path: path.join(monorepoRoot, ".env") })
+config({ path: path.join(backendRoot, ".env") })
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env")
-    process.exit(1)
+const supabaseUrl = process.env.SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env")
+  process.exit(1)
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
+const resolvedSupabaseUrl = supabaseUrl
+const resolvedServiceRoleKey = serviceRoleKey
+
+const supabaseAdmin = createClient(resolvedSupabaseUrl, resolvedServiceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
 })
 
-function generateTempPassword(): string {
-    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"
-    const lower = "abcdefghijkmnopqrstuvwxyz"
-    const digits = "23456789"
-    const special = "!@#$%&*"
-    const all = upper + lower + digits + special
-
-    const pick = (chars: string) => chars[crypto.randomInt(chars.length)]
-
-    const required = [pick(upper), pick(lower), pick(digits), pick(special)]
-    const rest = Array.from({ length: 8 }, () => pick(all))
-
-    return [...required, ...rest]
-        .sort(() => crypto.randomInt(3) - 1)
-        .join("")
+interface ResolvedUser {
+  id: string
+  email: string
 }
 
-async function main(): Promise<void> {
-    const emailArg = process.argv[2]
-    const passwordArg = process.argv[3]
+function generateTemporaryPassword() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%"
+  let password = "Aa1!"
 
-    if (!emailArg) {
-        console.error("Uso: npx ts-node scripts/reset-user-password.ts <email> [senha-temporaria]")
-        process.exit(1)
-    }
+  for (let index = password.length; index < 12; index += 1) {
+    password += chars[Math.floor(Math.random() * chars.length)]
+  }
 
-    const email = emailArg.trim().toLowerCase()
-    const tempPassword = passwordArg ?? generateTempPassword()
+  return password
+}
 
-    const { data: user, error: userError } = await supabase
-        .from("users")
-        .select("id, email")
-        .ilike("email", email)
-        .maybeSingle()
+async function findUserByEmail(email: string): Promise<ResolvedUser | null> {
+  const { data: publicUser, error: publicError } = await supabaseAdmin
+    .from("users")
+    .select("id, email")
+    .ilike("email", email)
+    .maybeSingle()
 
-    if (userError || !user) {
-        console.error(`Usuário não encontrado: ${email}`)
-        process.exit(1)
-    }
+  if (publicError) {
+    console.error("Erro ao consultar public.users:", publicError.message)
+  }
 
-    const { error: authError } = await supabase.auth.admin.updateUserById(user.id, {
-        password: tempPassword,
+  if (publicUser) {
+    return publicUser
+  }
+
+  const { data: authUser, error: authError } = await supabaseAdmin
+    .schema("auth")
+    .from("users")
+    .select("id, email")
+    .ilike("email", email)
+    .maybeSingle()
+
+  if (authError) {
+    console.error("Erro ao consultar auth.users:", authError.message)
+    return null
+  }
+
+  if (!authUser) {
+    return null
+  }
+
+  const username =
+    authUser.email?.split("@")[0] ?? "usuario"
+
+  const { error: syncError } = await supabaseAdmin.from("users").upsert(
+    {
+      id: authUser.id,
+      email: authUser.email,
+      username,
+    },
+    { onConflict: "id" }
+  )
+
+  if (syncError) {
+    console.warn(
+      "Usuário encontrado em auth.users, mas falhou ao sincronizar public.users:",
+      syncError.message
+    )
+  }
+
+  return authUser
+}
+
+async function main() {
+  const email = process.argv[2]?.trim().toLowerCase()
+  const temporaryPassword = process.argv[3] ?? generateTemporaryPassword()
+
+  if (!email) {
+    console.error("Uso: npx ts-node scripts/reset-user-password.ts <email> [nova-senha-temporaria]")
+    process.exit(1)
+  }
+
+  const userRow = await findUserByEmail(email)
+
+  if (!userRow) {
+    console.error("Usuário não encontrado para o e-mail informado.")
+    console.error(`Projeto Supabase: ${new URL(resolvedSupabaseUrl).host}`)
+    console.error("Verifique se o e-mail está correto e se o .env aponta para o projeto certo.")
+    process.exit(1)
+  }
+
+  const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userRow.id, {
+    password: temporaryPassword,
+  })
+
+  if (authError) {
+    console.error("Falha ao resetar senha:", authError.message)
+    process.exit(1)
+  }
+
+  const { error: flagError } = await supabaseAdmin
+    .from("users")
+    .update({ must_change_password: true })
+    .eq("id", userRow.id)
+
+  if (flagError) {
+    console.error("Senha resetada, mas falhou ao marcar must_change_password:", flagError.message)
+    process.exit(1)
+  }
+
+  await supabaseAdmin
+    .from("password_reset_requests")
+    .update({
+      status: "resolved",
+      resolved_at: new Date().toISOString(),
+      resolved_by: "support-script",
     })
+    .eq("user_id", userRow.id)
+    .eq("status", "pending")
 
-    if (authError) {
-        console.error("Erro ao atualizar senha no Auth:", authError.message)
-        process.exit(1)
-    }
-
-    const { error: flagError } = await supabase
-        .from("users")
-        .update({ must_change_password: true })
-        .eq("id", user.id)
-
-    if (flagError) {
-        console.error("Erro ao marcar must_change_password:", flagError.message)
-        process.exit(1)
-    }
-
-    const now = new Date().toISOString()
-
-    const { error: resolveError } = await supabase
-        .from("password_reset_requests")
-        .update({
-            status: "resolved",
-            resolved_at: now,
-            resolved_by: "support-script",
-        })
-        .eq("user_id", user.id)
-        .eq("status", "pending")
-
-    if (resolveError) {
-        console.error("Aviso: não foi possível atualizar solicitações pendentes:", resolveError.message)
-    }
-
-    console.log("")
-    console.log("Senha temporária definida com sucesso.")
-    console.log(`Usuário: ${user.email}`)
-    console.log(`Senha:   ${tempPassword}`)
-    console.log("")
-    console.log("Oriente o usuário a fazer login e definir uma nova senha.")
+  console.log(`Senha temporária definida para ${userRow.email}`)
+  console.log(`Senha: ${temporaryPassword}`)
+  console.log("O usuário será obrigado a trocar a senha no próximo login.")
 }
 
 main().catch((error) => {
-    console.error(error)
-    process.exit(1)
+  console.error(error)
+  process.exit(1)
 })

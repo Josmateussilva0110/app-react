@@ -421,6 +421,23 @@ class UserService {
                 .ilike("email", normalizedEmail)
                 .maybeSingle()
 
+            let userId = user?.id
+
+            if (!userId && !userError) {
+                const { data: authUser, error: authError } = await supabaseAdmin
+                    .schema("auth")
+                    .from("users")
+                    .select("id")
+                    .ilike("email", normalizedEmail)
+                    .maybeSingle()
+
+                if (authError) {
+                    console.error("[UserService.requestPasswordReset] auth lookup error:", authError)
+                }
+
+                userId = authUser?.id
+            }
+
             if (userError) {
                 console.error("[UserService.requestPasswordReset] user lookup error:", userError)
                 return {
@@ -432,11 +449,11 @@ class UserService {
                 }
             }
 
-            if (user) {
+            if (userId) {
                 const { error: insertError } = await supabaseAdmin
                     .from("password_reset_requests")
                     .insert({
-                        user_id: user.id,
+                        user_id: userId,
                         identifier: normalizedEmail,
                         status: "pending",
                     })
