@@ -21,12 +21,14 @@ export default function DashboardCategoryRoute() {
   const categoryParsed = categoryEnum.safeParse(categoryRaw);
   const category = categoryParsed.success ? categoryParsed.data : categoryRaw;
 
-  const monthRaw = Number(paramString(params.month));
-  const yearRaw = Number(paramString(params.year));
+  const monthRaw = paramString(params.month);
+  const monthParsed = monthRaw ? Number(monthRaw) : NaN;
   const month =
-    !isNaN(monthRaw) && monthRaw >= 1 && monthRaw <= 12
-      ? monthRaw
-      : new Date().getMonth() + 1;
+    !isNaN(monthParsed) && monthParsed >= 1 && monthParsed <= 12
+      ? monthParsed
+      : undefined;
+
+  const yearRaw = Number(paramString(params.year));
   const year =
     !isNaN(yearRaw) && yearRaw >= 2000 && yearRaw <= 2100
       ? yearRaw

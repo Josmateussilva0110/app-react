@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import type { EnrichedProduct } from "@/hooks/use-products";
 import { useProductStats } from "@/hooks/use-product-stats";
+import { useProductPeriods } from "@/hooks/use-product-periods";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
 import { HomeSummaryCard } from "./home-summary-card";
@@ -148,6 +149,8 @@ export function ItemListScreen({
     initialFilters?.year,
     serverFiltered,
   ]);
+
+  const { data: periods } = useProductPeriods({ enabled: serverFiltered });
 
   const emitQueryFilters = (next: {
     status?: StatusFilter;
@@ -328,6 +331,7 @@ export function ItemListScreen({
         month={selectedMonth}
         year={selectedYear}
         serverFiltered={serverFiltered}
+        availableYears={periods?.years}
         onChange={(m, y) => {
           setSelectedMonth(m);
           setSelectedYear(y);

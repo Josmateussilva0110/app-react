@@ -3,4 +3,5 @@ export const AUTH_ROUTES = {
   login: "/login",
   register: "/register",
   logout: "/logout",
+  passwordResetRequest: "/auth/password-reset-request",
 } as const;

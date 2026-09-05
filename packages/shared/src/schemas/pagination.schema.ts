@@ -52,3 +52,8 @@ export type PaginatedResult<T> = {
   items: T[];
   meta: PaginationMeta;
 };
+
+/** Anos distintos com compras no escopo atual (solo ou grupo). */
+export type ProductPeriods = {
+  years: number[];
+};

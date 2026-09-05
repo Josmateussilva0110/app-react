@@ -25,6 +25,8 @@ type Props = {
   year: number | null;
   onChange: (month: number | null, year: number | null) => void;
   serverFiltered?: boolean;
+  /** Anos com compras (modo serverFiltered). */
+  availableYears?: number[];
 };
 
 export function HomeMonthYearFilter({
@@ -33,27 +35,28 @@ export function HomeMonthYearFilter({
   year,
   onChange,
   serverFiltered = false,
+  availableYears,
 }: Props) {
   const { colors: theme } = useTheme();
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
   const [yearMenuOpen, setYearMenuOpen] = useState(false);
 
   const years = useMemo(() => {
-    const current = new Date().getFullYear();
-    const fromProducts = new Set<number>();
-
-    if (!serverFiltered) {
-      for (const product of products) {
-        if (product._year != null) {
-          fromProducts.add(product._year);
-        }
-      }
+    if (serverFiltered) {
+      const fromApi = new Set(availableYears ?? []);
+      if (year !== null) fromApi.add(year);
+      return Array.from(fromApi).sort((a, b) => b - a);
     }
 
-    for (let y = current - 3; y <= current; y += 1) fromProducts.add(y);
+    const fromProducts = new Set<number>();
+    for (const product of products) {
+      if (product._year != null) {
+        fromProducts.add(product._year);
+      }
+    }
     if (year !== null) fromProducts.add(year);
     return Array.from(fromProducts).sort((a, b) => b - a);
-  }, [products, year, serverFiltered]);
+  }, [products, year, serverFiltered, availableYears]);
 
   const months = useMemo(() => {
     return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -68,7 +71,7 @@ export function HomeMonthYearFilter({
           style={[styles.selector, { backgroundColor: theme.card, borderColor: theme.border }]}
         >
           <Text style={[styles.selectorText, { color: theme.text }]}>
-            {month === null ? "Todos" : MONTH_LABELS[month]}
+            {month === null ? "Todos os meses" : MONTH_LABELS[month]}
           </Text>
           <ChevronDown size={16} color={theme.textSecondary} />
         </Pressable>
@@ -97,7 +100,7 @@ export function HomeMonthYearFilter({
                 setMonthMenuOpen(false);
               }}
             >
-              <Text style={[styles.menuText, { color: theme.text }]}>Todos</Text>
+              <Text style={[styles.menuText, { color: theme.text }]}>Todos os meses</Text>
             </Pressable>
 
             {months.map((m) => (

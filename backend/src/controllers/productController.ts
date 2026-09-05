@@ -59,6 +59,27 @@ class ProductController {
     });
   }
 
+  async getPeriods(request: Request, response: Response) {
+    const result = await ProductService.getPeriods(request.scope)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        productErrorHttpStatusMap
+      )
+
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      data: result.data,
+    })
+  }
+
   async getStats(request: Request, response: Response) {
     const parsedQuery = statsQuerySchema.safeParse(request.query);
 

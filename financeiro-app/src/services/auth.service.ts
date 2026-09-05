@@ -3,6 +3,7 @@ import { requestData } from "./request";
 import {
   LoginFormData,
   RegisterFormData,
+  ForgotPasswordFormData,
 } from "@/schemas/auth.schema";
 
 import { AuthData } from "@/types/auth.types";
@@ -44,6 +45,15 @@ export function refreshAccessToken(refreshToken: string) {
     endpoint: AUTH_ROUTES.refresh,
     method: "POST",
     data: { refreshToken },
+    withAuth: false,
+  });
+}
+
+export function requestPasswordReset(data: ForgotPasswordFormData) {
+  return requestData({
+    endpoint: AUTH_ROUTES.passwordResetRequest,
+    method: "POST",
+    data: { identifier: data.identifier.trim() },
     withAuth: false,
   });
 }

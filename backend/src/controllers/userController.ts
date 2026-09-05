@@ -137,6 +137,49 @@ class UserController {
       data: result.data,
     })
   }
+
+  async changePassword(request: Request, response: Response): Promise<Response> {
+    const userId = request.user.id
+    const result = await UserService.changePassword(userId, request.body)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Senha atualizada com sucesso.",
+      data: result.data,
+    })
+  }
+
+  async requestPasswordReset(request: Request, response: Response): Promise<Response> {
+    const { identifier } = request.body
+    const result = await UserService.requestPasswordReset(identifier)
+
+    if (!result.status) {
+      const httpStatus = getHttpStatusFromError(
+        result.error.code,
+        userErrorHttpStatusMap
+      )
+      return response.status(httpStatus).json({
+        success: false,
+        message: result.error.message,
+      })
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Solicitação registrada.",
+    })
+  }
 }
 
 export default new UserController()

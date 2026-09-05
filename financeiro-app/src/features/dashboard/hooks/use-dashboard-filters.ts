@@ -6,11 +6,10 @@ import {
 } from "@/features/dashboard/constants/dashboard-filters";
 
 export const ALL_USERS = "all";
-
-const CURRENT_YEAR = new Date().getFullYear();
+export const ALL_MONTHS = "all";
 
 type DashboardFilters = {
-  month: number;
+  month: number | null;
   year: number;
   userId: string;
   status: StatusFilter;
@@ -28,21 +27,24 @@ function createDefaultFilters(): DashboardFilters {
   };
 }
 
-export function useDashboardFilters() {
+export function useDashboardFilters(availableYears: number[] = []) {
   const [filters, setFilters] = useState(createDefaultFilters);
 
   const patch = useCallback((partial: Partial<DashboardFilters>) => {
     setFilters((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  const yearOptions = useMemo(
-    () =>
-      [CURRENT_YEAR - 2, CURRENT_YEAR - 1, CURRENT_YEAR, filters.year]
-        .filter((v, i, arr) => arr.indexOf(v) === i)
-        .sort((a, b) => b - a)
-        .map((v) => ({ value: String(v), label: String(v) })),
-    [filters.year]
-  );
+  const yearOptions = useMemo(() => {
+    const years =
+      availableYears.length > 0
+        ? availableYears
+        : filters.year
+          ? [filters.year]
+          : [new Date().getFullYear()];
+
+    const unique = Array.from(new Set([...years, filters.year])).sort((a, b) => b - a);
+    return unique.map((v) => ({ value: String(v), label: String(v) }));
+  }, [availableYears, filters.year]);
 
   const apiMonthList = toApiMonthList(filters.monthList);
 
@@ -55,7 +57,7 @@ export function useDashboardFilters() {
     apiUserId: filters.userId === ALL_USERS ? undefined : filters.userId,
     apiMonthList,
     yearOptions,
-    setMonth: (month: number) => patch({ month }),
+    setMonth: (month: number | null) => patch({ month }),
     setYear: (year: number) => patch({ year }),
     setUserId: (userId: string) => patch({ userId }),
     setStatusFilter: (status: StatusFilter) => patch({ status }),

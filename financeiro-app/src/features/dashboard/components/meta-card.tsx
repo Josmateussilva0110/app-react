@@ -8,24 +8,42 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTheme } from "@/context/theme.context";
-import { formatBRL } from "../constants";
+import { formatBRL, parseBRLInput } from "@/lib/format-currency";
 
 type MetaCardProps = {
   total: number;
   meta: number;
-  onSaveMeta: (value: number) => void;
+  onSaveMeta: (
+    value: number,
+    options?: { onSuccess?: () => void; onError?: () => void }
+  ) => void;
   saving?: boolean;
+  canEdit?: boolean;
+  readOnlyHint?: string;
   title?: string;
 };
 
-export function MetaCard({ total, meta, onSaveMeta, saving, title = "Meta mensal pessoal" }: MetaCardProps) {
+export function MetaCard({
+  total,
+  meta,
+  onSaveMeta,
+  saving,
+  canEdit = true,
+  readOnlyHint,
+  title = "Meta mensal pessoal",
+}: MetaCardProps) {
   const { colors } = useTheme();
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(String(meta ?? 0));
+  const [inputError, setInputError] = useState<string | null>(null);
 
   useEffect(() => {
     setText(meta ? String(meta) : "");
   }, [meta]);
+
+  useEffect(() => {
+    if (!canEdit) setEditing(false);
+  }, [canEdit]);
 
   const barTotal = Math.max(meta, total) || 1;
   const pct = meta > 0 ? Math.round((total / meta) * 100) : 0;
@@ -35,11 +53,16 @@ export function MetaCard({ total, meta, onSaveMeta, saving, title = "Meta mensal
   const statusColor = meta === 0 ? colors.textSecondary : over ? colors.danger : colors.success;
 
   const handleSave = () => {
-    const parsed = Number(text.replace(",", "."));
-    if (!isNaN(parsed) && parsed >= 0) {
-      onSaveMeta(parsed);
-      setEditing(false);
+    const parsed = parseBRLInput(text);
+    if (parsed === null) {
+      setInputError("Digite um valor válido (ex.: 3000 ou 3.000,50).");
+      return;
     }
+
+    setInputError(null);
+    onSaveMeta(parsed, {
+      onSuccess: () => setEditing(false),
+    });
   };
 
   return (
@@ -68,18 +91,25 @@ export function MetaCard({ total, meta, onSaveMeta, saving, title = "Meta mensal
           <Text style={{ color: colors.textSecondary }}>/ {formatBRL(meta)}</Text>
         </Text>
 
-        {!editing && (
+        {!editing && canEdit && (
           <Pressable onPress={() => setEditing(true)} style={styles.editLinkWrap}>
             <Text style={[styles.editLink, { color: colors.primary }]}>Editar meta</Text>
           </Pressable>
         )}
       </View>
 
+      {!canEdit && readOnlyHint ? (
+        <Text style={[styles.readOnlyHint, { color: colors.textSecondary }]}>{readOnlyHint}</Text>
+      ) : null}
+
       {editing && (
         <View style={styles.editRow}>
           <TextInput
             value={text}
-            onChangeText={setText}
+            onChangeText={(value) => {
+              setText(value);
+              if (inputError) setInputError(null);
+            }}
             keyboardType="numeric"
             placeholder="0"
             placeholderTextColor={colors.textSecondary}
@@ -101,6 +131,10 @@ export function MetaCard({ total, meta, onSaveMeta, saving, title = "Meta mensal
           </Pressable>
         </View>
       )}
+
+      {inputError ? (
+        <Text style={[styles.inputError, { color: colors.danger }]}>{inputError}</Text>
+      ) : null}
 
       <View
         style={[
@@ -172,6 +206,14 @@ const styles = StyleSheet.create({
   editLink: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  readOnlyHint: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  inputError: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   editRow: {
     flexDirection: "row",

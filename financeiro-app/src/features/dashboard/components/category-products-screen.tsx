@@ -13,7 +13,7 @@ import { CategoryProductsList } from "./category-products-list";
 
 type CategoryProductsScreenProps = {
   category: string;
-  month: number; // 1-12
+  month?: number; // 1-12; omitir = ano inteiro
   year: number;
   products: ProductResponse[];
   loading?: boolean;
@@ -40,9 +40,9 @@ export function CategoryProductsScreen({
     [products]
   );
 
-  const subtitle = `${MONTHS_FULL[month - 1] ?? ""}/${year} · ${products.length} ${
-    products.length === 1 ? "item" : "itens"
-  }`;
+  const subtitle = `${
+    month !== undefined ? `${MONTHS_FULL[month - 1] ?? ""}/` : "Todos os meses · "
+  }${year} · ${products.length} ${products.length === 1 ? "item" : "itens"}`;
 
   const openProduct = useCallback(
     (id: string) => {

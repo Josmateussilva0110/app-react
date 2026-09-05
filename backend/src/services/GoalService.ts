@@ -137,21 +137,47 @@ class GoalService {
                     }
                 }
 
-                const { data, error } = await supabaseAdmin
+                const { data: existing, error: fetchError } = await supabaseAdmin
                     .from("goals")
-                    .upsert(
-                        {
-                            scope: "group",
-                            group_id: scope.groupId,
-                            user_id: null,
-                            monthly_goal: monthlyGoal,
-                            updated_at: now,
-                            updated_by: userId,
+                    .select("id")
+                    .eq("scope", "group")
+                    .eq("group_id", scope.groupId)
+                    .maybeSingle()
+
+                if (fetchError) {
+                    console.error("[GoalService.update] fetch error:", fetchError)
+                    return {
+                        status: false,
+                        error: {
+                            code: GoalErrorCode.GOAL_UPDATE_FAILED,
+                            message: "Não foi possível salvar a meta.",
                         },
-                        { onConflict: "group_id" }
-                    )
-                    .select("monthly_goal, updated_at")
-                    .single()
+                    }
+                }
+
+                const goalPayload = {
+                    monthly_goal: monthlyGoal,
+                    updated_at: now,
+                    updated_by: userId,
+                }
+
+                const { data, error } = existing
+                    ? await supabaseAdmin
+                          .from("goals")
+                          .update(goalPayload)
+                          .eq("id", existing.id)
+                          .select("monthly_goal, updated_at")
+                          .single()
+                    : await supabaseAdmin
+                          .from("goals")
+                          .insert({
+                              scope: "group",
+                              group_id: scope.groupId,
+                              user_id: null,
+                              ...goalPayload,
+                          })
+                          .select("monthly_goal, updated_at")
+                          .single()
 
                 if (error || !data) {
                     console.error("[GoalService.update] Supabase error:", error)
@@ -174,21 +200,47 @@ class GoalService {
                 }
             }
 
-            const { data, error } = await supabaseAdmin
+            const { data: existing, error: fetchError } = await supabaseAdmin
                 .from("goals")
-                .upsert(
-                    {
-                        scope: "user",
-                        user_id: userId,
-                        group_id: null,
-                        monthly_goal: monthlyGoal,
-                        updated_at: now,
-                        updated_by: userId,
+                .select("id")
+                .eq("scope", "user")
+                .eq("user_id", userId)
+                .maybeSingle()
+
+            if (fetchError) {
+                console.error("[GoalService.update] fetch error:", fetchError)
+                return {
+                    status: false,
+                    error: {
+                        code: GoalErrorCode.GOAL_UPDATE_FAILED,
+                        message: "Não foi possível salvar a meta.",
                     },
-                    { onConflict: "user_id" }
-                )
-                .select("monthly_goal, updated_at")
-                .single()
+                }
+            }
+
+            const goalPayload = {
+                monthly_goal: monthlyGoal,
+                updated_at: now,
+                updated_by: userId,
+            }
+
+            const { data, error } = existing
+                ? await supabaseAdmin
+                      .from("goals")
+                      .update(goalPayload)
+                      .eq("id", existing.id)
+                      .select("monthly_goal, updated_at")
+                      .single()
+                : await supabaseAdmin
+                      .from("goals")
+                      .insert({
+                          scope: "user",
+                          user_id: userId,
+                          group_id: null,
+                          ...goalPayload,
+                      })
+                      .select("monthly_goal, updated_at")
+                      .single()
 
             if (error || !data) {
                 console.error("[GoalService.update] Supabase error:", error)
