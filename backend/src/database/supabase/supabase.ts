@@ -8,14 +8,14 @@ const clientOptions = {
     },
 } as const
 
-/** Bypasses RLS — use only for server-side DB and admin auth APIs. */
+/** Ignora a RLS — use só no acesso a dados do servidor e nas APIs admin de auth. */
 export const supabaseAdmin = createClient(
     env.SUPABASE_URL,
     env.SUPABASE_SERVICE_ROLE_KEY,
     clientOptions
 )
 
-/** Auth flows (login/register/refresh) — must not share session with supabaseAdmin. */
+/** Fluxos de auth (login/register/refresh) — não pode dividir sessão com o supabaseAdmin. */
 export const supabaseAuth = createClient(
     env.SUPABASE_URL,
     env.SUPABASE_ANON_KEY,

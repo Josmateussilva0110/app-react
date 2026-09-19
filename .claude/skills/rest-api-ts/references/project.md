@@ -18,11 +18,10 @@ supabase/          # migrations SQL
 
 ```
 backend/src/
-├── app.ts                  # helmet, cors, compression, rate limit, json 10kb, /api, swagger
+├── app.ts                  # helmet, cors, compression, rate limit, json 10kb, /api
 ├── server.ts
 ├── config/
-│   ├── env.ts              # zod + process.exit(1) se faltar variável
-│   └── swagger.ts
+│   └── env.ts              # zod + process.exit(1) se faltar variável
 ├── database/supabase/supabase.ts   # supabaseAdmin e supabaseAuth
 ├── routes/                 # <domínio>Routes.ts, agregados em routes.ts sob /api
 ├── controllers/            # <domínio>Controller.ts  (camelCase)
@@ -37,7 +36,6 @@ backend/src/
 │   ├── serviceResults/ServiceResult.ts
 │   └── express-session/session.d.ts   # request.user, request.accessToken, request.scope
 ├── constants/              # PRODUCT_SELECT_FIELDS
-├── docs/                   # *.swagger.ts (swagger-jsdoc)
 └── utils/                  # 8 arquivos, plano — ver nota abaixo
 ```
 
@@ -155,10 +153,12 @@ Schema em `config/env.ts`. Variável nova entra lá **e** em `render.yaml`
 (`envVars`) e em `env-exemple`. `.env` da raiz do monorepo e `backend/.env` são
 ambos carregados, nessa ordem.
 
-## Swagger
+## Sem documentação de API
 
-Docs em `src/docs/*.swagger.ts` (anotação `@openapi`), servidos em `/api/docs`
-**só em development**. Endpoint novo merece a anotação junto.
+O Swagger foi removido em 19/09/2026: as anotações cobriam 4 das 22 rotas e
+duas delas apontavam para caminhos que não existiam mais. Não há documentação
+de API no servidor hoje. As dependências `swagger-jsdoc` e `swagger-ui-express`
+continuam no `package.json` do backend, sem uso.
 
 ## Typecheck antes de encerrar
 
@@ -193,8 +193,9 @@ Não copie estes trechos como modelo; corrija se passar por perto.
    adotá-lo, confirme que o Express 5 aceita a atribuição
    `request.query = result.data` que o middleware faz (em Express 5 `query` é
    getter). Enquanto isso, ao menos mapeie os issues para `{ field, message }`.
-3. **Alguns 200 saem sem `message`** (`GoalController.get`,
-   `ProductController.getAll`, `getPeriods`, `getStats`), embora
+3. **Seis respostas 200 saem sem `message`** (`GoalController.get`,
+   `ProductController.getAll`, `getPeriods`, `getStats`,
+   `GroupController.getMe`, `UserController.getProfile`), embora
    `HttpResponse.message` seja obrigatório. Não há erro de compilação porque
    os controllers não tipam `Response<HttpResponse>` — só `Response`. Em
    handler novo, tipe `Response<HttpResponse<T>>` e mande a `message`.

@@ -1,5 +1,6 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
+import { PROFILE_SELECT_FIELDS } from "../constants/profile-select-fields"
 import { supabaseAuth, supabaseAdmin } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
 import jwt from "jsonwebtoken"
@@ -47,8 +48,8 @@ class UserService {
             })
 
             if (error) {
-                console.error("[UserService.register] Supabase Auth error:", error)
-
+                // E-mail já cadastrado é resposta normal da API, não falha: tratar
+                // antes do log evita alerta à toa no uso corriqueiro do app.
                 if (error.code === "user_already_exists" || error.status === 422) {
                     return {
                         status: false,
@@ -59,6 +60,7 @@ class UserService {
                     }
                 }
 
+                console.error("[UserService.register] Supabase Auth error:", error)
                 return {
                     status: false,
                     error: {
@@ -222,7 +224,7 @@ class UserService {
         try {
             const { data, error } = await supabaseAdmin
                 .from("users")
-                .select("id, username, email, must_change_password")
+                .select(PROFILE_SELECT_FIELDS)
                 .eq("id", userId)
                 .single()
 
@@ -264,7 +266,7 @@ class UserService {
                 .from("users")
                 .update({ username: updates.username })
                 .eq("id", userId)
-                .select("id, username, email, must_change_password")
+                .select(PROFILE_SELECT_FIELDS)
                 .single()
 
             if (error || !data) {

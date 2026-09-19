@@ -35,9 +35,8 @@ backend/src/
 ├── types/         # ServiceResult, HttpResponse, enums de código de erro
 ├── errors/        # mapa código -> status HTTP, um por domínio
 ├── constants/     # listas de colunas, valores fixos
-├── config/        # env validado, swagger
+├── config/        # env validado
 ├── database/      # clientes supabase
-├── docs/          # anotações @openapi
 └── utils/         # helpers puros e helpers de controller
 ```
 
@@ -506,9 +505,8 @@ desde o início:
    novo
 6. Método no controller, na forma acima
 7. Rota no `routes/<domínio>Routes.ts`, com os middlewares na ordem certa
-8. Anotação `@openapi` em `src/docs/`
-9. Typecheck antes de encerrar (comando em `references/project.md`)
-10. Do lado do app: a função de serviço ou o hook react-query correspondente
+8. Typecheck antes de encerrar (comando em `references/project.md`)
+9. Do lado do app: a função de serviço ou o hook react-query correspondente
 
 ## Higiene de configuração
 

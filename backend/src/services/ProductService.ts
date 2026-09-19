@@ -70,7 +70,7 @@ class ProductService {
                 .single()
 
             if (error) {
-                console.error("[ProductService.register] Supabase error:", error)
+                console.error("[ProductService.create] Supabase error:", error)
                 return {
                     status: false,
                     error: {
@@ -84,7 +84,7 @@ class ProductService {
                 try {
                     await linkProductToGroup(product.id, scope.groupId)
                 } catch (linkError) {
-                    console.error("[ProductService.register] group link error:", linkError)
+                    console.error("[ProductService.create] group link error:", linkError)
                     await supabaseAdmin.from("products").delete().eq("id", product.id)
                     return {
                         status: false,
@@ -102,7 +102,7 @@ class ProductService {
             }
 
         } catch (error) {
-            console.error("[ProductService.register] error:", error)
+            console.error("[ProductService.create] error:", error)
             return {
                 status: false,
                 error: {

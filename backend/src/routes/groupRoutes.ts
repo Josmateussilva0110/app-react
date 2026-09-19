@@ -13,8 +13,8 @@ router.patch("/groups", authMiddleware, validate(updateGroupSchema), GroupContro
 router.post("/groups/invites", authMiddleware, GroupController.createInvite)
 router.post(
     "/groups/join",
-    authMiddleware,
     joinGroupRateLimiter,
+    authMiddleware,
     validate(joinGroupSchema),
     GroupController.join
 )
