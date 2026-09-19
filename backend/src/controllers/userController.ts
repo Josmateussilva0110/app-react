@@ -1,21 +1,14 @@
 import { Request, Response } from "express"
 import UserService from "../services/UserService"
 import { userErrorHttpStatusMap } from "../errors/userErrorHttpMapper"
-import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
+import { sendFailure } from "../utils/sendFailure"
 
 class UserController {
   async register(request: Request, response: Response): Promise<Response> {
     const result = await UserService.register(request.body)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(201).json({
@@ -29,14 +22,7 @@ class UserController {
     const { email, password } = request.body
     const result = await UserService.login(email, password)
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
 
@@ -52,14 +38,7 @@ class UserController {
     const result = await UserService.logout(request.accessToken!)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -74,15 +53,7 @@ class UserController {
     const result = await UserService.refresh(refreshToken)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        code: result.error.code,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap, { exposeCode: true })
     }
 
     return response.status(200).json({
@@ -98,14 +69,7 @@ class UserController {
     const result = await UserService.getProfile(userId)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -121,14 +85,7 @@ class UserController {
     const result = await UserService.updateProfile(userId, { username })
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -143,14 +100,7 @@ class UserController {
     const result = await UserService.changePassword(userId, request.body)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -165,14 +115,7 @@ class UserController {
     const result = await UserService.requestPasswordReset(identifier)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        userErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, userErrorHttpStatusMap)
     }
 
     return response.status(200).json({

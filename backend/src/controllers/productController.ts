@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
+import { sendFailure } from "../utils/sendFailure"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
 import { productListQuerySchema, statsQuerySchema } from "@app/shared"
@@ -11,14 +11,7 @@ class ProductController {
     const result = await ProductService.create({ ...request.body, userId }, request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, productErrorHttpStatusMap)
     }
 
     return response.status(201).json({
@@ -42,15 +35,7 @@ class ProductController {
     const result = await ProductService.getAll(parsedQuery.data, request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      );
-
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      });
+      return sendFailure(response, result.error, productErrorHttpStatusMap);
     }
 
     return response.status(200).json({
@@ -63,15 +48,7 @@ class ProductController {
     const result = await ProductService.getPeriods(request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      )
-
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, productErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -94,15 +71,7 @@ class ProductController {
     const result = await ProductService.getStats(parsedQuery.data, request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      );
-
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      });
+      return sendFailure(response, result.error, productErrorHttpStatusMap);
     }
 
     return response.status(200).json({
@@ -118,14 +87,7 @@ class ProductController {
     const result = await ProductService.update({ ...request.body, id, userId }, request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, productErrorHttpStatusMap)
     }
 
     return response.status(200).json({
@@ -142,14 +104,7 @@ class ProductController {
     const result = await ProductService.delete(id, userId, request.scope)
 
     if (!result.status) {
-      const httpStatus = getHttpStatusFromError(
-        result.error.code,
-        productErrorHttpStatusMap
-      )
-      return response.status(httpStatus).json({
-        success: false,
-        message: result.error.message,
-      })
+      return sendFailure(response, result.error, productErrorHttpStatusMap)
     }
 
     return response.status(200).json({

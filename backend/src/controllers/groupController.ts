@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
+import { sendFailure } from "../utils/sendFailure"
 import { groupErrorHttpStatusMap } from "../errors/groupErrorHttpMapper"
 import GroupService from "../services/GroupService"
 
@@ -9,8 +9,7 @@ class GroupController {
         const result = await GroupService.getMe(userId)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(200).json({ success: true, data: result.data })
@@ -22,8 +21,7 @@ class GroupController {
         const result = await GroupService.create(userId, name)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(201).json({
@@ -39,8 +37,7 @@ class GroupController {
         const result = await GroupService.update(userId, name)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(200).json({
@@ -55,8 +52,7 @@ class GroupController {
         const result = await GroupService.createInvite(userId)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(201).json({
@@ -72,8 +68,7 @@ class GroupController {
         const result = await GroupService.join(userId, code)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(200).json({
@@ -88,8 +83,7 @@ class GroupController {
         const result = await GroupService.leave(userId)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(result.error.code, groupErrorHttpStatusMap)
-            return response.status(httpStatus).json({ success: false, message: result.error.message })
+            return sendFailure(response, result.error, groupErrorHttpStatusMap)
         }
 
         return response.status(200).json({ success: true, message: "Você saiu do grupo." })

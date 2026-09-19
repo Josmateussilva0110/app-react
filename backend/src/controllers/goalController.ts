@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { getHttpStatusFromError } from "../utils/getHttpStatusFromError"
+import { sendFailure } from "../utils/sendFailure"
 import { goalErrorHttpStatusMap } from "../errors/goalErrorHttpMapper"
 import GoalService from "../services/GoalService"
 
@@ -9,14 +9,7 @@ class GoalController {
         const result = await GoalService.get(userId, request.scope)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(
-                result.error.code,
-                goalErrorHttpStatusMap
-            )
-            return response.status(httpStatus).json({
-                success: false,
-                message: result.error.message,
-            })
+            return sendFailure(response, result.error, goalErrorHttpStatusMap)
         }
 
         return response.status(200).json({
@@ -32,14 +25,7 @@ class GoalController {
         const result = await GoalService.update(monthlyGoal, userId, request.scope)
 
         if (!result.status) {
-            const httpStatus = getHttpStatusFromError(
-                result.error.code,
-                goalErrorHttpStatusMap
-            )
-            return response.status(httpStatus).json({
-                success: false,
-                message: result.error.message,
-            })
+            return sendFailure(response, result.error, goalErrorHttpStatusMap)
         }
 
         return response.status(200).json({
