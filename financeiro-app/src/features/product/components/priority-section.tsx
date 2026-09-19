@@ -1,5 +1,5 @@
 import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
-import { Controller, type Control } from "react-hook-form";
+import { Controller } from "react-hook-form";
 import { Flame } from "lucide-react-native";
 import { useTheme } from "@/context/theme.context";
 import { SectionCard } from "@/components/ui/section-card";

@@ -9,13 +9,18 @@ export function useUpdateProduct(productId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: ProductFormData) =>
-      requestData({
+    mutationFn: async (data: ProductFormData) => {
+      const res = await requestData({
         endpoint: `/products/${productId}`,
         method: "PUT",
         data,
         withAuth: true,
-      }),
+      });
+
+      if (!res.success) throw new Error(res.message);
+      return res.message;
+    },
+    // Editar produto pode mudar data e valor: lista, totais e anos saem velhos.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
       queryClient.invalidateQueries({ queryKey: PRODUCT_STATS_KEY });

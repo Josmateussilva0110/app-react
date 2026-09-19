@@ -1,8 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -35,21 +37,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const setTheme = async (newMode: ThemeMode) => {
+  const setTheme = useCallback(async (newMode: ThemeMode) => {
     setMode(newMode);
     await AsyncStorage.setItem(STORAGE_KEY, newMode);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      mode,
+      colors: Colors[mode],
+      isDark: mode === "dark",
+      setTheme,
+      isLoading,
+    }),
+    [mode, setTheme, isLoading]
+  );
 
   return (
-    <ThemeContext.Provider
-      value={{
-        mode,
-        colors: Colors[mode],
-        isDark: mode === "dark",
-        setTheme,
-        isLoading,
-      }}
-    >
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

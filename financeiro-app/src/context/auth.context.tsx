@@ -3,6 +3,7 @@ import {
   ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -143,16 +144,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  async function register(dto: RegisterDTO) {
+  const register = useCallback(async (dto: RegisterDTO) => {
     const result = await registerUser(dto);
 
     return {
       success: result.success,
       message: result.message,
     };
-  }
+  }, []);
 
-  async function login(dto: LoginDTO) {
+  const login = useCallback(async (dto: LoginDTO) => {
     const result = await loginUser(dto);
 
     if (!result.success || !result.data) {
@@ -177,9 +178,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       success: true,
       message: result.message,
     };
-  }
+  }, []);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     try {
       await logoutUser();
     } catch {
@@ -191,19 +192,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearPersistedQueryCache();
     setUser(null);
     setSigned(false);
-  }
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, signed, loading, login, logout, register }),
+    [user, signed, loading, login, logout, register]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        signed,
-        loading,
-        login,
-        logout,
-        register,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

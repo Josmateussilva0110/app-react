@@ -57,16 +57,11 @@ export function ProductForm({
 
   async function onSubmit(data: ProductFormData) {
     try {
-      const result = isEdit
+      const message = isEdit
         ? await updateMutation.mutateAsync(data)
         : await createMutation.mutateAsync(data);
 
-      if (!result.success) {
-        show("error", result.message);
-        return;
-      }
-
-      show("success", result.message);
+      show("success", message);
       onSuccess?.();
 
       if (isEdit) {

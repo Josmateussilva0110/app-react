@@ -159,7 +159,7 @@ export function ConfirmDeleteModal({
           <Text style={[styles.body, { color: colors.text }]}>
             Deseja remover{" "}
             <Text style={[styles.productName, { color: colors.text }]}>
-              "{productName}"
+              {`"${productName}"`}
             </Text>
             ?{"\n"}
             Esta ação não pode ser desfeita.

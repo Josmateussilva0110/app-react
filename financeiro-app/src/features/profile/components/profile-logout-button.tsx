@@ -1,12 +1,10 @@
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { LogOut } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/context/toast.context";
 import { useTheme, type ThemeColors } from "@/context/theme.context";
 
 export function ProfileLogoutButton() {
-  const router = useRouter();
   const { logout } = useAuth();
   const { show } = useToast();
   const { colors } = useTheme();

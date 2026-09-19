@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -7,15 +7,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { useTheme } from "@/context/theme.context";
 import { useToast } from "@/context/toast.context";
 import type { ProductResponse } from "@app/shared";
-import { PRODUCT_STATS_KEY } from "@/hooks/use-product-stats";
-import { PRODUCTS_KEY } from "@/hooks/use-products";
+import { useDeleteProduct } from "@/hooks/use-delete-product";
 
-import { requestData } from "@/services/request";
 
 import { ProductDetailHeader } from "./product-detail-header";
 import { ProductDetailInfo } from "./product-detail-info";
@@ -31,8 +28,7 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
   const { colors } = useTheme();
   const { show } = useToast();
   const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
-  const [deleting, setDeleting] = useState(false);
+  const { mutateAsync: deleteProduct, isPending: deleting } = useDeleteProduct();
 
   // Fade-in suave do conteúdo ao montar
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,26 +47,17 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
   }
 
   async function handleDelete() {
-    setDeleting(true);
-
-    const response = await requestData({
-      endpoint: `/products/${product.id}`,
-      method: "DELETE",
-      withAuth: true,
-    });
-
-    setDeleting(false);
-
-    if (!response.success) {
-      show("error", response.message);
-      return;
+    try {
+      const message = await deleteProduct(product.id);
+      show("success", message);
+      onDeleted?.();
+      router.back();
+    } catch (error) {
+      show(
+        "error",
+        error instanceof Error ? error.message : "Não foi possível remover o produto."
+      );
     }
-
-    show("success", response.message);
-    queryClient.invalidateQueries({ queryKey: PRODUCTS_KEY });
-    queryClient.invalidateQueries({ queryKey: PRODUCT_STATS_KEY });
-    onDeleted?.();
-    router.back();
   }
 
   return (

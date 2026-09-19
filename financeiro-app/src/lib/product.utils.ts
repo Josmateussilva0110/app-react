@@ -21,7 +21,7 @@ export function getProductMonthYear(date: string): { month: number; year: number
   // Accept DD/MM/YYYY
   const dmMatch = date.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (dmMatch) {
-    const [, day, month, year] = dmMatch;
+    const [, , month, year] = dmMatch;
     return { month: Number(month) - 1, year: Number(year) };
   }
 
