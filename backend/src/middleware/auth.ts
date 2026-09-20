@@ -32,7 +32,7 @@ function verifyJwtLocally(token: string): User | null {
     }) as SupabaseJwtPayload
 
     if (!payload.sub) return null
-    if (isUserSessionRevoked(payload.sub)) return null
+    if (isUserSessionRevoked(payload.sub, payload.iat)) return null
 
     return toAuthUser(payload)
   } catch {
@@ -69,7 +69,11 @@ export async function authMiddleware(
     return
   }
 
-  if (isUserSessionRevoked(data.user.id)) {
+  // A verificação local falhou, então o `iat` vem do decode — sem ele a
+  // revogação por usuário não sabe se este token nasceu antes do corte.
+  const issuedAt = (jwt.decode(token) as jwt.JwtPayload | null)?.iat
+
+  if (isUserSessionRevoked(data.user.id, issuedAt)) {
     response.status(401).json({ success: false, message: "Sessão encerrada. Faça login novamente." })
     return
   }

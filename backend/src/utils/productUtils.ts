@@ -1,8 +1,17 @@
 import { PaginationMeta, ProductResponse } from "@app/shared"
 
 export type ProductRowWithUser = {
-    users?: { username?: string } | null
+    id: string
+    name: string
     user_id: string
+    price: number
+    priority: ProductResponse["priority"]
+    payment_type: ProductResponse["payment_type"]
+    category: ProductResponse["category"]
+    date: string
+    finished: boolean
+    month_list: boolean | string
+    users?: { username?: string } | null
     [key: string]: unknown
 }
 
@@ -57,7 +66,23 @@ export function buildPaginationMeta(total: number, page: number, limit: number):
     }
 }
 
+/**
+ * Campo a campo, não `...rest`: o spread entregava ao cliente toda coluna que
+ * aparecesse no select — `group_products` entre elas — sem ninguém decidir
+ * isso, e a API não valida a própria resposta contra productResponseSchema.
+ */
 export function mapProductRow(row: ProductRowWithUser): ProductResponse {
-    const { users, user_id, ...rest } = row
-    return { ...rest, user_id, user_name: users?.username ?? "" } as ProductResponse
+    return {
+        id: row.id,
+        name: row.name,
+        user_id: row.user_id,
+        price: row.price,
+        priority: row.priority,
+        payment_type: row.payment_type,
+        category: row.category,
+        date: row.date,
+        finished: row.finished,
+        month_list: row.month_list,
+        user_name: row.users?.username ?? "",
+    }
 }

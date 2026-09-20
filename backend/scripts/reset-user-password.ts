@@ -8,6 +8,7 @@
  * Requer SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente.
  */
 import { createClient } from "@supabase/supabase-js"
+import { randomInt } from "node:crypto"
 import { config } from "dotenv"
 import path from "path"
 
@@ -37,12 +38,14 @@ interface ResolvedUser {
   email: string
 }
 
+// randomInt (CSPRNG), não Math.random(): isto é credencial, mesmo que
+// temporária. Igual ao GroupService.generateInviteCode.
 function generateTemporaryPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%"
   let password = "Aa1!"
 
   for (let index = password.length; index < 12; index += 1) {
-    password += chars[Math.floor(Math.random() * chars.length)]
+    password += chars[randomInt(chars.length)]
   }
 
   return password
@@ -128,6 +131,20 @@ async function main() {
     process.exit(1)
   }
 
+  // Este script roda justamente quando a conta pode estar comprometida:
+  // sem encerrar as sessões, quem já tem o refresh token continua dentro
+  // depois do reset.
+  const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(userRow.id, "global")
+
+  if (signOutError) {
+    console.error(
+      "ATENÇÃO: senha resetada, mas falhou ao encerrar as sessões existentes:",
+      signOutError.message
+    )
+    console.error("Sessões antigas podem continuar válidas. Repita o signOut antes de entregar a senha.")
+    process.exit(1)
+  }
+
   const { error: flagError } = await supabaseAdmin
     .from("users")
     .update({ must_change_password: true })
@@ -151,6 +168,11 @@ async function main() {
   console.log(`Senha temporária definida para ${userRow.email}`)
   console.log(`Senha: ${temporaryPassword}`)
   console.log("O usuário será obrigado a trocar a senha no próximo login.")
+  console.log("Sessões existentes encerradas (refresh tokens revogados no GoTrue).")
+  console.log(
+    "Obs.: access tokens já emitidos seguem aceitos pela API até expirarem (1h) — " +
+      "este script roda fora do processo da API e não alcança a lista de revogação em memória."
+  )
 }
 
 main().catch((error) => {

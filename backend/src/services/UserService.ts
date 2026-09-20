@@ -301,6 +301,25 @@ class UserService {
         }
     }
 
+    /**
+     * Trocar a senha não remedia nada se a sessão do invasor continua de pé:
+     * o refresh token dele segue rotacionando em /auth/refresh. O signOut
+     * global mata os refresh tokens no GoTrue; revokeUserSessions fecha a
+     * janela dos access tokens já emitidos (até 1h) neste processo.
+     *
+     * Falha no signOut não desfaz a troca de senha — ela já aconteceu —, mas
+     * vai para o log: é o caso em que o refresh token do invasor sobrevive.
+     */
+    private async revokeSessionsAfterPasswordChange(userId: string): Promise<void> {
+        const { error } = await supabaseAdmin.auth.admin.signOut(userId, "global")
+
+        if (error) {
+            console.error("[UserService.revokeSessionsAfterPasswordChange] signOut error:", error)
+        }
+
+        revokeUserSessions(userId)
+    }
+
     async changePassword(
         userId: string,
         data: ChangePasswordDTO
@@ -340,6 +359,8 @@ class UserService {
                         },
                     }
                 }
+
+                await this.revokeSessionsAfterPasswordChange(userId)
 
                 const { error: flagError } = await supabaseAdmin
                     .from("users")
@@ -407,6 +428,8 @@ class UserService {
                     },
                 }
             }
+
+            await this.revokeSessionsAfterPasswordChange(userId)
 
             return this.getProfile(userId)
         } catch (error) {

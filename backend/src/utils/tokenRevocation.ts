@@ -2,7 +2,16 @@ import crypto from "crypto"
 import jwt from "jsonwebtoken"
 
 const revokedTokenHashes = new Map<string, number>()
-const revokedUsers = new Map<string, number>()
+
+/**
+ * Revogação por usuário: `cutoffMs` é o instante da revogação, e só os
+ * tokens emitidos antes dele caem. Guardar apenas um prazo derrubaria
+ * também os tokens emitidos depois — o usuário ficava sem entrar até o
+ * TTL vencer, mesmo tendo acabado de fazer login.
+ */
+type UserRevocation = { cutoffMs: number; expiresAtMs: number }
+
+const revokedUsers = new Map<string, UserRevocation>()
 
 const DEFAULT_USER_REVOKE_TTL_MS = 60 * 60 * 1000
 
@@ -13,8 +22,8 @@ function pruneExpired(): void {
         if (expMs <= now) revokedTokenHashes.delete(hash)
     }
 
-    for (const [userId, untilMs] of revokedUsers) {
-        if (untilMs <= now) revokedUsers.delete(userId)
+    for (const [userId, entry] of revokedUsers) {
+        if (entry.expiresAtMs <= now) revokedUsers.delete(userId)
     }
 }
 
@@ -31,7 +40,8 @@ export function revokeAccessToken(token: string): void {
 }
 
 export function revokeUserSessions(userId: string, ttlMs = DEFAULT_USER_REVOKE_TTL_MS): void {
-    revokedUsers.set(userId, Date.now() + ttlMs)
+    const now = Date.now()
+    revokedUsers.set(userId, { cutoffMs: now, expiresAtMs: now + ttlMs })
     pruneExpired()
 }
 
@@ -42,9 +52,20 @@ export function isAccessTokenRevoked(token: string): boolean {
     return Date.now() < expMs
 }
 
-export function isUserSessionRevoked(userId: string): boolean {
+/**
+ * `issuedAtSeconds` é o `iat` do token. Sem ele a resposta é "revogado":
+ * não há como provar que o token nasceu depois da revogação.
+ */
+export function isUserSessionRevoked(userId: string, issuedAtSeconds?: number): boolean {
     pruneExpired()
-    const untilMs = revokedUsers.get(userId)
-    if (!untilMs) return false
-    return Date.now() < untilMs
+    const entry = revokedUsers.get(userId)
+    if (!entry) return false
+    if (Date.now() >= entry.expiresAtMs) return false
+    if (issuedAtSeconds === undefined) return true
+
+    // `iat` tem granularidade de segundo: comparar contra o início do
+    // segundo da revogação evita derrubar um token emitido nesse mesmo
+    // segundo (o login imediatamente posterior à troca de senha).
+    const cutoffSecondMs = Math.floor(entry.cutoffMs / 1000) * 1000
+    return issuedAtSeconds * 1000 < cutoffSecondMs
 }
