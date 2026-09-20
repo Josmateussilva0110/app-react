@@ -147,6 +147,40 @@ e o service trata o retorno com `utils/groupRpc.ts` — o RPC devolve
 `{ ok, error, message }` e `resolveGroupRpcError` traduz para `GroupErrorCode`.
 Estatísticas também são RPC (`get_product_stats`).
 
+### Toda função nasce com REVOKE colado
+
+**O default do Postgres é `EXECUTE` para `PUBLIC`.** Função criada sem
+`REVOKE ALL ... FROM PUBLIC` é chamável por qualquer usuário logado — e isso
+importa aqui porque `UserService.login` devolve ao app o access token emitido
+pelo Supabase, então todo usuário alcança o PostgREST direto, sem passar pela
+API. Função `SECURITY DEFINER` que não consulta `auth.uid()` e recebe o id do
+dono por parâmetro é, nessa situação, acesso irrestrito.
+
+```sql
+CREATE OR REPLACE FUNCTION public.minha_rpc(p_user_id uuid) ...;
+
+REVOKE ALL ON FUNCTION public.minha_rpc(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.minha_rpc(uuid) TO service_role;
+```
+
+E a armadilha que já produziu o bug uma vez: **`DROP FUNCTION` + `CREATE` gera
+um oid novo e zera a ACL de volta para `PUBLIC`**, enquanto `CREATE OR REPLACE`
+preserva. Ao redefinir uma função com `DROP`, repita o par `REVOKE`/`GRANT` —
+foi copiar só a linha do `GRANT` que deixou `unlink_user_group_products` aberta
+de `20260717210000` até `20260920090000`.
+
+Exceção: `is_group_member` e `is_group_owner` mantêm `EXECUTE` para `PUBLIC` de
+propósito. Política RLS é avaliada com os privilégios de quem consulta, então
+revogá-las quebraria todas as políticas de grupo de uma vez.
+
+### A ausência de policy de escrita é decisão, não esquecimento
+
+`goals`, `groups`, `group_members`, `group_invites` e `group_products` têm
+apenas policy de `SELECT`. É deliberado, e está registrado em `COMMENT ON TABLE`
+de cada uma: a escrita passa por RPC `SECURITY DEFINER` ou pelo backend em
+service role, e abrir policy de escrita criaria um caminho que hoje não existe.
+Não "conserte" isso — leia o `COMMENT` antes.
+
 ## Variáveis de ambiente
 
 Schema em `config/env.ts`. Variável nova entra lá **e** em `render.yaml`
