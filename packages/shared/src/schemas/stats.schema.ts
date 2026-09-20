@@ -49,6 +49,8 @@ export type EvolutionSeries = {
 export type DashboardStats = {
   total: number;
   monthListTotal: number;
+  /** Soma dos não finalizados no mesmo recorte — o app deriva o total por status daqui. */
+  pendingTotal: number;
   itemsCount: number;
   pendingCount: number;
   byCategory: CategoryStat[];

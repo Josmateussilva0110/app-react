@@ -12,6 +12,8 @@ router.post("/products", authMiddleware, scopeMiddleware, validate(productSchema
 router.get("/products/periods", authMiddleware, scopeMiddleware, ProductController.getPeriods);
 router.get("/products/stats", authMiddleware, scopeMiddleware, ProductController.getStats);
 router.get("/products", authMiddleware, scopeMiddleware, ProductController.getAll);
+// Depois de /periods e /stats: registrada antes, ":id" capturaria as duas.
+router.get("/products/:id", authMiddleware, scopeMiddleware, validate(productIdParamSchema, "params"), ProductController.getById);
 router.put("/products/:id", authMiddleware, scopeMiddleware, validate(productIdParamSchema, "params"), validate(productSchema), ProductController.update);
 router.delete("/products/:id", authMiddleware, scopeMiddleware, validate(productIdParamSchema, "params"), ProductController.delete);
 

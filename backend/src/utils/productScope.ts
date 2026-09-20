@@ -8,8 +8,16 @@ const SCOPE_CACHE_TTL_MS = 60_000
 const SCOPE_CACHE_MAX_SIZE = 1000
 const scopeCache = new Map<string, { scope: ProductScope; expiresAt: number }>()
 
+/**
+ * Resoluções em andamento, por usuário. O boot do app dispara várias requisições
+ * ao mesmo tempo e todas encontram o cache vazio quando o processo acabou de
+ * subir — sem isto, cada uma refaz a mesma consulta em vez de esperar a primeira.
+ */
+const inFlightScope = new Map<string, Promise<ProductScope>>()
+
 export function invalidateProductScopeCache(userId: string): void {
     scopeCache.delete(userId)
+    inFlightScope.delete(userId)
 }
 
 function setScopeCache(userId: string, scope: ProductScope): void {
@@ -21,10 +29,30 @@ function setScopeCache(userId: string, scope: ProductScope): void {
     scopeCache.set(userId, { scope, expiresAt: Date.now() + SCOPE_CACHE_TTL_MS })
 }
 
-async function resolveProductScopeFromDb(userId: string): Promise<ProductScope> {
+type GroupMemberRow = { user_id: string }
+
+/** Lista de membros do grupo — usada só quando o embed não trouxe as linhas. */
+async function fetchGroupMemberIds(groupId: string): Promise<string[] | null> {
     const { data, error } = await supabaseAdmin
         .from("group_members")
-        .select("group_id")
+        .select("user_id")
+        .eq("group_id", groupId)
+
+    if (error) {
+        console.error("[resolveProductScope] members error:", error)
+        return null
+    }
+
+    return (data ?? []).map((member) => member.user_id)
+}
+
+async function resolveProductScopeFromDb(userId: string): Promise<ProductScope> {
+    // Uma consulta só: o embed aninhado traz o grupo do usuário e os membros dele
+    // juntos. Em duas consultas dependentes isto custava um round trip a mais em
+    // toda requisição que passa pelo scopeMiddleware.
+    const { data, error } = await supabaseAdmin
+        .from("group_members")
+        .select("group_id, groups!inner(id, group_members(user_id))")
         .eq("user_id", userId)
         .maybeSingle()
 
@@ -37,13 +65,18 @@ async function resolveProductScopeFromDb(userId: string): Promise<ProductScope> 
         return { mode: "solo", userId }
     }
 
-    const { data: members, error: membersError } = await supabaseAdmin
-        .from("group_members")
-        .select("user_id")
-        .eq("group_id", data.group_id)
+    const group = Array.isArray(data.groups) ? data.groups[0] : data.groups
+    const embedded = (group?.group_members ?? []) as GroupMemberRow[]
 
-    if (membersError) {
-        console.error("[resolveProductScope] members error:", membersError)
+    // O próprio usuário é membro, então lista vazia significa embed não resolvido.
+    // Cair na consulta separada evita um escopo de grupo sem membro nenhum, que
+    // desligaria em silêncio o filtro por membro.
+    const memberIds =
+        embedded.length > 0
+            ? embedded.map((member) => member.user_id)
+            : await fetchGroupMemberIds(data.group_id)
+
+    if (!memberIds) {
         return { mode: "solo", userId }
     }
 
@@ -51,7 +84,7 @@ async function resolveProductScopeFromDb(userId: string): Promise<ProductScope> 
         mode: "group",
         userId,
         groupId: data.group_id,
-        memberIds: (members ?? []).map((member) => member.user_id),
+        memberIds,
     }
 }
 
@@ -61,9 +94,23 @@ export async function resolveProductScope(userId: string): Promise<ProductScope>
         return cached.scope
     }
 
-    const scope = await resolveProductScopeFromDb(userId)
-    setScopeCache(userId, scope)
-    return scope
+    const pending = inFlightScope.get(userId)
+    if (pending) return pending
+
+    // O cache guarda a promessa, não só o valor: quem chegar durante a resolução
+    // espera esta, em vez de abrir outra. O finally limpa também em erro, senão
+    // uma falha transitória ficaria presa aqui para sempre.
+    const promise = resolveProductScopeFromDb(userId)
+        .then((scope) => {
+            setScopeCache(userId, scope)
+            return scope
+        })
+        .finally(() => {
+            inFlightScope.delete(userId)
+        })
+
+    inFlightScope.set(userId, promise)
+    return promise
 }
 
 type GroupProductLink = { group_id: string }
@@ -98,16 +145,6 @@ export async function assertProductMutableInScope(
     }
 
     return groupIds.includes(scope.groupId)
-}
-
-export function productMatchesScope(
-    row: { user_id: string; shared_group_id?: string | null },
-    scope: ProductScope
-): boolean {
-    if (scope.mode === "solo") {
-        return row.user_id === scope.userId && (row.shared_group_id == null || row.shared_group_id === "")
-    }
-    return row.shared_group_id === scope.groupId
 }
 
 export type ScopeFilterDescriptor =

@@ -16,6 +16,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useGroupMode } from "@/features/group/hooks/use-group-mode";
 import type { EnrichedProduct } from "@/hooks/use-products";
 import { useProductStats } from "@/hooks/use-product-stats";
+import type { DashboardStats } from "@app/shared";
 import { useProductPeriods } from "@/hooks/use-product-periods";
 import { matchesSearch } from "@/lib/text.utils";
 import { getProductMonthYear } from "@/lib/product.utils";
@@ -27,6 +28,20 @@ import { HomeUserFilter, ALL_USERS_VALUE } from "./home-user-filter";
 import { HomePrioritySectionHeader } from "./home-priority-section-header";
 import { HomeEmptyState } from "./home-empty-state";
 import { PRIORITY_GROUPS, type InitialListFilters, type StatusFilter } from "../constants/home.constants";
+
+/**
+ * O total do card segue o status escolhido, mas a consulta é feita uma vez só,
+ * em "todos". Os três recortes saem das duas somas que a agregação devolve.
+ */
+function totalForStatus(
+  stats: DashboardStats | undefined,
+  status: StatusFilter
+): number {
+  if (!stats) return 0;
+  if (status === "pendente") return stats.pendingTotal;
+  if (status === "finalizado") return stats.total - stats.pendingTotal;
+  return stats.total;
+}
 
 export type ListSummaryFilters = {
   month?: number;
@@ -187,29 +202,17 @@ export function ItemListScreen({
     summaryFilters?.userId ??
     (userFilter !== ALL_USERS_VALUE ? userFilter : undefined);
   const statsMonthList = summaryFilters?.monthList;
-  const statsStatusForTotal = statusFilter;
-  const needsBreakdownStats = statsStatusForTotal !== "todos";
 
-  const { data: totalStats, isFetching: totalStatsFetching } = useProductStats({
-    month: statsMonth,
-    year: statsYear,
-    userId: statsUserId,
-    status: statsStatusForTotal,
-    monthList: statsMonthList,
-    enabled: canUseServerStats,
-  });
-
-  const { data: breakdownStats, isFetching: breakdownStatsFetching } = useProductStats({
+  // Uma consulta só, sempre em "todos": o card precisa do total no status
+  // escolhido e das contagens sem filtro, e a agregação já traz os dois.
+  const { data: stats, isFetching: statsFetching } = useProductStats({
     month: statsMonth,
     year: statsYear,
     userId: statsUserId,
     status: "todos",
     monthList: statsMonthList,
-    enabled: canUseServerStats && needsBreakdownStats,
+    enabled: canUseServerStats,
   });
-
-  const statsForBreakdown =
-    needsBreakdownStats ? breakdownStats : totalStats;
 
   const listMetrics = useMemo(() => {
     const grouped = new Map<string, EnrichedProduct[]>();
@@ -290,19 +293,19 @@ export function ItemListScreen({
     [group?.members]
   );
 
-  const statsPending = canUseServerStats && (totalStatsFetching || breakdownStatsFetching);
+  const statsPending = canUseServerStats && statsFetching;
 
   const summaryTotal = canUseServerStats
-    ? (totalStats?.total ?? 0)
+    ? totalForStatus(stats, statusFilter)
     : statusFilter !== "todos"
       ? listMetrics.total
       : listMetrics.overviewTotal;
   const summaryPending = canUseServerStats
-    ? (statsForBreakdown?.pendingCount ?? 0)
+    ? (stats?.pendingCount ?? 0)
     : listMetrics.pendingCount;
   const summaryFinished = canUseServerStats
-    ? statsForBreakdown
-      ? statsForBreakdown.itemsCount - statsForBreakdown.pendingCount
+    ? stats
+      ? stats.itemsCount - stats.pendingCount
       : 0
     : listMetrics.finishedCount;
 

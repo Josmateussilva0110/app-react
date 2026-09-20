@@ -12,7 +12,7 @@ import {
 } from "@app/shared"
 import { ProductErrorCode } from "../types/code/productCode"
 import { buildPaginationMeta, getPaginationRange, mapProductRow, parseYearMonth, ProductRowWithUser } from "../utils/productUtils"
-import { buildProductListQuery } from "./product/productQuery"
+import { buildProductByIdQuery, buildProductListQuery } from "./product/productQuery"
 import { resolveScopedUserFilter, assertProductMutableInScope, type ProductScope } from "../utils/productScope"
 import { linkProductToGroup } from "../utils/groupProducts"
 import { normalizeDashboardStats } from "./product/productStats"
@@ -291,6 +291,29 @@ class ProductService {
         } catch (error) {
             console.error("[ProductService.getAll] error:", error)
             return this.productFetchError()
+        }
+    }
+
+    async getById(
+        id: string,
+        scope: ProductScope
+    ): Promise<ServiceResult<ProductResponse, ProductErrorCode>> {
+        try {
+            const { data, error } = await buildProductByIdQuery(id, scope)
+
+            if (error) {
+                console.error("[ProductService.getById] Supabase error:", error)
+                return this.productFetchError("Não foi possível buscar o produto.")
+            }
+
+            if (!data) {
+                return this.notFoundError()
+            }
+
+            return { status: true, data: mapProductRow(data as ProductRowWithUser) }
+        } catch (error) {
+            console.error("[ProductService.getById] error:", error)
+            return this.productFetchError("Não foi possível buscar o produto.")
         }
     }
 

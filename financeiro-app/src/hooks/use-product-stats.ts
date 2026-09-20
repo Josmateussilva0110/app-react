@@ -72,10 +72,18 @@ export function prefetchProductStats(
   return client.prefetchQuery(productStatsQueryOptions(params));
 }
 
+/**
+ * Aquece a chave que a tela de entrada (month-list) realmente pede.
+ *
+ * A queryKey é o contrato do cache: `monthList` faz parte dela, e sem ele o
+ * prefetch aquecia `"all"` enquanto a tela pedia `"true"` — o dado ficava no
+ * cache sem ninguém usar e a abertura pagava a chamada assim mesmo.
+ */
 export function prefetchCurrentProductStats(client: QueryClient) {
   const now = new Date();
   return prefetchProductStats(client, {
     month: now.getMonth() + 1,
     year: now.getFullYear(),
+    monthList: "true",
   });
 }

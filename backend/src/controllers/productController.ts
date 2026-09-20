@@ -1,8 +1,9 @@
 import { Request, Response } from "express"
+import { HttpResponse } from "../types/http/HttpResponse"
 import { sendFailure } from "../utils/sendFailure"
 import { productErrorHttpStatusMap } from "../errors/productErrorHttpMapper"
 import ProductService from "../services/ProductService"
-import { productListQuerySchema, statsQuerySchema } from "@app/shared"
+import { productListQuerySchema, statsQuerySchema, type ProductResponse } from "@app/shared"
 
 
 class ProductController {
@@ -78,6 +79,24 @@ class ProductController {
       success: true,
       data: result.data,
     });
+  }
+
+  async getById(
+    request: Request,
+    response: Response<HttpResponse<ProductResponse>>
+  ) {
+    const id = String(request.params.id)
+    const result = await ProductService.getById(id, request.scope)
+
+    if (!result.status) {
+      return sendFailure(response, result.error, productErrorHttpStatusMap)
+    }
+
+    return response.status(200).json({
+      success: true,
+      message: "Produto encontrado",
+      data: result.data,
+    })
   }
 
   async update(request: Request, response: Response) {

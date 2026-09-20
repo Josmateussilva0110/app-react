@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import { useProducts } from "@/hooks/use-products";
+import { useProduct } from "@/hooks/use-products";
 import { ProductDetailScreen } from "@/features/product/components/detail";
 import { LoadingState } from "@/components/ui/loading-state";
 import { AppShell } from "@/components/appShell";
@@ -9,9 +9,7 @@ import { ErrorState } from "@/components/ui/error-state";
 export default function ProductDetailPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data: products, isLoading, refetch } = useProducts();
-
-  const product = products?.find((p) => p.id === id);
+  const { data: product, isLoading, error, refetch } = useProduct(id);
 
   if (isLoading && !product) {
     return (
@@ -24,10 +22,13 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <AppShell title="Detalhes do Produto" subtitle="Produto não encontrado">
-        <ErrorState error="Produto não encontrado" />
+        <ErrorState
+          error={error?.message ?? "Produto não encontrado"}
+          onRetry={() => void refetch()}
+        />
       </AppShell>
     );
   }
 
-  return <ProductDetailScreen product={product} onDeleted={refetch} />;
+  return <ProductDetailScreen product={product} />;
 }

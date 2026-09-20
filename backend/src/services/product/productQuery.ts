@@ -72,3 +72,30 @@ export function buildProductListQuery(
 
     return dbQuery.order("date", { ascending: false }).range(from, to)
 }
+
+/**
+ * Um produto pelo id, dentro do escopo atual.
+ *
+ * O filtro de escopo é o mesmo da listagem, e por isso não pode virar
+ * `eq("user_id", ...)`: em grupo o item pode ser de outro membro, e fora do
+ * grupo um item compartilhado não deve aparecer. `supabaseAdmin` ignora a RLS,
+ * então este filtro é a única separação entre contas.
+ */
+export function buildProductByIdQuery(id: string, scope: ProductScope) {
+    if (scope.mode === "group") {
+        return supabaseAdmin
+            .from("products")
+            .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username), group_products!inner(group_id)`)
+            .eq("id", id)
+            .eq("group_products.group_id", scope.groupId)
+            .maybeSingle()
+    }
+
+    return supabaseAdmin
+        .from("products")
+        .select(`${PRODUCT_SELECT_FIELDS}, users:user_id(username), group_products(group_id)`)
+        .eq("id", id)
+        .eq("user_id", scope.userId)
+        .is("group_products.group_id", null)
+        .maybeSingle()
+}

@@ -35,8 +35,6 @@ export const productResponseSchema = z.object({
   finished:     z.boolean(),
   month_list:   z.union([z.boolean(), z.string()]),
   user_name:    z.string(),
-  created_at:   z.string(),
-  updated_at:   z.string(),
 });
 
 export type CreateProductDTO = z.infer<typeof productSchema>;

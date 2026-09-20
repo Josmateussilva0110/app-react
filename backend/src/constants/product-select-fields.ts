@@ -1,3 +1,5 @@
+// Só as colunas que as telas leem. `created_at` e `updated_at` saíram daqui:
+// ninguém os exibe e eles custavam ~20% do payload de cada página da lista.
 export const PRODUCT_SELECT_FIELDS = `
   id,
   name,
@@ -8,7 +10,5 @@ export const PRODUCT_SELECT_FIELDS = `
   category,
   date,
   finished,
-  month_list,
-  created_at,
-  updated_at
+  month_list
 `;

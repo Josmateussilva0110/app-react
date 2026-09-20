@@ -1,7 +1,5 @@
 import { PaginationMeta, ProductResponse } from "@app/shared"
 
-export type ProductStatusFilter = "todos" | "pendente" | "finalizado"
-
 export type ProductRowWithUser = {
     users?: { username?: string } | null
     user_id: string
@@ -18,16 +16,6 @@ export function parseYearMonth(date: string): { year: number; month: number } | 
     const d = new Date(date)
     if (!isNaN(d.getTime())) return { year: d.getFullYear(), month: d.getMonth() + 1 }
     return null
-}
-
-export function isTruthyFlag(value: unknown): boolean {
-    return value === true || value === "true" || value === 1 || value === "t"
-}
-
-export function matchesStatus(finished: unknown, status: ProductStatusFilter): boolean {
-    if (status === "todos") return true
-    if (status === "finalizado") return isTruthyFlag(finished)
-    return !isTruthyFlag(finished)
 }
 
 function monthBounds(year: number, month: number): { start: string; end: string } {

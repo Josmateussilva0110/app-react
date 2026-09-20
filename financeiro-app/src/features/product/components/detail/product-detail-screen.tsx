@@ -20,10 +20,9 @@ import { ProductDetailActions } from "./product-detail-actions";
 
 interface Props {
   product: ProductResponse;
-  onDeleted?: () => void;
 }
 
-export function ProductDetailScreen({ product, onDeleted }: Props) {
+export function ProductDetailScreen({ product }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const { show } = useToast();
@@ -50,7 +49,7 @@ export function ProductDetailScreen({ product, onDeleted }: Props) {
     try {
       const message = await deleteProduct(product.id);
       show("success", message);
-      onDeleted?.();
+      // A invalidação de PRODUCTS_KEY na mutação já corrige a lista atrás.
       router.back();
     } catch (error) {
       show(
