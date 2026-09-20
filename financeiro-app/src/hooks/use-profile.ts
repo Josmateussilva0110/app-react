@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import {
   getProfile,
   updateProfile,
@@ -16,13 +22,14 @@ interface QueryError extends Error {
   reason?: string;
 }
 
-export function useProfile() {
-  const { signed, loading } = useAuth();
-
-  return useQuery<UserProfile, QueryError>({
+/**
+ * Extraído do hook porque o login precisa aquecer o perfil antes de a primeira
+ * tela protegida montar: o portão de `(protected)` decide por
+ * `must_change_password`, e sem esse prefetch ele espera um roundtrip inteiro
+ * (que no cold start da API passa de 20s) para saber se a senha é provisória.
+ */
+export const profileQueryOptions = queryOptions<UserProfile, QueryError>({
     queryKey: PROFILE_KEY,
-
-    enabled: signed && !loading,
 
     queryFn: async () => {
       const res = await getProfile();
@@ -57,7 +64,19 @@ export function useProfile() {
       Math.min(1000 * Math.pow(2, attempt), 5000),
 
     staleTime: 60 * 1000,
+});
+
+export function useProfile() {
+  const { signed, loading } = useAuth();
+
+  return useQuery({
+    ...profileQueryOptions,
+    enabled: signed && !loading,
   });
+}
+
+export function prefetchProfile(client: QueryClient) {
+  return client.prefetchQuery(profileQueryOptions);
 }
 
 export function useUpdateProfile() {

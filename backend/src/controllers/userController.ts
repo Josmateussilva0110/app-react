@@ -97,7 +97,7 @@ class UserController {
 
   async changePassword(request: Request, response: Response): Promise<Response> {
     const userId = request.user.id
-    const result = await UserService.changePassword(userId, request.body)
+    const result = await UserService.changePassword(userId, request.body, request.accessToken)
 
     if (!result.status) {
       return sendFailure(response, result.error, userErrorHttpStatusMap)

@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken"
 import { UserProfile } from "../types/users/profile"
 import { env } from "../config/env"
 import { revokeAccessToken, revokeUserSessions } from "../utils/tokenRevocation"
+import { revokeGoTrueSessions } from "../utils/revokeGoTrueSessions"
 
 interface RegisterDTO {
     username: string
@@ -151,9 +152,12 @@ class UserService {
                 }
             }
 
-            const { error } = await supabaseAdmin.auth.admin.signOut(userId, "global")
+            // Por id, não por JWT: `admin.signOut` exige um access token válido e
+            // rejeitava o userId, e aqui o token do app pode até estar expirado.
+            const revoked = await revokeGoTrueSessions(userId)
 
-            if (error) {
+            if (!revoked.ok) {
+                console.error("[UserService.logout] revoke error:", revoked.message)
                 return {
                     status: false,
                     error: { code: UserErrorCode.LOGOUT_FAILED, message: "Erro ao fazer logout" },
@@ -302,19 +306,36 @@ class UserService {
     }
 
     /**
-     * Trocar a senha não remedia nada se a sessão do invasor continua de pé:
-     * o refresh token dele segue rotacionando em /auth/refresh. O signOut
-     * global mata os refresh tokens no GoTrue; revokeUserSessions fecha a
-     * janela dos access tokens já emitidos (até 1h) neste processo.
+     * Trocar a senha não remedia nada se a sessão do invasor continua de pé: o
+     * refresh token dele segue rotacionando em /auth/refresh.
      *
-     * Falha no signOut não desfaz a troca de senha — ela já aconteceu —, mas
-     * vai para o log: é o caso em que o refresh token do invasor sobrevive.
+     * `scope: "others"` derruba todas as sessões **menos** a que está fazendo a
+     * troca — é o que permite ao usuário continuar no app depois de definir a
+     * senha, em vez de ser expulso para o login (o fluxo de senha provisória
+     * termina exatamente aqui). `revokeUserSessions` ainda invalida os access
+     * tokens já emitidos, inclusive o desta requisição; o app se recupera só
+     * porque o refresh token desta sessão sobreviveu, e o interceptor renova
+     * uma vez e refaz a chamada.
+     *
+     * Sem accessToken (não deveria acontecer atrás do authMiddleware) sobra o
+     * caminho por id, que é global.
      */
-    private async revokeSessionsAfterPasswordChange(userId: string): Promise<void> {
-        const { error } = await supabaseAdmin.auth.admin.signOut(userId, "global")
+    private async revokeOtherSessionsAfterPasswordChange(
+        userId: string,
+        accessToken?: string
+    ): Promise<void> {
+        if (accessToken) {
+            const { error } = await supabaseAdmin.auth.admin.signOut(accessToken, "others")
 
-        if (error) {
-            console.error("[UserService.revokeSessionsAfterPasswordChange] signOut error:", error)
+            if (error) {
+                console.error("[UserService.changePassword] signOut(others) error:", error)
+            }
+        } else {
+            const revoked = await revokeGoTrueSessions(userId)
+
+            if (!revoked.ok) {
+                console.error("[UserService.changePassword] revoke error:", revoked.message)
+            }
         }
 
         revokeUserSessions(userId)
@@ -322,7 +343,8 @@ class UserService {
 
     async changePassword(
         userId: string,
-        data: ChangePasswordDTO
+        data: ChangePasswordDTO,
+        accessToken?: string
     ): Promise<ServiceResult<UserProfile, UserErrorCode>> {
         try {
             const profileResult = await this.getProfile(userId)
@@ -360,7 +382,7 @@ class UserService {
                     }
                 }
 
-                await this.revokeSessionsAfterPasswordChange(userId)
+                await this.revokeOtherSessionsAfterPasswordChange(userId, accessToken)
 
                 const { error: flagError } = await supabaseAdmin
                     .from("users")
@@ -429,7 +451,7 @@ class UserService {
                 }
             }
 
-            await this.revokeSessionsAfterPasswordChange(userId)
+            await this.revokeOtherSessionsAfterPasswordChange(userId, accessToken)
 
             return this.getProfile(userId)
         } catch (error) {

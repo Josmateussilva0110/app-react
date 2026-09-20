@@ -13,6 +13,7 @@ import { refreshService } from "@/services/refresh.service";
 import { tokenManager } from "@/services/token.manager";
 import { queryClient } from "@/lib/query-client";
 import { clearPersistedQueryCache } from "@/lib/query-persister";
+import { prefetchProfile } from "@/hooks/use-profile";
 import { prefetchCurrentProductStats } from "@/hooks/use-product-stats";
 import { prefetchGoal } from "@/hooks/use-goal";
 import { prefetchGroup } from "@/hooks/use-group";
@@ -46,6 +47,9 @@ interface AuthContextData {
 export const AuthContext = createContext<AuthContextData | null>(null);
 
 function prefetchAppData() {
+  // O perfil vem primeiro: é ele que diz ao portão de (protected) se a senha é
+  // provisória, e sem isso a primeira tela protegida decide sem o dado.
+  void prefetchProfile(queryClient);
   void prefetchCurrentProductStats(queryClient);
   void prefetchGoal(queryClient);
   void prefetchGroup(queryClient);
@@ -162,6 +166,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         message: result.message,
       };
     }
+
+    // Cache da sessão anterior não pode decidir nada desta: ele é persistido em
+    // AsyncStorage com maxAge de 24h e sobrevive quando o app é fechado sem
+    // logout. Era o que fazia a senha provisória passar batido — o portão de
+    // (protected) lia um ["profile"] velho, com must_change_password false, e
+    // liberava as tabs antes de a revalidação chegar.
+    await clearPersistedQueryCache();
 
     tokenManager.setTokens(
       result.data.accessToken,

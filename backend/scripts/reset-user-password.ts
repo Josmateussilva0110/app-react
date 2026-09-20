@@ -104,6 +104,35 @@ async function findUserByEmail(email: string): Promise<ResolvedUser | null> {
   return authUser
 }
 
+/**
+ * A auth-js só expõe `admin.signOut(jwt, scope)`, e ali o primeiro parâmetro
+ * precisa ser um access token do próprio usuário — passar o id falha com
+ * "token is malformed". Aqui não existe sessão para reaproveitar, então o
+ * caminho é o endpoint admin do GoTrue, que aceita user id e a service role.
+ */
+async function revokeAllSessions(userId: string): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const response = await fetch(`${resolvedSupabaseUrl}/auth/v1/admin/users/${userId}/logout`, {
+      method: "POST",
+      headers: {
+        apikey: resolvedServiceRoleKey,
+        Authorization: `Bearer ${resolvedServiceRoleKey}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      return { ok: false, message: `GoTrue ${response.status}: ${body.slice(0, 200)}` }
+    }
+
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase()
   const temporaryPassword = process.argv[3] ?? generateTemporaryPassword()
@@ -131,19 +160,13 @@ async function main() {
     process.exit(1)
   }
 
-  // Este script roda justamente quando a conta pode estar comprometida:
-  // sem encerrar as sessões, quem já tem o refresh token continua dentro
-  // depois do reset.
-  const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(userRow.id, "global")
+  // A senha já está trocada neste ponto. Ela é impressa ANTES dos passos
+  // seguintes porque qualquer falha depois daqui não pode deixar a conta com
+  // uma senha que ninguém conhece.
+  console.log(`Senha temporária definida para ${userRow.email}`)
+  console.log(`Senha: ${temporaryPassword}`)
 
-  if (signOutError) {
-    console.error(
-      "ATENÇÃO: senha resetada, mas falhou ao encerrar as sessões existentes:",
-      signOutError.message
-    )
-    console.error("Sessões antigas podem continuar válidas. Repita o signOut antes de entregar a senha.")
-    process.exit(1)
-  }
+  let incomplete = false
 
   const { error: flagError } = await supabaseAdmin
     .from("users")
@@ -151,8 +174,28 @@ async function main() {
     .eq("id", userRow.id)
 
   if (flagError) {
-    console.error("Senha resetada, mas falhou ao marcar must_change_password:", flagError.message)
-    process.exit(1)
+    console.error("⚠️  Falhou ao marcar must_change_password:", flagError.message)
+    console.error("    O app NÃO vai exigir a troca no próximo login. Rode o script de novo.")
+    incomplete = true
+  } else {
+    console.log("O usuário será obrigado a trocar a senha no próximo login.")
+  }
+
+  // Este script roda justamente quando a conta pode estar comprometida: sem
+  // encerrar as sessões, quem já tem o refresh token continua dentro depois
+  // do reset.
+  const revoked = await revokeAllSessions(userRow.id)
+
+  if (!revoked.ok) {
+    console.error("⚠️  Falhou ao encerrar as sessões existentes:", revoked.message)
+    console.error("    Sessões antigas podem continuar válidas.")
+    incomplete = true
+  } else {
+    console.log("Sessões existentes encerradas (refresh tokens revogados no GoTrue).")
+    console.log(
+      "Obs.: access tokens já emitidos seguem aceitos pela API até expirarem (1h) — " +
+        "este script roda fora do processo da API e não alcança a lista de revogação em memória."
+    )
   }
 
   await supabaseAdmin
@@ -165,14 +208,9 @@ async function main() {
     .eq("user_id", userRow.id)
     .eq("status", "pending")
 
-  console.log(`Senha temporária definida para ${userRow.email}`)
-  console.log(`Senha: ${temporaryPassword}`)
-  console.log("O usuário será obrigado a trocar a senha no próximo login.")
-  console.log("Sessões existentes encerradas (refresh tokens revogados no GoTrue).")
-  console.log(
-    "Obs.: access tokens já emitidos seguem aceitos pela API até expirarem (1h) — " +
-      "este script roda fora do processo da API e não alcança a lista de revogação em memória."
-  )
+  if (incomplete) {
+    process.exit(1)
+  }
 }
 
 main().catch((error) => {
