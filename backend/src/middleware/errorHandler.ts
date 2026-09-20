@@ -17,13 +17,13 @@ export const errorHandler = (
 
     console.error(`[${statusCode}] ${err.message}`, isProd ? "" : err.stack)
 
+    // Mesmo envelope de sendFailure ({ success, message }): o app lê `message`
+    // do topo (services/request.ts), e com `{ status, error: { message } }`
+    // toda exceção chegava na tela como "Erro ao processar solicitação.".
+    // A mensagem interna do 500 continua escondida em produção.
     res.status(statusCode).json({
-        status: false,
-        error: {
-            message: isProd && statusCode === 500
-                ? "Erro interno do servidor."
-                : err.message,
-            ...(isProd ? {} : { stack: err.stack }),
-        },
+        success: false,
+        message: isProd && statusCode === 500 ? "Erro interno do servidor." : err.message,
+        ...(isProd ? {} : { stack: err.stack }),
     })
 }
