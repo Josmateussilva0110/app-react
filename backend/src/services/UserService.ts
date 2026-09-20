@@ -1,7 +1,7 @@
 import { ServiceResult } from "../types/serviceResults/ServiceResult"
 import { UserErrorCode } from "../types/code/userCode"
 import { PROFILE_SELECT_FIELDS } from "../constants/profile-select-fields"
-import { supabaseAuth, supabaseAdmin } from "../database/supabase/supabase"
+import { supabaseAuth, supabaseAdmin, createIsolatedAuthClient } from "../database/supabase/supabase"
 import { AuthTokens } from "../types/auth/auth.types"
 import jwt from "jsonwebtoken"
 import { UserProfile } from "../types/users/profile"
@@ -370,7 +370,12 @@ class UserService {
                 }
             }
 
-            const { error: authError } = await supabaseAuth.auth.signInWithPassword({
+            // Cliente próprio desta requisição: signInWithPassword grava a sessão
+            // no cliente que o executa, e no singleton compartilhado duas trocas
+            // de senha simultâneas se cruzariam.
+            const verifyClient = createIsolatedAuthClient()
+
+            const { error: authError } = await verifyClient.auth.signInWithPassword({
                 email: profile.email,
                 password: current_password,
             })
@@ -385,7 +390,10 @@ class UserService {
                 }
             }
 
-            const { error: updateError } = await supabaseAuth.auth.updateUser({
+            // A escrita vai pela admin API com o userId explícito, como no ramo
+            // de must_change_password acima: assim ela não depende de sessão
+            // nenhuma, nem da que acabou de ser criada para a verificação.
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
                 password: new_password,
             })
 
